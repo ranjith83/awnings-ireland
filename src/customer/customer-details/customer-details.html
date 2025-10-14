@@ -1,0 +1,48 @@
+<div class="container-fluid p-4">
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive mb-0">
+       <div class="customer-details-container">
+  <h1 class="customer-details-header">Customer Details</h1>
+  
+  <div class="search-section">
+    <label class="search-label">Search</label>
+    <div class="search-inputs-row">
+      <input type="text" class="search-input" placeholder="Company Name" [(ngModel)]="searchFilters.companyName" (input)="applyFilters()">
+      <input type="text" class="search-input" placeholder="Contact" [(ngModel)]="searchFilters.contact" (input)="applyFilters()">
+      <input type="text" class="search-input" placeholder="Mobile" [(ngModel)]="searchFilters.mobile" (input)="applyFilters()">
+      <input type="text" class="search-input" placeholder="Email" [(ngModel)]="searchFilters.email" (input)="applyFilters()">
+      <input type="text" class="search-input" placeholder="Site Address" [(ngModel)]="searchFilters.siteAddress" (input)="applyFilters()">
+    </div>
+  </div>
+  
+  <div class="table-container">
+    <table class="customer-table">
+      <thead>
+        <tr>
+          <th>COMPANY NAME</th>
+          <th>CONTACT</th>
+          <th>MOBILE</th>
+          <th>EMAIL</th>
+          <th>SITE ADDRESS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let customer of filteredCustomers">
+          <td>{{ customer.companyName }}</td>
+          <td>{{ customer.contact }}</td>
+          <td>{{ customer.mobile }}</td>
+          <td>{{ customer.email }}</td>
+          <td>{{ customer.siteAddress }}</td>
+        </tr>
+        <tr *ngIf="filteredCustomers.length === 0">
+          <td colspan="5" class="empty-state">No customers found matching your search criteria</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+      </div>
+    </div>
+  </div>
+</div>
