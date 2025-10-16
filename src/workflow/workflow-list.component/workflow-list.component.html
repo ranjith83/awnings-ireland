@@ -1,0 +1,136 @@
+  <!-- Select Product Section -->
+  <div class="select-product-card">
+    <h3 class="card-title">Select Product</h3>
+    
+    <div class="select-row">
+      <div class="select-group">
+        <label class="select-label">Select Supplier Type</label>
+        <select 
+          class="select-input" 
+          
+          (change)="onSupplierChange()">
+          <option [value]="null" disabled selected>Markilux</option>
+          <option *ngFor="let supplier of suppliers" [value]="supplier.id">
+            {{ supplier.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="select-group">
+        <label class="select-label">Select Model</label>
+        <select 
+          class="select-input" 
+          
+          [disabled]="!selectedSupplier">
+          <option [value]="null" disabled selected>Markilux 990</option>
+          <option *ngFor="let model of models" [value]="model.id">
+            {{ model.name }}
+          </option>
+        </select>
+      </div>
+
+      <button class="btn-add-workflow" (click)="addNewWorkflow()">
+        Add New Workflow
+      </button>
+    </div>
+  </div>
+
+  <!-- Workflow Table -->
+  
+    <table class="workflow-table">
+      <thead>
+        <tr>
+          <th class="sortable">
+            PRODUCT
+            <span class="sort-icon">▼</span>
+          </th>
+          <th>DESCRIPTION</th>
+          <th class="stage-header">INTIAL<br>ENQUIRY</th>
+          <th class="stage-header">CREATE<br>QUOTE</th>
+          <th class="stage-header">INVITE<br>SHOWROOM</th>
+          <th class="stage-header">SETUP SITE<br>VISIT</th>
+          <th class="stage-header">INVOICE</th>
+          <th>DATE<br>ADDED</th>
+          <th>ADDED<br>BY</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let workflow of workflows">
+          <td class="product-cell">{{ workflow.product }}</td>
+          <td class="description-cell">{{ workflow.description }}</td>
+          <td class="stage-cell">
+            <button 
+              class="stage-btn" 
+              [class.active]="workflow.initialEnquiry"
+              (click)="toggleStage(workflow, 'initialEnquiry')">
+            </button>
+          </td>
+          <td class="stage-cell">
+            <button 
+              class="stage-btn" 
+              [class.active]="workflow.createQuote"
+              (click)="toggleStage(workflow, 'createQuote')">
+            </button>
+          </td>
+          <td class="stage-cell">
+            <button 
+              class="stage-btn" 
+              [class.active]="workflow.inviteShowroom"
+              (click)="toggleStage(workflow, 'inviteShowroom')">
+            </button>
+          </td>
+          <td class="stage-cell">
+            <button 
+              class="stage-btn" 
+              [class.active]="workflow.setupSiteVisit"
+              (click)="toggleStage(workflow, 'setupSiteVisit')">
+            </button>
+          </td>
+          <td class="stage-cell">
+            <button 
+              class="stage-btn" 
+              [class.active]="workflow.invoice"
+              (click)="toggleStage(workflow, 'invoice')">
+            </button>
+          </td>
+          <td class="date-cell">{{ formatDate(workflow.dateAdded) }}</td>
+          <td class="user-cell">{{ workflow.addedBy }}</td>
+        </tr>
+      </tbody>
+    </table>
+ 
+  
+ 
+
+  <!-- Pagination -->
+  <div class="pagination">
+    <button 
+      class="page-btn" 
+      (click)="previousPage()"
+      [disabled]="currentPage === 1">
+      «
+    </button>
+    <button 
+      class="page-btn" 
+      (click)="goToPage(currentPage - 1)"
+      [disabled]="currentPage === 1">
+      ‹
+    </button>
+    <button 
+      class="page-btn active">
+      {{ currentPage }}
+    </button>
+    <button 
+      class="page-btn" 
+      (click)="goToPage(currentPage + 1)"
+      [disabled]="currentPage === totalPages">
+      ›
+    </button>
+    <button 
+      class="page-btn" 
+      (click)="nextPage()"
+      [disabled]="currentPage === totalPages">
+      »
+    </button>
+  </div>
+ 

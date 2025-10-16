@@ -1,0 +1,68 @@
+.workflow-page {
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+.workflow-header {
+  padding: 30px 30px 0 30px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.workflow-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  padding-bottom: 20px;
+}
+
+.tabs-container {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 30px;
+}
+
+.tabs-nav {
+  display: flex;
+  gap: 2px;
+}
+
+.tab-btn {
+  padding: 14px 24px;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent;
+  position: relative;
+  white-space: nowrap;
+}
+
+.tab-btn:hover {
+  color: #64748b;
+  background-color: #f8fafc;
+}
+
+.tab-btn.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+  font-weight: 500;
+}
+
+.tab-content {
+  padding: 30px;
+}
+
+@media screen and (max-width: 992px) {
+  .tabs-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab-content {
+    padding: 20px;
+  }
+}

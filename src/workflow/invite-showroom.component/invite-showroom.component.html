@@ -1,0 +1,115 @@
+<div class="workflow-container">
+    <form [formGroup]="this.bookingForm" class="booking-form">
+    <!-- Select Workflow Section -->
+    <div class="form-section">
+      <h2 class="section-title">Select Workflow</h2>
+      <div class="form-group">
+        <select formControlName="workflow" class="form-control">
+          <option value="">Select a workflow</option>
+          <option *ngFor="let workflow of workflows" [value]="workflow.id">
+            {{ workflow.name }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Booking Form Section -->
+    <div class="form-section">
+      <h2 class="section-title">Booking Form</h2>
+      
+      <!-- Description -->
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea 
+          id="description"
+          formControlName="description"
+          class="form-control"
+          rows="1"
+          placeholder="Enter description...">
+        </textarea>
+      </div>
+
+      <!-- Event Date -->
+      <div class="form-group">
+        <label>Event Date:</label>
+        
+        <div class="calendar-container">
+          <div class="calendar-header">
+            <button type="button" class="nav-btn" (click)="previousMonth()">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"/>
+              </svg>
+            </button>
+            <span class="month-year">{{ getMonthYear() }}</span>
+            <button type="button" class="nav-btn" (click)="nextMonth()">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="calendar-grid">
+            <div *ngFor="let day of weekDays" class="calendar-weekday">
+              {{ day }}
+            </div>
+            <button
+              *ngFor="let day of calendarDays"
+              type="button"
+              class="calendar-day"
+              [class.selected]="isSelectedDate(day)"
+              [class.empty]="day === null"
+              [disabled]="day === null"
+              (click)="selectDate(day)">
+              {{ day }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time Slot -->
+      <div class="form-group">
+        <label for="timeSlot">Time slot</label>
+        <select 
+          id="timeSlot"
+          formControlName="timeSlot"
+          class="form-control"
+          (change)="onTimeSlotChange($any($event.target).value)">
+          <option *ngFor="let time of timeSlots" [value]="time">
+            {{ time }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Email Client Checkbox -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox"
+            formControlName="emailClient"
+            class="checkbox-input">
+          <span>Email Client</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="form-actions">
+      <button type="button" class="btn btn-secondary" (click)="onClose()">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
+        </svg>
+        Close
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="onSave()"
+        [disabled]="!bookingForm.valid">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M13.854 3.646a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L6.5 10.293l6.646-6.647a.5.5 0 01.708 0z"/>
+        </svg>
+        Save
+      </button>
+    </div>
+  </form>
+</div>

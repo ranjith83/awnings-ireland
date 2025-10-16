@@ -1,0 +1,20 @@
+<div class="workflow-page">
+
+  <!-- Tab Navigation -->
+  <div class="tabs-container">
+    <div class="tabs-nav">
+      <button 
+        *ngFor="let tab of tabs"
+        class="tab-btn" 
+        [class.active]="isActive(tab.path)"
+        (click)="navigateToTab(tab)">
+        {{ tab.label }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Content Area -->
+  <div class="tab-content">
+    <router-outlet></router-outlet>
+  </div>
+</div>

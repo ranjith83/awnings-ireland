@@ -1,0 +1,71 @@
+<div class="app-container">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
+    <!-- Logo Section -->
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">🏠</span>
+        <span class="logo-text" *ngIf="!isSidebarCollapsed">Awnings of Ireland</span>
+      </div>
+      <button class="toggle-btn" (click)="toggleSidebar()">
+        <span *ngIf="!isSidebarCollapsed">‹</span>
+        <span *ngIf="isSidebarCollapsed">›</span>
+      </button>
+    </div>
+
+    <!-- Navigation Menu -->
+    <nav class="sidebar-nav">
+      <div 
+        *ngFor="let item of menuItems" 
+        class="nav-item" 
+        [class.active]="isActive(item.route)"
+        (click)="navigateTo(item.route)">
+        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-label" *ngIf="!isSidebarCollapsed">{{ item.label }}</span>
+        <span class="nav-badge" *ngIf="item.badge && !isSidebarCollapsed">{{ item.badge }}</span>
+      </div>
+    </nav>
+
+    <!-- User Profile -->
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="user-avatar">M</div>
+        <div class="user-info" *ngIf="!isSidebarCollapsed">
+          <div class="user-name">Micheal</div>
+          <div class="user-role">Admin</div>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()" *ngIf="!isSidebarCollapsed">
+        <span class="logout-icon">🚪</span>
+        Logout
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content" [class.expanded]="isSidebarCollapsed">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <button class="menu-btn" (click)="toggleSidebar()">
+          <span class="menu-icon">☰</span>
+        </button>
+        <h2 class="page-title">{{ getPageTitle() }}</h2>
+      </div>
+      <div class="top-bar-right">
+        <button class="icon-btn">
+          <span class="notification-icon">🔔</span>
+          <span class="notification-badge">3</span>
+        </button>
+        <button class="icon-btn">
+          <span class="search-icon">🔍</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Router Outlet -->
+    <div class="content-area">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
