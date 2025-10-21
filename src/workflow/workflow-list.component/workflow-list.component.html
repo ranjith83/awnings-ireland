@@ -1,3 +1,4 @@
+<div>
   <!-- Select Product Section -->
   <div class="select-product-card">
     <h3 class="card-title">Select Product</h3>
@@ -7,8 +8,8 @@
         <label class="select-label">Select Supplier Type</label>
         <select 
           class="select-input" 
-          
-          (change)="onSupplierChange()">
+          [(ngModel)]="selectedSupplier"
+          (change)="onSupplierChange($event)">
           <option [value]="null" disabled selected>Markilux</option>
           <option *ngFor="let supplier of suppliers" [value]="supplier.id">
             {{ supplier.name }}
@@ -20,7 +21,8 @@
         <label class="select-label">Select Model</label>
         <select 
           class="select-input" 
-          
+          [(ngModel)]="selectedModel"
+          (change)="onModelChange($event)"
           [disabled]="!selectedSupplier">
           <option [value]="null" disabled selected>Markilux 990</option>
           <option *ngFor="let model of models" [value]="model.id">
@@ -36,16 +38,13 @@
   </div>
 
   <!-- Workflow Table -->
-  
+  <div class="table-container">
     <table class="workflow-table">
       <thead>
         <tr>
-          <th class="sortable">
-            PRODUCT
-            <span class="sort-icon">▼</span>
-          </th>
+          <th>PRODUCT</th>
           <th>DESCRIPTION</th>
-          <th class="stage-header">INTIAL<br>ENQUIRY</th>
+          <th class="stage-header">INITIAL<br>ENQUIRY</th>
           <th class="stage-header">CREATE<br>QUOTE</th>
           <th class="stage-header">INVITE<br>SHOWROOM</th>
           <th class="stage-header">SETUP SITE<br>VISIT</th>
@@ -55,52 +54,55 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let workflow of workflows">
+        <tr *ngFor="let workflow of workflows" (click)="selectWorkflow(workflow)" class="workflow-row">
           <td class="product-cell">{{ workflow.product }}</td>
           <td class="description-cell">{{ workflow.description }}</td>
           <td class="stage-cell">
             <button 
               class="stage-btn" 
               [class.active]="workflow.initialEnquiry"
-              (click)="toggleStage(workflow, 'initialEnquiry')">
+              (click)="toggleStage(workflow, 'initialEnquiry', $event)">
             </button>
           </td>
           <td class="stage-cell">
             <button 
               class="stage-btn" 
               [class.active]="workflow.createQuote"
-              (click)="toggleStage(workflow, 'createQuote')">
+              (click)="toggleStage(workflow, 'createQuote', $event)">
             </button>
           </td>
           <td class="stage-cell">
             <button 
               class="stage-btn" 
               [class.active]="workflow.inviteShowroom"
-              (click)="toggleStage(workflow, 'inviteShowroom')">
+              (click)="toggleStage(workflow, 'inviteShowroom', $event)">
             </button>
           </td>
           <td class="stage-cell">
             <button 
               class="stage-btn" 
               [class.active]="workflow.setupSiteVisit"
-              (click)="toggleStage(workflow, 'setupSiteVisit')">
+              (click)="toggleStage(workflow, 'setupSiteVisit', $event)">
             </button>
           </td>
           <td class="stage-cell">
             <button 
               class="stage-btn" 
               [class.active]="workflow.invoice"
-              (click)="toggleStage(workflow, 'invoice')">
+              (click)="toggleStage(workflow, 'invoice', $event)">
             </button>
           </td>
-          <td class="date-cell">{{ formatDate(workflow.dateAdded) }}</td>
+          <td class="date-cell">{{ workflow.dateAdded | date:'dd MMM yyyy' }}</td>
           <td class="user-cell">{{ workflow.addedBy }}</td>
+        </tr>
+        <tr *ngIf="workflows.length === 0">
+          <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+            No workflows found for this customer
+          </td>
         </tr>
       </tbody>
     </table>
- 
-  
- 
+  </div>
 
   <!-- Pagination -->
   <div class="pagination">
@@ -116,8 +118,7 @@
       [disabled]="currentPage === 1">
       ‹
     </button>
-    <button 
-      class="page-btn active">
+    <button class="page-btn active">
       {{ currentPage }}
     </button>
     <button 
@@ -133,4 +134,14 @@
       »
     </button>
   </div>
- 
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Error Message -->
+  <div class="error-message" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </div>
+</div>

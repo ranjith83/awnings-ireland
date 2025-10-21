@@ -1,25 +1,29 @@
 import { Component, OnInit } from '@angular/core';
 import { Customer, CustomerSearchFilters } from '../../model/customer.model';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CustomerService } from '../../service/customer-service';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-customer-details',
   standalone: true,
-  imports: [  CommonModule, FormsModule],
+  imports: [  CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './customer-details.html',
   styleUrl: './customer-details.css'
 })
 export class CustomerDetails {
 
- customers: Customer[] = [];
+  customers: Customer[] = [];
   filteredCustomers: Customer[] = [];
-  isLoading = false;
-  errorMessage = '';
   
-  searchFilters: CustomerSearchFilters = {
+  showModal = false;
+  modalMode: 'add' | 'edit' = 'add';
+  customerForm: FormGroup;
+  
+  searchFilters = {
     companyName: '',
     contact: '',
     mobile: '',
@@ -27,66 +31,93 @@ export class CustomerDetails {
     siteAddress: ''
   };
 
-  private searchSubject = new Subject<CustomerSearchFilters>();
-  private destroy$ = new Subject<void>();
+  constructor(
+    private fb: FormBuilder,
+    private customerService: CustomerService,
+    private router: Router
+  ) {
+    this.customerForm = this.fb.group({
+      id: [null],
+      companyName: ['', [Validators.required, Validators.minLength(2)]],
+      contact: ['', [Validators.required, Validators.minLength(2)]],
+      mobile: ['', [Validators.required, Validators.pattern(/^\d{9,10}$/)]],
+      email: ['', [Validators.required, Validators.email]],
+      siteAddress: ['', [Validators.required, Validators.minLength(5)]]
+    });
+  }
 
-  constructor(private customerService: CustomerService) {}
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadCustomers();
-    this.setupSearchDebounce();
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  loadCustomers(): void {
+    this.customerService.getCustomers().subscribe({
+      next: (data) => {
+        this.customers = data;
+        this.filteredCustomers = [...this.customers];
+      },
+      error: (error) => {
+        console.error('Error loading customers:', error);
+        alert('Failed to load customers');
+      }
+    });
   }
 
-  // Load all customers from API
-  loadCustomers() {
-    this.isLoading = true;
-    this.errorMessage = '';
-    
-    this.customerService.getCustomers()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (customers) => {
-          this.customers = customers;
-          this.filteredCustomers = customers;
-          this.isLoading = false;
+  openAddModal(): void {
+    this.modalMode = 'add';
+    this.customerForm.reset();
+    this.showModal = true;
+  }
+
+  openEditModal(customer: Customer): void {
+    this.modalMode = 'edit';
+    this.customerForm.patchValue(customer);
+    this.showModal = true;
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+    this.customerForm.reset();
+  }
+
+  onSubmit(): void {
+    if (this.customerForm.invalid) {
+      Object.keys(this.customerForm.controls).forEach(key => {
+        this.customerForm.controls[key].markAsTouched();
+      });
+      return;
+    }
+
+    const customerData: Customer = this.customerForm.value;
+
+    if (this.modalMode === 'add') {
+      this.customerService.addCustomer(customerData).subscribe({
+        next: (response) => {
+          alert('Customer added successfully');
+          this.loadCustomers();
+          this.closeModal();
         },
         error: (error) => {
-          this.errorMessage = error.message;
-          this.isLoading = false;
-          console.error('Error loading customers:', error);
+          console.error('Error adding customer:', error);
+          alert('Failed to add customer');
         }
       });
-  }
-
-  // Setup debounced search for API calls
-  setupSearchDebounce() {
-    this.searchSubject
-      .pipe(
-        debounceTime(300), // Wait 300ms after user stops typing
-        distinctUntilChanged((prev, curr) => JSON.stringify(prev) === JSON.stringify(curr)),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(filters => {
-        this.searchCustomersAPI(filters);
+    } else {
+      this.customerService.updateCustomer(customerData.id!, customerData).subscribe({
+        next: (response) => {
+          alert('Customer updated successfully');
+          this.loadCustomers();
+          this.closeModal();
+        },
+        error: (error) => {
+          console.error('Error updating customer:', error);
+          alert('Failed to update customer');
+        }
       });
+    }
   }
 
-  // Trigger search (called on input change)
-  applyFilters() {
-    // Option 1: Client-side filtering (fast, no API call)
-    this.filterCustomersLocally();
-    
-    // Option 2: Server-side filtering (uncomment to use API search)
-    // this.searchSubject.next(this.searchFilters);
-  }
-
-  // Client-side filtering
-  private filterCustomersLocally() {
+  onSearchChange(): void {
     this.filteredCustomers = this.customers.filter(customer => {
       return (
         customer.companyName.toLowerCase().includes(this.searchFilters.companyName.toLowerCase()) &&
@@ -98,47 +129,43 @@ export class CustomerDetails {
     });
   }
 
-  // Server-side filtering via API
-  private searchCustomersAPI(filters: CustomerSearchFilters) {
-    // Check if all filters are empty
-    const hasFilters = Object.values(filters).some(value => value.trim() !== '');
-    
-    if (!hasFilters) {
-      this.filteredCustomers = this.customers;
-      return;
+  getError(fieldName: string): string {
+    const control = this.customerForm.get(fieldName);
+    if (control?.touched && control?.errors) {
+      if (control.errors['required']) {
+        return `${this.getFieldLabel(fieldName)} is required`;
+      }
+      if (control.errors['email']) {
+        return 'Please enter a valid email';
+      }
+      if (control.errors['pattern']) {
+        return 'Mobile must be 9-10 digits';
+      }
+      if (control.errors['minLength']) {
+        return `${this.getFieldLabel(fieldName)} is too short`;
+      }
     }
-
-    this.isLoading = true;
-    
-    this.customerService.searchCustomersQuery(filters)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (customers) => {
-          this.filteredCustomers = customers;
-          this.isLoading = false;
-        },
-        error: (error) => {
-          this.errorMessage = error.message;
-          this.isLoading = false;
-          console.error('Error searching customers:', error);
-        }
-      });
+    return '';
   }
 
-  // Refresh customer list
-  refresh() {
-    this.loadCustomers();
-  }
-
-  // Clear all filters
-  clearFilters() {
-    this.searchFilters = {
-      companyName: '',
-      contact: '',
-      mobile: '',
-      email: '',
-      siteAddress: ''
+  getFieldLabel(fieldName: string): string {
+    const labels: { [key: string]: string } = {
+      companyName: 'Company Name',
+      contact: 'Contact',
+      mobile: 'Mobile',
+      email: 'Email',
+      siteAddress: 'Site Address'
     };
-    this.filteredCustomers = this.customers;
+    return labels[fieldName] || fieldName;
+  }
+
+  navigateToWorkflow(customer: Customer): void {
+    // Navigate to workflow screen with customer ID
+    this.router.navigate(['/workflow'], { 
+      queryParams: { 
+        customerId: customer.id,
+        customerName: customer.companyName 
+      } 
+    });
   }
 }

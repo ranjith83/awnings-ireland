@@ -153,5 +153,11 @@ export class CustomerService {
     console.error(errorMessage);
     return throwError(() => new Error(errorMessage));
   }
+
+  addCustomer(customer: Customer): Observable<Customer> {
+    return this.http.post<Customer>(this.apiUrl, customer);
+  }
+
+  
 }
 

@@ -1,12 +1,38 @@
+/* workflow.component.css */
 .workflow-page {
   background-color: #f5f7fa;
   min-height: 100vh;
 }
 
 .workflow-header {
-  padding: 30px 30px 0 30px;
+  padding: 20px 30px;
   background-color: #ffffff;
   border-bottom: 1px solid #e2e8f0;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.back-btn:hover {
+  background: #eff6ff;
 }
 
 .workflow-title {
@@ -14,7 +40,6 @@
   font-weight: 600;
   color: #1e293b;
   margin: 0;
-  padding-bottom: 20px;
 }
 
 .tabs-container {
@@ -52,6 +77,17 @@
   font-weight: 500;
 }
 
+.tab-btn:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+.tab-btn:disabled:hover {
+  background-color: transparent;
+  color: #cbd5e1;
+}
+
 .tab-content {
   padding: 30px;
 }
@@ -64,5 +100,10 @@
   
   .tab-content {
     padding: 20px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

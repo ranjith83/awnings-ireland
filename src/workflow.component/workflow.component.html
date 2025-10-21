@@ -1,4 +1,13 @@
 <div class="workflow-page">
+  <!-- Header with Customer Name and Back Button -->
+  <div class="workflow-header">
+    <div class="header-content">
+      <button *ngIf="customerName !== 'Customers'" class="back-btn" (click)="goBackToCustomers()">
+        ← Back to Customers
+      </button>
+      <h1 class="workflow-title">{{ customerName }}</h1>
+    </div>
+  </div>
 
   <!-- Tab Navigation -->
   <div class="tabs-container">

@@ -7,6 +7,7 @@ import { WorkflowListComponent } from '../workflow/workflow-list.component/workf
 import { InviteShowroomComponent } from '../workflow/invite-showroom.component/invite-showroom.component';
 import { SetupSiteVisitComponent } from '../workflow/setup-site-visit.component/setup-site-visit.component';
 import { InvoiceComponent } from '../workflow/invoice.component/invoice.component';
+import { InitialEnquiryComponent } from '../workflow/initial-enquiry.component/initial-enquiry.component';
 
 
 export const routes: Routes = [
@@ -23,7 +24,7 @@ export const routes: Routes = [
         children: [
           { path: '', redirectTo: 'list', pathMatch: 'full' },
           { path: 'list', component: WorkflowListComponent },
-       //   { path: 'initial-enquiry', component: InitialEnquiryComponent },
+          { path: 'initial-enquiry', component: InitialEnquiryComponent },
           { path: 'create-quote', component: CreateQuoteComponent },
           { path: 'invite-showroom', component: InviteShowroomComponent },
           { path: 'setup-site-visit', component: SetupSiteVisitComponent },

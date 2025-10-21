@@ -1,0 +1,128 @@
+<div class="initial-enquiry-container">
+  
+  <!-- Select Workflow Section -->
+  <div class="select-workflow-section">
+    <h3 class="section-title">Select Workflow</h3>
+    
+    <div class="workflow-select-wrapper">
+      <select 
+        class="workflow-select" 
+        [(ngModel)]="selectedWorkflow">
+        <option *ngFor="let workflow of workflows" [value]="workflow.id">
+          {{ workflow.name }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tabs Section -->
+  <div class="tabs-section">
+    <div class="tabs-nav">
+      <button 
+        class="tab-button"
+        [class.active]="activeTab === 'comments'"
+        (click)="setActiveTab('comments')">
+        Comments
+      </button>
+      <button 
+        class="tab-button"
+        [class.active]="activeTab === 'email'"
+        (click)="setActiveTab('email')">
+        Email
+      </button>
+      <button 
+        class="tab-button"
+        [class.active]="activeTab === 'images'"
+        (click)="setActiveTab('images')">
+        Images
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      
+      <!-- Comments Tab -->
+      <div *ngIf="activeTab === 'comments'" class="tab-pane">
+        <textarea 
+          class="content-textarea"
+          [(ngModel)]="comments"
+          placeholder="Enter your comments here...">
+        </textarea>
+        
+        <div class="action-bar">
+          <button class="btn-save" (click)="saveComments()" [disabled]="isLoading">
+            <span class="btn-icon">✓</span>
+            Save Comments
+          </button>
+        </div>
+      </div>
+
+      <!-- Email Tab -->
+      <div *ngIf="activeTab === 'email'" class="tab-pane">
+        <textarea 
+          class="content-textarea"
+          [(ngModel)]="emailContent"
+          placeholder="Enter email content here...">
+        </textarea>
+        
+        <div class="action-bar">
+          <button class="btn-save" (click)="saveEmail()" [disabled]="isLoading">
+            <span class="btn-icon">✓</span>
+            Save Email
+          </button>
+        </div>
+      </div>
+
+      <!-- Images Tab -->
+      <div *ngIf="activeTab === 'images'" class="tab-pane">
+        <div class="images-upload-area">
+          <div class="upload-section">
+            <label for="imageUpload" class="upload-label">
+              <div class="upload-icon">📁</div>
+              <span>Click to upload images</span>
+              <input 
+                type="file" 
+                id="imageUpload" 
+                accept="image/*" 
+                multiple
+                (change)="onFileSelect($event)"
+                hidden>
+            </label>
+          </div>
+
+          <!-- Image Preview -->
+          <div class="images-grid" *ngIf="images.length > 0">
+            <div class="image-item" *ngFor="let image of images; let i = index">
+             <!--<img [src]="image | async" alt="Preview" class="image-preview">-->
+              <button class="btn-remove-image" (click)="removeImage(i)">×</button>
+              <span class="image-name">{{ image.name }}</span>
+            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="images.length === 0">
+            <p>No images uploaded yet</p>
+          </div>
+        </div>
+        
+        <div class="action-bar">
+          <button class="btn-save" (click)="saveImages()" [disabled]="isLoading || images.length === 0">
+            <span class="btn-icon">✓</span>
+            Save Images
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-message" *ngIf="successMessage">
+    {{ successMessage }}
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+  </div>
+
+</div>
