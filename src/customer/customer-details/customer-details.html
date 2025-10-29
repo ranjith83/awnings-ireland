@@ -48,7 +48,19 @@
     </div>
   </div>
 
-  <div class="table-container">
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading customers...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="error-banner">
+    {{ errorMessage }}
+    <button class="btn-retry" (click)="loadCustomers()">Retry</button>
+  </div>
+
+  <div class="table-container" *ngIf="!isLoading">
     <table class="customer-table">
       <thead>
         <tr>
@@ -63,9 +75,9 @@
       <tbody>
         <tr *ngFor="let customer of filteredCustomers" class="clickable-row" (click)="navigateToWorkflow(customer)">
           <td>{{ customer.companyName }}</td>
-          <td>{{ customer.contact }}</td>
-          <td>{{ customer.mobile }}</td>
-          <td>{{ customer.email }}</td>
+          <td>{{ customer.contactName }}</td>
+          <td>{{ customer.mobilePhone }}</td>
+          <td>{{ customer.contactEmail }}</td>
           <td>{{ customer.siteAddress }}</td>
           <td (click)="$event.stopPropagation()">
             <button 
@@ -96,89 +108,230 @@
 
       <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
         <div class="modal-body">
-          <div class="form-group">
-            <label for="companyName">Company Name <span class="required">*</span></label>
-            <input 
-              type="text" 
-              id="companyName"
-              formControlName="companyName"
-              class="form-control"
-              [class.error]="customerForm.get('companyName')?.touched && customerForm.get('companyName')?.invalid"
-              placeholder="Enter company name"
-            />
-            <span class="error-message" *ngIf="getError('companyName')">
-              {{ getError('companyName') }}
-            </span>
+          
+          <!-- Company Information Section -->
+          <div class="form-section">
+            <h3 class="section-title">Company Information</h3>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="name">Company Name <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="name"
+                  formControlName="name"
+                  class="form-control"
+                  [class.error]="customerForm.get('name')?.touched && customerForm.get('name')?.invalid"
+                  placeholder="Enter company name"
+                />
+                <span class="error-message" *ngIf="getError('name')">
+                  {{ getError('name') }}
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label for="companyNumber">Company Number</label>
+                <input 
+                  type="text" 
+                  id="companyNumber"
+                  formControlName="companyNumber"
+                  class="form-control"
+                  placeholder="Enter company number"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" formControlName="residential" />
+                <span>Residential Customer</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="address1">Address Line 1 <span class="required">*</span></label>
+              <input 
+                type="text" 
+                id="address1"
+                formControlName="address1"
+                class="form-control"
+                [class.error]="customerForm.get('address1')?.touched && customerForm.get('address1')?.invalid"
+                placeholder="Enter address line 1"
+              />
+              <span class="error-message" *ngIf="getError('address1')">
+                {{ getError('address1') }}
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label for="address2">Address Line 2</label>
+              <input 
+                type="text" 
+                id="address2"
+                formControlName="address2"
+                class="form-control"
+                placeholder="Enter address line 2"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="address3">Address Line 3</label>
+              <input 
+                type="text" 
+                id="address3"
+                formControlName="address3"
+                class="form-control"
+                placeholder="Enter address line 3"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="county">County</label>
+                <input 
+                  type="text" 
+                  id="county"
+                  formControlName="county"
+                  class="form-control"
+                  placeholder="Enter county"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="eircode">Eircode</label>
+                <input 
+                  type="text" 
+                  id="eircode"
+                  formControlName="eircode"
+                  class="form-control"
+                  placeholder="Enter eircode"
+                />
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="phone">Phone</label>
+                <input 
+                  type="text" 
+                  id="phone"
+                  formControlName="phone"
+                  class="form-control"
+                  placeholder="Enter phone number"
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="mobile">Mobile <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="mobile"
+                  formControlName="mobile"
+                  class="form-control"
+                  [class.error]="customerForm.get('mobile')?.touched && customerForm.get('mobile')?.invalid"
+                  placeholder="Enter mobile number"
+                  maxlength="10"
+                />
+                <span class="error-message" *ngIf="getError('mobile')">
+                  {{ getError('mobile') }}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email <span class="required">*</span></label>
+              <input 
+                type="email" 
+                id="email"
+                formControlName="email"
+                class="form-control"
+                [class.error]="customerForm.get('email')?.touched && customerForm.get('email')?.invalid"
+                placeholder="Enter email address"
+              />
+              <span class="error-message" *ngIf="getError('email')">
+                {{ getError('email') }}
+              </span>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="contact">Contact <span class="required">*</span></label>
-            <input 
-              type="text" 
-              id="contact"
-              formControlName="contact"
-              class="form-control"
-              [class.error]="customerForm.get('contact')?.touched && customerForm.get('contact')?.invalid"
-              placeholder="Enter contact name"
-            />
-            <span class="error-message" *ngIf="getError('contact')">
-              {{ getError('contact') }}
-            </span>
+          <!-- Contact Person Section -->
+          <div class="form-section">
+            <h3 class="section-title">Contact Person</h3>
+            
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contactFirstName">First Name <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="contactFirstName"
+                  formControlName="contactFirstName"
+                  class="form-control"
+                  [class.error]="customerForm.get('contactFirstName')?.touched && customerForm.get('contactFirstName')?.invalid"
+                  placeholder="Enter first name"
+                />
+                <span class="error-message" *ngIf="getError('contactFirstName')">
+                  {{ getError('contactFirstName') }}
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label for="contactLastName">Last Name <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="contactLastName"
+                  formControlName="contactLastName"
+                  class="form-control"
+                  [class.error]="customerForm.get('contactLastName')?.touched && customerForm.get('contactLastName')?.invalid"
+                  placeholder="Enter last name"
+                />
+                <span class="error-message" *ngIf="getError('contactLastName')">
+                  {{ getError('contactLastName') }}
+                </span>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="contactPhone">Contact Phone <span class="required">*</span></label>
+                <input 
+                  type="text" 
+                  id="contactPhone"
+                  formControlName="contactPhone"
+                  class="form-control"
+                  [class.error]="customerForm.get('contactPhone')?.touched && customerForm.get('contactPhone')?.invalid"
+                  placeholder="Enter contact phone"
+                />
+                <span class="error-message" *ngIf="getError('contactPhone')">
+                  {{ getError('contactPhone') }}
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label for="contactEmail">Contact Email <span class="required">*</span></label>
+                <input 
+                  type="email" 
+                  id="contactEmail"
+                  formControlName="contactEmail"
+                  class="form-control"
+                  [class.error]="customerForm.get('contactEmail')?.touched && customerForm.get('contactEmail')?.invalid"
+                  placeholder="Enter contact email"
+                />
+                <span class="error-message" *ngIf="getError('contactEmail')">
+                  {{ getError('contactEmail') }}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="mobile">Mobile <span class="required">*</span></label>
-            <input 
-              type="text" 
-              id="mobile"
-              formControlName="mobile"
-              class="form-control"
-              [class.error]="customerForm.get('mobile')?.touched && customerForm.get('mobile')?.invalid"
-              placeholder="Enter mobile number"
-              maxlength="10"
-            />
-            <span class="error-message" *ngIf="getError('mobile')">
-              {{ getError('mobile') }}
-            </span>
-          </div>
-
-          <div class="form-group">
-            <label for="email">Email <span class="required">*</span></label>
-            <input 
-              type="email" 
-              id="email"
-              formControlName="email"
-              class="form-control"
-              [class.error]="customerForm.get('email')?.touched && customerForm.get('email')?.invalid"
-              placeholder="Enter email address"
-            />
-            <span class="error-message" *ngIf="getError('email')">
-              {{ getError('email') }}
-            </span>
-          </div>
-
-          <div class="form-group">
-            <label for="siteAddress">Site Address <span class="required">*</span></label>
-            <textarea 
-              id="siteAddress"
-              formControlName="siteAddress"
-              class="form-control"
-              [class.error]="customerForm.get('siteAddress')?.touched && customerForm.get('siteAddress')?.invalid"
-              placeholder="Enter site address"
-              rows="3"
-            ></textarea>
-            <span class="error-message" *ngIf="getError('siteAddress')">
-              {{ getError('siteAddress') }}
-            </span>
-          </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn-cancel" (click)="closeModal()">
             Cancel
           </button>
-          <button type="submit" class="btn-submit">
-            {{ modalMode === 'add' ? 'Add Customer' : 'Update Customer' }}
+          <button type="submit" class="btn-submit" [disabled]="isLoading">
+            <span *ngIf="!isLoading">{{ modalMode === 'add' ? 'Add Customer' : 'Update Customer' }}</span>
+            <span *ngIf="isLoading">Processing...</span>
           </button>
         </div>
       </form>

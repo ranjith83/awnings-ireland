@@ -1,8 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { Customer, CustomerSearchFilters } from '../../model/customer.model';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { CustomerService } from '../../service/customer-service';
+import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService } from '../../service/customer-service';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -16,12 +15,15 @@ import { Router } from '@angular/router';
 })
 export class CustomerDetails {
 
-  customers: Customer[] = [];
-  filteredCustomers: Customer[] = [];
+ customers: CustomerMainViewDto[] = [];
+  filteredCustomers: CustomerMainViewDto[] = [];
   
   showModal = false;
   modalMode: 'add' | 'edit' = 'add';
   customerForm: FormGroup;
+  
+  isLoading = false;
+  errorMessage = '';
   
   searchFilters = {
     companyName: '',
@@ -37,12 +39,22 @@ export class CustomerDetails {
     private router: Router
   ) {
     this.customerForm = this.fb.group({
-      id: [null],
-      companyName: ['', [Validators.required, Validators.minLength(2)]],
-      contact: ['', [Validators.required, Validators.minLength(2)]],
+      companyId: [null],
+      name: ['', [Validators.required, Validators.minLength(2)]],
+      companyNumber: [''],
+      residential: [false],
+      address1: ['', Validators.required],
+      address2: [''],
+      address3: [''],
+      county: [''],
+      phone: [''],
       mobile: ['', [Validators.required, Validators.pattern(/^\d{9,10}$/)]],
       email: ['', [Validators.required, Validators.email]],
-      siteAddress: ['', [Validators.required, Validators.minLength(5)]]
+      eircode: [''],
+      contactFirstName: ['', Validators.required],
+      contactLastName: ['', Validators.required],
+      contactPhone: ['', Validators.required],
+      contactEmail: ['', [Validators.required, Validators.email]]
     });
   }
 
@@ -51,33 +63,74 @@ export class CustomerDetails {
   }
 
   loadCustomers(): void {
-    this.customerService.getCustomers().subscribe({
-      next: (data) => {
+    this.isLoading = true;
+    this.errorMessage = '';
+    
+    this.customerService.getAllCustomers().subscribe({
+      next: (data: CustomerMainViewDto[]) => {
         this.customers = data;
         this.filteredCustomers = [...this.customers];
+        this.isLoading = false;
       },
-      error: (error) => {
+      error: (error: Error) => {
         console.error('Error loading customers:', error);
-        alert('Failed to load customers');
+        this.errorMessage = 'Failed to load customers. Please try again.';
+        this.isLoading = false;
       }
     });
   }
 
   openAddModal(): void {
     this.modalMode = 'add';
-    this.customerForm.reset();
+    this.customerForm.reset({
+      residential: false
+    });
     this.showModal = true;
   }
 
-  openEditModal(customer: Customer): void {
+  openEditModal(customer: CustomerMainViewDto): void {
     this.modalMode = 'edit';
-    this.customerForm.patchValue(customer);
-    this.showModal = true;
+    
+    // Load full customer details
+    this.isLoading = true;
+    this.customerService.getCustomerById(customer.companyId).subscribe({
+      next: (fullCustomer: Customer) => {
+        const contact = fullCustomer.customerContacts?.[0];
+        
+        this.customerForm.patchValue({
+          companyId: fullCustomer.companyId,
+          name: fullCustomer.name,
+          companyNumber: fullCustomer.companyNumber,
+          residential: fullCustomer.residential,
+          address1: fullCustomer.address1,
+          address2: fullCustomer.address2,
+          address3: fullCustomer.address3,
+          county: fullCustomer.county,
+          phone: fullCustomer.phone,
+          mobile: fullCustomer.mobile,
+          email: fullCustomer.email,
+          eircode: fullCustomer.eircode,
+          contactFirstName: contact?.firstName || '',
+          contactLastName: contact?.lastName || '',
+          contactPhone: contact?.phone || '',
+          contactEmail: contact?.email || ''
+        });
+        
+        this.isLoading = false;
+        this.showModal = true;
+      },
+      error: (error: Error) => {
+        console.error('Error loading customer details:', error);
+        this.errorMessage = 'Failed to load customer details';
+        this.isLoading = false;
+      }
+    });
   }
 
   closeModal(): void {
     this.showModal = false;
     this.customerForm.reset();
+    this.errorMessage = '';
   }
 
   onSubmit(): void {
@@ -88,44 +141,108 @@ export class CustomerDetails {
       return;
     }
 
-    const customerData: Customer = this.customerForm.value;
+    this.isLoading = true;
+    this.errorMessage = '';
 
     if (this.modalMode === 'add') {
-      this.customerService.addCustomer(customerData).subscribe({
-        next: (response) => {
-          alert('Customer added successfully');
-          this.loadCustomers();
-          this.closeModal();
-        },
-        error: (error) => {
-          console.error('Error adding customer:', error);
-          alert('Failed to add customer');
-        }
-      });
+      this.addCustomer();
     } else {
-      this.customerService.updateCustomer(customerData.id!, customerData).subscribe({
-        next: (response) => {
-          alert('Customer updated successfully');
-          this.loadCustomers();
-          this.closeModal();
-        },
-        error: (error) => {
-          console.error('Error updating customer:', error);
-          alert('Failed to update customer');
-        }
-      });
+      this.updateCustomer();
     }
+  }
+
+  private addCustomer(): void {
+    const formValue = this.customerForm.value;
+    
+    const newCustomer: CompanyWithContactDto = {
+      name: formValue.name,
+      companyNumber: formValue.companyNumber,
+      residential: formValue.residential,
+      address1: formValue.address1,
+      address2: formValue.address2,
+      address3: formValue.address3,
+      county: formValue.county,
+      phone: formValue.phone,
+      mobile: formValue.mobile,
+      email: formValue.email,
+      eircode: formValue.eircode,
+      contacts: [{
+        firstName: formValue.contactFirstName,
+        lastName: formValue.contactLastName,
+        phone: formValue.contactPhone,
+        email: formValue.contactEmail
+      }]
+    };
+
+    this.customerService.addCompanyWithContact(newCustomer).subscribe({
+      next: (response: Customer) => {
+        console.log('Customer added:', response);
+        alert('Customer added successfully');
+        this.loadCustomers();
+        this.closeModal();
+      },
+      error: (error: Error) => {
+        console.error('Error adding customer:', error);
+        this.errorMessage = 'Failed to add customer. Please try again.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  private updateCustomer(): void {
+    const formValue = this.customerForm.value;
+    const companyId = formValue.companyId;
+
+    const updateData: CompanyDto = {
+      companyId: companyId,
+      name: formValue.name,
+      companyNumber: formValue.companyNumber,
+      residential: formValue.residential,
+      address1: formValue.address1,
+      address2: formValue.address2,
+      address3: formValue.address3,
+      county: formValue.county,
+      phone: formValue.phone,
+      mobile: formValue.mobile,
+      email: formValue.email,
+      eircode: formValue.eircode,
+      updatedBy: 1 // Replace with actual user ID from auth service
+    };
+
+    this.customerService.updateCompany(companyId, updateData).subscribe({
+      next: (response: Customer) => {
+        console.log('Customer updated:', response);
+        alert('Customer updated successfully');
+        this.loadCustomers();
+        this.closeModal();
+      },
+      error: (error: Error) => {
+        console.error('Error updating customer:', error);
+        this.errorMessage = 'Failed to update customer. Please try again.';
+        this.isLoading = false;
+      }
+    });
   }
 
   onSearchChange(): void {
     this.filteredCustomers = this.customers.filter(customer => {
       return (
         customer.companyName.toLowerCase().includes(this.searchFilters.companyName.toLowerCase()) &&
-        customer.contact.toLowerCase().includes(this.searchFilters.contact.toLowerCase()) &&
-        customer.mobile.includes(this.searchFilters.mobile) &&
-        customer.email.toLowerCase().includes(this.searchFilters.email.toLowerCase()) &&
+        customer.contactName.toLowerCase().includes(this.searchFilters.contact.toLowerCase()) &&
+        (customer.mobilePhone || '').includes(this.searchFilters.mobile) &&
+        customer.contactEmail.toLowerCase().includes(this.searchFilters.email.toLowerCase()) &&
         customer.siteAddress.toLowerCase().includes(this.searchFilters.siteAddress.toLowerCase())
       );
+    });
+  }
+
+  navigateToWorkflow(customer: CustomerMainViewDto): void {
+    // Navigate to workflow screen with customer ID
+    this.router.navigate(['/workflow'], { 
+      queryParams: { 
+        customerId: customer.companyId,
+        customerName: customer.companyName 
+      } 
     });
   }
 
@@ -150,22 +267,16 @@ export class CustomerDetails {
 
   getFieldLabel(fieldName: string): string {
     const labels: { [key: string]: string } = {
-      companyName: 'Company Name',
-      contact: 'Contact',
+      name: 'Company Name',
+      companyNumber: 'Company Number',
+      address1: 'Address Line 1',
       mobile: 'Mobile',
       email: 'Email',
-      siteAddress: 'Site Address'
+      contactFirstName: 'Contact First Name',
+      contactLastName: 'Contact Last Name',
+      contactPhone: 'Contact Phone',
+      contactEmail: 'Contact Email'
     };
     return labels[fieldName] || fieldName;
-  }
-
-  navigateToWorkflow(customer: Customer): void {
-    // Navigate to workflow screen with customer ID
-    this.router.navigate(['/workflow'], { 
-      queryParams: { 
-        customerId: customer.id,
-        customerName: customer.companyName 
-      } 
-    });
   }
 }

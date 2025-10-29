@@ -1,163 +1,233 @@
+// services/customer.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError, BehaviorSubject, of } from 'rxjs';
-import { catchError, map, tap } from 'rxjs/operators';
-import { CreateCustomerDto, Customer, CustomerListResponse, CustomerSearchFilters, UpdateCustomerDto } from '../model/customer.model';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { environment } from '../app/environments/environment';
+// Interfaces matching your C# DTOs exactly
+export interface CustomerMainViewDto {
+  companyId: number;
+  companyName: string;
+  contactName: string;
+  contactEmail: string;
+  mobilePhone: string;
+  siteAddress: string;
+}
 
+export interface Customer {
+  companyId: number;
+  name: string;
+  companyNumber?: string;
+  residential?: boolean;
+  registrationNumber?: string;
+  vatNumber?: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  county?: string;
+  countryId?: number;
+  phone?: string;
+  fax?: string;
+  mobile?: string;
+  email?: string;
+  taxNumber?: string;
+  eircode?: string;
+  dateCreated?: Date;
+  createdBy?: number;
+  updatedDate?: Date;
+  updatedBy?: number;
+  customerContacts?: CustomerContact[];
+}
+
+export interface CustomerContact {
+  contactId?: number;
+  firstName: string;
+  lastName: string;
+  dateOfBirth?: Date;
+  mobile?: string;
+  phone?: string;
+  email: string;
+  companyId?: number;
+}
+
+export interface CompanyWithContactDto {
+  companyId?: number;
+  name: string;
+  companyNumber?: string;
+  residential?: boolean;
+  registrationNumber?: string;
+  vatNumber?: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  county?: string;
+  countryId?: number;
+  phone?: string;
+  fax?: string;
+  mobile?: string;
+  email?: string;
+  taxNumber?: string;
+  eircode?: string;
+  dateCreated?: Date;
+  createdBy?: number;
+  updatedDate?: Date;
+  updatedBy?: number;
+  contacts: CustomerContactDto[];
+}
+
+export interface CustomerContactDto {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+}
+
+export interface CompanyDto {
+  companyId: number;
+  name: string;
+  companyNumber?: string;
+  residential?: boolean;
+  registrationNumber?: string;
+  vatNumber?: string;
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  county?: string;
+  countryId?: number;
+  phone?: string;
+  fax?: string;
+  mobile?: string;
+  email?: string;
+  taxNumber?: string;
+  eircode?: string;
+  updatedDate?: Date;
+  updatedBy?: number;
+}
+
+export interface ContactDto {
+  companyId: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  dateOfBirth?: Date;
+  mobile?: string;
+  phone?: string;
+  updatedBy?: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
-
-
 export class CustomerService {
-  private apiUrl = 'https://your-api-domain.com/api/customers'; // Change to your API URL
-  private customersSubject = new BehaviorSubject<Customer[]>([]);
-  public customers$ = this.customersSubject.asObservable();
+  private apiUrl = `${environment.apiUrl}/api/customers`;
 
   constructor(private http: HttpClient) {}
 
-  // GET: Fetch all customers
-  getCustomers(): Observable<Customer[]> {
- const staticCustomers: Customer[] = [
-    { companyName: 'Dell', contact: 'Joe Bloggs', mobile: '987456321', email: 'joe@dell.ie', siteAddress: '27 Bray Rd, Wicklow' },
-    { companyName: 'HP', contact: 'Jane Smith', mobile: '123456789', email: 'jane@hp.com', siteAddress: '12 Main St, Dublin' },
-    { companyName: 'Lenovo', contact: 'Mark Lee', mobile: '456789123', email: 'mark@lenovo.com', siteAddress: '45 Tech Park, Cork' },
-    { companyName: 'Apple', contact: 'Lisa Ray', mobile: '789123456', email: 'lisa@apple.com', siteAddress: '1 Infinite Loop, Galway' },
-    { companyName: 'Acer', contact: 'Tom Hanks', mobile: '321654987', email: 'tom@acer.com', siteAddress: '88 River Rd, Limerick' },
-    { companyName: 'Asus', contact: 'Emma Stone', mobile: '654987321', email: 'emma@asus.com', siteAddress: '23 Hilltop Ave, Waterford' },
-    { companyName: 'Samsung', contact: 'Chris Pine', mobile: '987321654', email: 'chris@samsung.com', siteAddress: '99 Ocean Blvd, Sligo' },
-    { companyName: 'Microsoft', contact: 'Natalie Portman', mobile: '741852963', email: 'natalie@microsoft.com', siteAddress: '77 Cloud St, Kilkenny' },
-    { companyName: 'Google', contact: 'Ryan Gosling', mobile: '852963741', email: 'ryan@google.com', siteAddress: '66 Search Ln, Wexford' },
-    { companyName: 'Amazon', contact: 'Scarlett Johansson', mobile: '963741852', email: 'scarlett@amazon.com', siteAddress: '55 Prime Rd, Meath' }
- ];
- return of(staticCustomers).pipe(
-    tap(customers => this.customersSubject.next(customers)),
-    catchError(this.handleError)
-  );
-
-    return this.http.get<Customer[]>(this.apiUrl).pipe(
-      tap(customers => this.customersSubject.next(customers)),
-      catchError(this.handleError)
-    );
+  /**
+   * Get all customers with their contacts
+   * Maps to: GET /api/customers
+   */
+  getAllCustomers(): Observable<CustomerMainViewDto[]> {
+    return this.http.get<CustomerMainViewDto[]>(this.apiUrl)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // GET: Fetch customers with pagination
-  getCustomersPaginated(page: number = 1, pageSize: number = 10): Observable<CustomerListResponse> {
-    const params = new HttpParams()
-      .set('page', page.toString())
-      .set('pageSize', pageSize.toString());
-
-    return this.http.get<CustomerListResponse>(`${this.apiUrl}/paginated`, { params }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  // GET: Fetch single customer by ID
+  /**
+   * Get customer by ID with full details
+   * Maps to: GET /api/customers/{id}
+   */
   getCustomerById(id: number): Observable<Customer> {
-    return this.http.get<Customer>(`${this.apiUrl}/${id}`).pipe(
-      catchError(this.handleError)
-    );
+    return this.http.get<Customer>(`${this.apiUrl}/${id}`)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // POST: Create new customer
-  createCustomer(customer: CreateCustomerDto): Observable<Customer> {
-    return this.http.post<Customer>(this.apiUrl, customer).pipe(
-      tap(newCustomer => {
-        const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next([...currentCustomers, newCustomer]);
-      }),
-      catchError(this.handleError)
-    );
+  /**
+   * Add a new company with contact
+   * Maps to: POST /api/customers/add-company-with-contact
+   */
+  addCompanyWithContact(data: CompanyWithContactDto): Observable<Customer> {
+    return this.http.post<Customer>(`${this.apiUrl}/add-company-with-contact`, data)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // PUT: Update existing customer
-  updateCustomer(id: number, customer: UpdateCustomerDto): Observable<Customer> {
-    return this.http.put<Customer>(`${this.apiUrl}/${id}`, customer).pipe(
-      tap(updatedCustomer => {
-        const currentCustomers = this.customersSubject.value;
-        const index = currentCustomers.findIndex(c => c.id === id);
-        if (index !== -1) {
-          currentCustomers[index] = updatedCustomer;
-          this.customersSubject.next([...currentCustomers]);
-        }
-      }),
-      catchError(this.handleError)
-    );
+  /**
+   * Add a contact to an existing company
+   * Maps to: POST /api/customers/add-contact-to-company
+   */
+  addContactToCompany(data: ContactDto): Observable<Customer> {
+    return this.http.post<Customer>(`${this.apiUrl}/add-contact-to-company`, data)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // DELETE: Delete customer
-  deleteCustomer(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${id}`).pipe(
-      tap(() => {
-        const currentCustomers = this.customersSubject.value;
-        this.customersSubject.next(currentCustomers.filter(c => c.id !== id));
-      }),
-      catchError(this.handleError)
-    );
+  /**
+   * Update company details
+   * Maps to: PUT /api/customers/update-company/{companyId}
+   */
+  updateCompany(companyId: number, data: CompanyDto): Observable<Customer> {
+    return this.http.put<Customer>(`${this.apiUrl}/update-company/${companyId}`, data)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // POST: Search customers with filters
-  searchCustomers(filters: CustomerSearchFilters): Observable<Customer[]> {
-    return this.http.post<Customer[]>(`${this.apiUrl}/search`, filters).pipe(
-      catchError(this.handleError)
-    );
+  /**
+   * Update contact details
+   * Maps to: PUT /api/customers/update-contact/{contactId}
+   */
+  updateContact(contactId: number, data: ContactDto): Observable<CustomerContact> {
+    return this.http.put<CustomerContact>(`${this.apiUrl}/update-contact/${contactId}`, data)
+      .pipe(
+        catchError(this.handleError)
+      );
   }
 
-  // GET: Search customers with query params
-  searchCustomersQuery(filters: CustomerSearchFilters): Observable<Customer[]> {
-    let params = new HttpParams();
-    
-    if (filters.companyName) params = params.set('companyName', filters.companyName);
-    if (filters.contact) params = params.set('contact', filters.contact);
-    if (filters.mobile) params = params.set('mobile', filters.mobile);
-    if (filters.email) params = params.set('email', filters.email);
-    if (filters.siteAddress) params = params.set('siteAddress', filters.siteAddress);
+  /**
+   * Handle HTTP errors
+   */
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'An error occurred';
 
-    return this.http.get<Customer[]>(`${this.apiUrl}/search`, { params }).pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  // Error handling
-  private handleError(error: HttpErrorResponse) {
-    let errorMessage = 'An unknown error occurred';
-    
     if (error.error instanceof ErrorEvent) {
       // Client-side error
-      errorMessage = `Error: ${error.error.message}`;
+      errorMessage = `Client Error: ${error.error.message}`;
     } else {
       // Server-side error
-      errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-      
-      // You can customize error messages based on status codes
       switch (error.status) {
+        case 0:
+          errorMessage = 'Unable to connect to server. Please check if the API is running.';
+          break;
         case 400:
-          errorMessage = 'Bad Request: Please check your input';
+          errorMessage = 'Bad Request: Please check your input data';
           break;
         case 401:
-          errorMessage = 'Unauthorized: Please login';
+          errorMessage = 'Unauthorized: Please login again';
           break;
         case 403:
           errorMessage = 'Forbidden: You do not have permission';
           break;
         case 404:
-          errorMessage = 'Not Found: Customer does not exist';
+          errorMessage = 'Not Found: The requested resource was not found';
           break;
         case 500:
           errorMessage = 'Internal Server Error: Please try again later';
           break;
+        case 503:
+          errorMessage = 'Service Unavailable: Server is temporarily unavailable';
+          break;
+        default:
+          errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
       }
     }
-    
-    console.error(errorMessage);
+
+    console.error('HTTP Error:', errorMessage, error);
     return throwError(() => new Error(errorMessage));
   }
-
-  addCustomer(customer: Customer): Observable<Customer> {
-    return this.http.post<Customer>(this.apiUrl, customer);
-  }
-
-  
 }
-
