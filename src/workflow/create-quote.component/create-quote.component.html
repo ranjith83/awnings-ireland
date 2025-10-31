@@ -1,14 +1,28 @@
 <div class="create-quote-container">
+  <!-- Loading & Messages -->
+  <div *ngIf="isLoading" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-error">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+
   <div class="quote-content">
     <!-- Select Workflow -->
     <div class="form-section">
       <h3 class="section-title">Select Workflow</h3>
       <div class="form-row">
         <div class="form-group full-width">
-          <select class="form-select" [(ngModel)]="selectedWorkflowId">
-            <option [value]="null" disabled selected>Markilux 990</option>
-            <option *ngFor="let workflow of workflows" [value]="workflow.id">
-              {{ workflow.name }}
+          <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
+            <option [value]="null" disabled selected>Select Workflow</option>
+            <option *ngFor="let workflow of workflows" [value]="workflow.workflowId">
+              {{ workflow.workflowName || 'Workflow #' + workflow.workflowId }}
             </option>
           </select>
         </div>
@@ -23,8 +37,8 @@
           <label class="form-label">Select Supplier Type</label>
           <select class="form-select" [(ngModel)]="selectedSupplierId" (change)="onSupplierChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let supplier of suppliers" [value]="supplier.id">
-              {{ supplier.name }}
+            <option *ngFor="let supplier of suppliers" [value]="supplier.supplierId">
+              {{ supplier.supplierName }}
             </option>
           </select>
         </div>
@@ -33,31 +47,29 @@
           <label class="form-label">Select Model</label>
           <select class="form-select" [(ngModel)]="selectedModelId" [disabled]="!selectedSupplierId">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let model of models" [value]="model.id">
-              {{ model.name }}
+            <option *ngFor="let model of models" [value]="model.productId">
+              {{ model.productName }}
             </option>
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Widths in cm</label>
-          <select class="form-select" [(ngModel)]="selectedWidthCm">
+          <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option [value]="300">300</option>
-            <option [value]="350">350</option>
-            <option [value]="400">400</option>
-            <option [value]="450">450</option>
-            <option [value]="500">500</option>
+            <option *ngFor="let width of availableWidths" [value]="width">
+              {{ width }}
+            </option>
           </select>
         </div>
 
         <div class="form-group">
-          <label class="form-label">Select Awning</label>
-          <select class="form-select" [(ngModel)]="selectedAwning">
-            <option value="" disabled selected>Select</option>
-            <option value="retractable">Retractable</option>
-            <option value="fixed">Fixed</option>
-            <option value="freestanding">Freestanding</option>
+          <label class="form-label">Select Awning (Projection)</label>
+          <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
+            <option [value]="null" disabled selected>Select</option>
+            <option *ngFor="let projection of availableProjections" [value]="projection">
+              {{ projection }}
+            </option>
           </select>
         </div>
       </div>
@@ -69,41 +81,41 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Brackets</label>
-          <select class="form-select" [(ngModel)]="selectedBrackets">
+          <select class="form-select" [(ngModel)]="selectedBrackets" (change)="onBracketChange()">
             <option value="" disabled selected>Select</option>
-            <option value="standard">Standard</option>
-            <option value="heavy-duty">Heavy Duty</option>
-            <option value="adjustable">Adjustable</option>
+            <option *ngFor="let bracket of brackets" [value]="bracket.bracketId">
+              {{ bracket.description }} - €{{ bracket.price | number:'1.2-2' }}
+            </option>
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Arms</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input">
-              <span>Standard Arms</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Arms</label>
-          <div class="checkbox-group">
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input">
-              <span>Extended Arms</span>
-            </label>
-          </div>
+          <select class="form-select" [(ngModel)]="selectedArms" (change)="onArmChange()">
+            <option value="" disabled selected>Select</option>
+            <option *ngFor="let arm of arms" [value]="arm.armId">
+              {{ arm.description }} - €{{ arm.price | number:'1.2-2' }}
+            </option>
+          </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Motor</label>
-          <select class="form-select" [(ngModel)]="selectedMotor">
+          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
             <option value="" disabled selected>Select</option>
-            <option value="somfy">Somfy Radio Controller Motor</option>
-            <option value="manual">Manual</option>
-            <option value="electric">Electric Standard</option>
+            <option *ngFor="let motor of motors" [value]="motor.motorId">
+              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Heater</label>
+          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
+            <option value="" disabled selected>Select</option>
+            <option *ngFor="let heater of heaters" [value]="heater.heaterId">
+              {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
+            </option>
           </select>
         </div>
       </div>
@@ -123,21 +135,23 @@
 
     <!-- Quote Items Table -->
     <div class="table-section">
+      <div class="table-header">
+        <h3>Quote Items</h3>
+        <button class="btn-add" (click)="addQuoteItem()">+ Add Item</button>
+      </div>
       <table class="quote-table">
         <thead>
           <tr>
-            <th class="sortable">
-              DESCRIPTION
-              <span class="sort-icon">▲</span>
-            </th>
+            <th>DESCRIPTION</th>
             <th>QUANTITY</th>
             <th>UNIT PRICE</th>
             <th>TAX</th>
             <th>AMOUNT EUR</th>
+            <th>ACTIONS</th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of quoteItems; let even = even" [class.even-row]="even">
+          <tr *ngFor="let item of quoteItems; let i = index; let even = even" [class.even-row]="even">
             <td>{{ item.description }}</td>
             <td>
               <input 
@@ -148,8 +162,18 @@
                 min="1">
             </td>
             <td>{{ item.unitPrice | number:'1.2-2' }}</td>
-            <td>{{ item.tax }}%</td>
-            <td>{{ item.amount | number:'1.0-0' }}</td>
+            <td>{{ item.taxRate }}%</td>
+            <td>{{ item.amount | number:'1.2-2' }}</td>
+            <td>
+              <button class="btn-remove" (click)="removeQuoteItem(i)" *ngIf="quoteItems.length > 1">
+                Remove
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="quoteItems.length === 0">
+            <td colspan="6" class="text-center">
+              Select width and awning to generate first line item
+            </td>
           </tr>
         </tbody>
       </table>
@@ -168,15 +192,15 @@
       <div class="summary-right">
         <div class="summary-row">
           <span class="summary-label">Sub Total</span>
-          <span class="summary-value">{{ subtotal | number:'1.0-0' }}</span>
+          <span class="summary-value">€{{ subtotal | number:'1.2-2' }}</span>
         </div>
         <div class="summary-row">
           <span class="summary-label">Total Sales TAX {{ vatRate }}%</span>
-          <span class="summary-value">{{ totalTax | number:'1.0-0' }}</span>
+          <span class="summary-value">€{{ totalTax | number:'1.2-2' }}</span>
         </div>
         <div class="summary-row total">
           <span class="summary-label">Total EUR</span>
-          <span class="summary-value">{{ totalAmount | number:'1.0-0' }}</span>
+          <span class="summary-value">€{{ totalAmount | number:'1.2-2' }}</span>
         </div>
       </div>
     </div>
@@ -187,11 +211,10 @@
         <span class="close-icon">✕</span>
         Close
       </button>
-      <button class="btn-generate" (click)="generateQuote()">
+      <button class="btn-generate" (click)="generateQuote()" [disabled]="!isFormValid()">
         <span class="generate-icon">📄</span>
         Generate Quote
       </button>
     </div>
   </div>
-  
 </div>

@@ -1,7 +1,7 @@
 import { Component,  OnInit, OnDestroy } from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 import { WorkflowStage } from '../../model/workflow.model';
-import { WorkflowService } from '../../service/workflow.service';
+import { CreateWorkflowDto, ProductDto, ProductTypeDto, SupplierDto, WorkflowDto, WorkflowService } from '../../service/workflow.service';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -38,13 +38,14 @@ interface ProductModel {
   styleUrl: './workflow-list.component.css'
 })
 export class WorkflowListComponent {
-
- workflows: Workflow[] = [];
-  suppliers: Supplier[] = [];
-  models: ProductModel[] = [];
+workflows: WorkflowDto[] = [];
+  suppliers: SupplierDto[] = [];
+  productTypes: ProductTypeDto[] = [];
+  products: ProductDto[] = [];
   
   selectedSupplier: number | null = null;
-  selectedModel: number | null = null;
+  selectedProductType: number | null = null;
+  selectedProduct: number | null = null;
   
   currentPage = 1;
   pageSize = 10;
@@ -55,27 +56,31 @@ export class WorkflowListComponent {
   
   isLoading = false;
   errorMessage = '';
+  successMessage = '';
   
   private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private workflowStateService: WorkflowStateService
+    private workflowStateService: WorkflowStateService,
+    private workflowService: WorkflowService
   ) {}
 
   ngOnInit() {
-    // Get customer information from query params
-    this.route.queryParams.subscribe(params => {
-      this.customerId = params['customerId'] ? +params['customerId'] : null;
-      this.customerName = params['customerName'] || '';
-      
-      // Load workflows after getting customer info
-      if (this.customerId) {
-        this.loadStaticWorkflows();
-      }
-    });
+    // Get customer info from route params
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        this.customerId = params['customerId'] ? +params['customerId'] : null;
+        this.customerName = params['customerName'] || '';
+        
+        if (this.customerId) {
+          this.loadWorkflowsFromApi(this.customerId);
+        }
+      });
 
+    // Load suppliers from API
     this.loadSuppliers();
   }
 
@@ -84,159 +89,288 @@ export class WorkflowListComponent {
     this.destroy$.complete();
   }
 
+  /**
+   * Load all suppliers from API
+   */
   loadSuppliers() {
-    // Static suppliers data
-    this.suppliers = [
-      { id: 1, name: 'Markilux' },
-      { id: 2, name: 'Weinor' },
-      { id: 3, name: 'Gibus' },
-      { id: 4, name: 'Warema' }
-    ];
+    this.workflowService.getAllSuppliers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (suppliers) => {
+          this.suppliers = suppliers;
+        },
+        error: (error) => {
+          console.error('Failed to load suppliers', error);
+          this.errorMessage = 'Failed to load suppliers. Please try again.';
+        }
+      });
   }
 
-  onSupplierChange(event: any) {
-    this.selectedSupplier = event.target.value ? +event.target.value : null;
+  /**
+   * Handle supplier selection change
+   * Load product types for selected supplier
+   */
+  onSupplierChange(supplierId: number) {
+    this.selectedSupplier = supplierId;// event.target.value ? +event.target.value : null;
+    this.selectedProductType = null;
+    this.selectedProduct = null;
+    this.productTypes = [];
+    this.products = [];
     
     if (this.selectedSupplier) {
-      // Load models based on supplier
-      this.models = [
-        { id: 1, name: 'Markilux 990' },
-        { id: 2, name: 'Markilux 1600' },
-        { id: 3, name: 'Markilux 3300' },
-        { id: 4, name: 'Markilux 5010' }
-      ];
-      this.selectedModel = null;
-    } else {
-      this.models = [];
-      this.selectedModel = null;
+      
+      this.workflowService.getAllProductTypesForSupplier(this.selectedSupplier)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (productTypes) => {
+            this.productTypes = productTypes;
+          },
+          error: (error) => {
+            console.error('Failed to load product types', error);
+            this.errorMessage = 'Failed to load product types. Please try again.';
+          }
+        });
     }
   }
 
-  onModelChange(event: any) {
-    this.selectedModel = event.target.value ? +event.target.value : null;
+  /**
+   * Handle product type selection change
+   * Load products for selected supplier and product type
+   */
+  onProductTypeChange(productTypeId: number) {
+    this.selectedProductType = productTypeId; //event.target.value ? +event.target.value : null;
+    this.selectedProduct = null;
+    this.products = [];
+    
+    if (this.selectedSupplier && this.selectedProductType) {
+      this.workflowService.getAllProductsBySupplier(this.selectedSupplier, this.selectedProductType)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (products) => {
+            this.products = products;
+          },
+          error: (error) => {
+            console.error('Failed to load products', error);
+            this.errorMessage = 'Failed to load products. Please try again.';
+          }
+        });
+    }
   }
 
-  loadStaticWorkflows() {
+  /**
+   * Handle product selection change
+   */
+  onProductChange(productID: number) {
+    this.selectedProduct = productID; // event.target.value ? +event.target.value : null;
+  }
+
+  /**
+   * Load workflows from API for a specific customer
+   */
+  loadWorkflowsFromApi(customerId: number) {
     this.isLoading = true;
+    this.errorMessage = '';
     
-    // Static workflow data
-    this.workflows = [
-      {
-        id: 1,
-        product: 'Markilux 990',
-        description: 'Folding Arm Awning',
-        initialEnquiry: true,
-        createQuote: true,
-        inviteShowroom: true,
-        setupSiteVisit: false,
-        invoice: false,
-        dateAdded: new Date('2024-10-15T10:30:00'),
-        addedBy: 'John Smith'
-      },
-      {
-        id: 2,
-        product: 'Markilux 1600',
-        description: 'Cassette Awning',
-        initialEnquiry: true,
-        createQuote: true,
-        inviteShowroom: true,
-        setupSiteVisit: true,
-        invoice: false,
-        dateAdded: new Date('2024-10-10T14:20:00'),
-        addedBy: 'Sarah Johnson'
-      },
-      {
-        id: 3,
-        product: 'Weinor Semina',
-        description: 'Pergola Awning',
-        initialEnquiry: true,
-        createQuote: true,
-        inviteShowroom: true,
-        setupSiteVisit: true,
-        invoice: true,
-        dateAdded: new Date('2024-10-05T09:15:00'),
-        addedBy: 'Michael Brown'
-      }
-    ];
-    
-    this.isLoading = false;
-    this.totalPages = 1;
+    this.workflowService.getWorkflowsForCustomer(customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (workflows) => {
+          this.workflows = workflows.map(w => ({
+            ...w,
+            dateAdded: new Date(w.dateAdded)
+          }));
+          this.isLoading = false;
+          this.calculateTotalPages();
+        },
+        error: (error) => {
+          console.error('Failed to load workflows', error);
+          this.errorMessage = 'Failed to load workflows. Please try again.';
+          this.isLoading = false;
+        }
+      });
   }
 
+  /**
+   * Add a new workflow using the API
+   */
   addNewWorkflow() {
-    if (!this.selectedSupplier || !this.selectedModel) {
-      alert('Please select both supplier and model');
+    if (!this.selectedSupplier || !this.selectedProductType || !this.selectedProduct || !this.customerId) {
+      this.errorMessage = 'Please select supplier, product type, and product';
       return;
     }
 
-    const supplier = this.suppliers.find(s => s.id === this.selectedSupplier);
-    const model = this.models.find(m => m.id === this.selectedModel);
+    const supplier = this.suppliers.find(s => s.supplierId === this.selectedSupplier);
+    const productType = this.productTypes.find(pt => pt.productTypeId === this.selectedProductType);
+    const product = this.products.find(p => p.productId === this.selectedProduct);
 
-    const newWorkflow: Workflow = {
-      id: this.workflows.length + 1,
-      product: `${supplier?.name} ${model?.name}`,
-      description: `${model?.name} for outside the back garden`,
+    const newWorkflowDto: WorkflowDto = {
+      workflowId: 0,
+      workflowName: '',
+      productName: product?.productName || '',
+      description: `${supplier?.supplierName || ''} - ${productType?.description || ''} - ${product?.productName || ''}`,
       initialEnquiry: false,
-      createQuote: false,
-      inviteShowroom: false,
+      createQuotation: false,
+      inviteShowRoomVisit: false,
       setupSiteVisit: false,
-      invoice: false,
-      dateAdded: new Date(),
-      addedBy: 'Current User'
+      invoiceSent: false,
+      dateAdded: new Date().toISOString(),
+      addedBy: 'Current User',
+      customerId: this.customerId,
+      supplierId: this.selectedSupplier,
+      productId: this.selectedProduct,
+      productTypeId: this.selectedProductType
     };
 
-    this.workflows.unshift(newWorkflow);
-    this.selectedSupplier = null;
-    this.selectedModel = null;
-    this.models = [];
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.workflowService.createWorkflow(newWorkflowDto)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (created) => {
+          console.log('Workflow created successfully', created);
+          this.successMessage = 'Workflow created successfully!';
+          
+          // Reload workflows to get the updated list
+          this.loadWorkflowsFromApi(this.customerId!);
+          
+          // Reset form
+          this.selectedSupplier = null;
+          this.selectedProductType = null;
+          this.selectedProduct = null;
+          this.productTypes = [];
+          this.products = [];
+          
+          // Clear success message after 3 seconds
+          setTimeout(() => {
+            this.successMessage = '';
+          }, 3000);
+        },
+        error: (error) => {
+          console.error('Failed to create workflow', error);
+          this.errorMessage = 'Failed to create workflow. Please try again.';
+          this.isLoading = false;
+        }
+      });
   }
 
-  toggleStage(workflow: Workflow, stage: keyof Workflow, event?: Event) {
+  /**
+   * Toggle a workflow stage and update via API
+   */
+  toggleStage(workflow: WorkflowDto, stage: string, event?: Event) {
     if (event) {
       event.stopPropagation();
     }
-    
-    if (workflow.id) {
-      const stageValue = workflow[stage];
-      if (typeof stageValue === 'boolean') {
-        // Use type assertion to fix the TypeScript error
-        (workflow as any)[stage] = !stageValue;
-      }
+
+    // NEW (complete with all required fields):
+    const updatedWorkflow: WorkflowDto = {
+      workflowId: workflow.workflowId,
+      workflowName: workflow.workflowName,
+      productName: workflow.productName,
+      description: workflow.description,
+      initialEnquiry: workflow.initialEnquiry,
+      createQuotation: workflow.createQuotation,
+      inviteShowRoomVisit: workflow.inviteShowRoomVisit,
+      setupSiteVisit: workflow.setupSiteVisit,
+      invoiceSent: workflow.invoiceSent,
+      dateAdded: workflow.dateAdded,
+      addedBy: workflow.addedBy,
+      customerId: workflow.customerId,      
+      supplierId: workflow.supplierId,    
+      productId: workflow.productId,      
+      productTypeId: workflow.productTypeId 
+    };
+
+    // Map frontend stage names to DTO properties
+    const stageMapping: { [key: string]: keyof WorkflowDto } = {
+      'initialEnquiry': 'initialEnquiry',
+      'createQuote': 'createQuotation',
+      'inviteShowroom': 'inviteShowRoomVisit',
+      'setupSiteVisit': 'setupSiteVisit',
+      'invoice': 'invoiceSent'
+    };
+
+    const dtoProperty = stageMapping[stage];
+    if (!dtoProperty) {
+      console.error('Invalid stage name:', stage);
+      return;
     }
+
+    // Toggle the stage value
+    (updatedWorkflow as any)[dtoProperty] = !(updatedWorkflow as any)[dtoProperty];
+
+    // Save to API
+    this.workflowService.updateWorkflow(updatedWorkflow)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updated) => {
+          console.log('Workflow updated successfully', updated);
+          
+          // Update local workflow list
+          const index = this.workflows.findIndex(w => w.workflowId === workflow.workflowId);
+          if (index !== -1) {
+            this.workflows[index] = updatedWorkflow;
+          }
+        },
+        error: (error) => {
+          console.error('Failed to update workflow', error);
+          this.errorMessage = 'Failed to update workflow stage. Please try again.';
+          
+          // Revert the toggle on error
+          (updatedWorkflow as any)[dtoProperty] = !(updatedWorkflow as any)[dtoProperty];
+          
+          // Clear error message after 3 seconds
+          setTimeout(() => {
+            this.errorMessage = '';
+          }, 3000);
+        }
+      });
   }
 
-  selectWorkflow(workflow: Workflow): void {
-    // Prepare the selected workflow with enabled stages
-    const selectedWorkflow: SelectedWorkflow = {
-      id: workflow.id!,
-      product: workflow.product,
+  /**
+   * Select a workflow and navigate to the first enabled stage
+   */
+  selectWorkflow(workflow: WorkflowDto) {
+    const selected: SelectedWorkflow = {
+      id: workflow.workflowId,
+      product: workflow.productName,
       description: workflow.description,
       stages: {
         initialEnquiry: workflow.initialEnquiry,
-        createQuote: workflow.createQuote,
-        inviteShowroom: workflow.inviteShowroom,
+        createQuote: workflow.createQuotation,
+        inviteShowroom: workflow.inviteShowRoomVisit,
         setupSiteVisit: workflow.setupSiteVisit,
-        invoice: workflow.invoice
+        invoice: workflow.invoiceSent
       },
       customerId: this.customerId || undefined,
       customerName: this.customerName
     };
 
-    // Set the selected workflow in the service
-    this.workflowStateService.setSelectedWorkflow(selectedWorkflow);
+    this.workflowStateService.setSelectedWorkflow(selected);
 
-    // Navigate to the first enabled stage
     const enabledStages = this.workflowStateService.getEnabledStages();
     if (enabledStages.length > 0) {
       this.router.navigate([`/workflow/${enabledStages[0]}`], {
-        queryParams: {
-          customerId: this.customerId,
-          customerName: this.customerName
+        queryParams: { 
+          customerId: this.customerId, 
+          customerName: this.customerName,
+          workflowId: workflow.workflowId 
         }
       });
     } else {
-      alert('Please enable at least one stage for this workflow');
+      this.errorMessage = 'Please enable at least one stage for this workflow';
+      setTimeout(() => {
+        this.errorMessage = '';
+      }, 3000);
     }
+  }
+
+  /**
+   * Pagination methods
+   */
+  calculateTotalPages() {
+    this.totalPages = Math.ceil(this.workflows.length / this.pageSize);
   }
 
   goToPage(page: number) {
@@ -257,7 +391,12 @@ export class WorkflowListComponent {
     }
   }
 
-  getStatusClass(stageName: string): string {
-    return ''; // Status classes can be added if needed
+  /**
+   * Get paginated workflows for display
+   */
+  get paginatedWorkflows(): WorkflowDto[] {
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const endIndex = startIndex + this.pageSize;
+    return this.workflows.slice(startIndex, endIndex);
   }
 }

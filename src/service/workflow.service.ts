@@ -1,43 +1,312 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { ProductModel, Supplier, Workflow } from '../model/workflow.model';
+import {  Workflow } from '../model/workflow.model';
+import { environment } from '../app/environments/environment';
 
+export interface WorkflowDto {
+  workflowId: number;
+  workflowName: string;
+  productName: string;
+  description: string;
+  initialEnquiry: boolean;
+  createQuotation: boolean;
+  inviteShowRoomVisit: boolean;
+  setupSiteVisit: boolean;
+  invoiceSent: boolean;
+  dateAdded: string | Date;
+  addedBy: string;
+  customerId: number;
+  supplierId: number;
+  productId: number;
+  productTypeId: number;
+}
+
+export interface CreateWorkflowDto {
+  description: string;
+  initialEnquiry: boolean;
+  createQuotation: boolean;
+  inviteShowRoomVisit: boolean;
+  setupSiteVisit: boolean;
+  invoiceSent: boolean;
+  companyId: number;
+  supplierId: number;
+  productId: number;
+  productTypeId: number;
+}
+
+export interface InitialEnquiryDto {
+  enquiryId?: number;
+  workflowId: number;
+  comments: string;
+  email: string;
+  images?: string;
+}
+
+// Product addon interfaces
+export interface BracketDto {
+  bracketId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
+export interface ArmDto {
+  armId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
+export interface MotorDto {
+  motorId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
+export interface HeaterDto {
+  heaterId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
+export interface FixingPointDto {
+  fixingPointId: number;
+  description: string;
+  price: number;
+}
+
+export interface SupplierDto {
+  supplierId: number;
+  supplierName: string;
+}
+
+export interface ProductTypeDto {
+  productTypeId: number;
+  description: string;
+}
+
+export interface ProductDto {
+  productId: number;
+  productName: string;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class WorkflowService {
-  private apiUrl = 'https://your-api-domain.com/api/workflows';
+ private apiUrl = `${environment.apiUrl}/api/workflow`;
+  private supplierApiUrl = `${environment.apiUrl}/api/suppliers`;
 
   constructor(private http: HttpClient) {}
 
-  getWorkflows(page: number = 1, pageSize: number = 10): Observable<any> {
-    return this.http.get(`${this.apiUrl}/workflows?page=${page}&pageSize=${pageSize}`);
+  /**
+   * Get all workflows for a customer
+   * Maps to: GET /api/workflow/GetAllWorfflowsForCustomer
+   */
+  getWorkflowsForCustomer(customerId: number): Observable<WorkflowDto[]> {
+    const params = new HttpParams().set('CustomerId', customerId.toString());
+    return this.http.get<WorkflowDto[]>(`${this.apiUrl}/GetAllWorfflowsForCustomer`, { params })
+      .pipe(catchError(this.handleError));
   }
 
-  getSuppliers(): Observable<Supplier[]> {
-    return this.http.get<Supplier[]>(`${this.apiUrl}/suppliers`);
+  /**
+   * Create a new workflow
+   * Maps to: POST /api/workflow/CreateWorkflow
+   */
+  createWorkflow(workflow: WorkflowDto): Observable<any> {
+    return this.http.post(`${this.apiUrl}/CreateWorkflow`, workflow)
+      .pipe(catchError(this.handleError));
   }
 
-  getModelsBySupplier(supplierId: number): Observable<ProductModel[]> {
-    return this.http.get<ProductModel[]>(`${this.apiUrl}/models?supplierId=${supplierId}`);
+  /**
+   * Update an existing workflow
+   * Maps to: PUT /api/workflow/UpdateWorkflow
+   */
+  updateWorkflow(workflow: WorkflowDto): Observable<any> {
+    return this.http.put(`${this.apiUrl}/UpdateWorkflow`, workflow)
+      .pipe(catchError(this.handleError));
   }
 
-  createWorkflow(workflow: Workflow): Observable<Workflow> {
-    return this.http.post<Workflow>(`${this.apiUrl}/workflows`, workflow);
+  /**
+   * Get initial enquiries for a workflow
+   * Maps to: GET /api/workflow/GeInitialEnquiryForWorkflow
+   */
+  getInitialEnquiryForWorkflow(workflowId: number): Observable<InitialEnquiryDto[]> {
+    const params = new HttpParams().set('WorkflowId', workflowId.toString());
+    return this.http.get<InitialEnquiryDto[]>(`${this.apiUrl}/GeInitialEnquiryForWorkflow`, { params })
+      .pipe(catchError(this.handleError));
   }
 
-  updateWorkflow(id: number, workflow: Partial<Workflow>): Observable<Workflow> {
-    return this.http.put<Workflow>(`${this.apiUrl}/workflows/${id}`, workflow);
+  /**
+   * Add initial enquiry
+   * Maps to: POST /api/workflow/AddInitialEnquiry
+   */
+  addInitialEnquiry(enquiry: InitialEnquiryDto): Observable<any> {
+    return this.http.post(`${this.apiUrl}/AddInitialEnquiry`, enquiry)
+      .pipe(catchError(this.handleError));
   }
 
-  deleteWorkflow(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/workflows/${id}`);
+  /**
+   * Update initial enquiry
+   * Maps to: PUT /api/workflow/UpdateInitialEnquiry
+   */
+  updateInitialEnquiry(enquiry: InitialEnquiryDto): Observable<any> {
+    return this.http.put(`${this.apiUrl}/UpdateInitialEnquiry`, enquiry)
+      .pipe(catchError(this.handleError));
   }
 
-  updateWorkflowStage(id: number, stage: string, value: boolean): Observable<Workflow> {
-    return this.http.patch<Workflow>(`${this.apiUrl}/workflows/${id}/stage`, { stage, value });
+  /**
+   * Get standard widths for a product
+   * Maps to: GET /api/workflow/GetStandardWidthsForProduct
+   */
+  getStandardWidthsForProduct(productId: number): Observable<number[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<number[]>(`${this.apiUrl}/GetStandardWidthsForProduct`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+
+  /**
+   * Get arms for a product
+   * Maps to: GET /api/Product/{productId}/arms
+   */
+  getArmsForProduct(productId: number): Observable<ArmDto[]> {
+    return this.http.get<ArmDto[]>(`${this.apiUrl}/${productId}/GeArmsForProduct`)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get motors for a product
+   * Maps to: GET /api/Product/{productId}/motors
+   */
+  getMotorsForProduct(productId: number): Observable<MotorDto[]> {
+    return this.http.get<MotorDto[]>(`${this.apiUrl}/${productId}/GeMotorsForProduct`)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get heaters for a product
+   * Maps to: GET /api/Product/{productId}/heaters
+   */
+  getHeatersForProduct(productId: number): Observable<HeaterDto[]> {
+    return this.http.get<HeaterDto[]>(`${this.apiUrl}/${productId}/GeHeatersForProduct`)
+      .pipe(catchError(this.handleError));
+  }
+
+
+  /**
+   * Get projection widths for a product
+   * Maps to: GET /api/workflow/GetProjectionWidthsForProduct
+   */
+  getProjectionWidthsForProduct(productId: number): Observable<number[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<number[]>(`${this.apiUrl}/GetProjectionWidthsForProduct`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get projection price for a product
+   * Maps to: GET /api/workflow/GetProjectionPriceForProduct
+   */
+  getProjectionPriceForProduct(productId: number, widthCm: number, projectionCm: number): Observable<number> {
+    const params = new HttpParams()
+      .set('ProductId', productId.toString())
+      .set('widthcm', widthCm.toString())
+      .set('projectioncm', projectionCm.toString());
+    
+    return this.http.get<number>(`${this.apiUrl}/GetProjectionPriceForProduct`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get brackets for a product
+   * Maps to: GET /api/workflow/GeBracketsForProduct
+   */
+  getBracketsForProduct(productId: number): Observable<BracketDto[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<BracketDto[]>(`${this.apiUrl}/GeBracketsForProduct`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get fixing points for a product
+   * Maps to: GET /api/workflow/GeFixingPointsForProduct
+   */
+  getFixingPointsForProduct(productId: number): Observable<FixingPointDto[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<FixingPointDto[]>(`${this.apiUrl}/GeFixingPointsForProduct`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  // ============================================
+  // SUPPLIER ENDPOINTS
+  // ============================================
+
+  /**
+   * Get all suppliers
+   * Maps to: GET /api/suppliers/GetAllSuppliers
+   */
+  getAllSuppliers(): Observable<SupplierDto[]> {
+    return this.http.get<SupplierDto[]>(`${this.supplierApiUrl}/GetAllSuppliers`)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get all product types for a supplier
+   * Maps to: GET /api/suppliers/GetAllProductTypesForSupplier
+   */
+  getAllProductTypesForSupplier(supplierId: number): Observable<ProductTypeDto[]> {
+    const params = new HttpParams().set('SupplierId', supplierId.toString());
+    return this.http.get<ProductTypeDto[]>(`${this.supplierApiUrl}/GetAllProductTypesForSupplier`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Get all products by supplier and product type
+   * Maps to: GET /api/suppliers/GetAllProductsBySupplier
+   */
+  getAllProductsBySupplier(supplierId: number, productTypeId: number): Observable<ProductDto[]> {
+    const params = new HttpParams()
+      .set('SupplierId', supplierId.toString())
+      .set('ProductTypeId', productTypeId.toString());
+    return this.http.get<ProductDto[]>(`${this.supplierApiUrl}/GetAllProductsBySupplier`, { params })
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Handle HTTP errors
+   */
+  private handleError(error: HttpErrorResponse): Observable<never> {
+    let errorMessage = 'An error occurred';
+
+    if (error.error instanceof ErrorEvent) {
+      // Client-side error
+      errorMessage = `Client Error: ${error.error.message}`;
+    } else {
+      // Server-side error
+      switch (error.status) {
+        case 0:
+          errorMessage = 'Unable to connect to server. Please check if the API is running.';
+          break;
+        case 400:
+          errorMessage = 'Bad Request: Please check your input data';
+          break;
+        case 404:
+          errorMessage = 'Not Found: The requested resource was not found';
+          break;
+        case 500:
+          errorMessage = 'Internal Server Error: Please try again later';
+          break;
+        default:
+          errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+      }
+    }
+
+    console.error('HTTP Error:', errorMessage, error);
+    return throwError(() => new Error(errorMessage));
   }
 }

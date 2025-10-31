@@ -1,183 +1,192 @@
-import { Component } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { Workflow } from '../../model/create-quote';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup,  ReactiveFormsModule,  Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, Subscription, takeUntil } from 'rxjs';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
+import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
 
 @Component({
   selector: 'app-initial-enquiry.component',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './initial-enquiry.component.html',
   styleUrl: './initial-enquiry.component.css'
 })
-export class InitialEnquiryComponent {
- customerId: number | null = null;
-  customerName: string = '';
-  selectedWorkflowData: SelectedWorkflow | null = null;
+export class InitialEnquiryComponent implements OnInit {
+   @Input() workflowId!: number;
   
-  workflows: Workflow[] = [];
-  selectedWorkflow: number | null = null;
+  enquiryForm: FormGroup;
+  enquiries: InitialEnquiryDto[] = [];
+  isLoading = false;
+  isEditMode = false;
+  selectedEnquiryId?: number;
+  errorMessage = '';
+  successMessage = '';
   
-  activeTab: string = 'comments';
-  comments: string = '';
-  emailContent: string = '';
-  images: File[] = [];
-  
-  isLoading: boolean = false;
-  successMessage: string = '';
-  
-  private destroy$ = new Subject<void>();
+ selectedWorkflow: SelectedWorkflow | null = null;
+  private subscription!: Subscription;
 
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
+    private fb: FormBuilder,
+    private workflowService: WorkflowService,
     private workflowStateService: WorkflowStateService
-  ) {}
+  ) {
+    this.enquiryForm = this.fb.group({
+      comments: ['', [Validators.required, Validators.minLength(10)]],
+      email: ['', [Validators.required, Validators.email]],
+      images: ['']
+    });
+  }
 
-  ngOnInit() {
-    // Get customer information from query params
-    this.route.queryParams.subscribe(params => {
-      this.customerId = params['customerId'] ? +params['customerId'] : null;
-      this.customerName = params['customerName'] || '';
+  ngOnInit(): void {
+
+    this.subscription = this.workflowStateService.selectedWorkflow$
+      .subscribe(workflow => {
+        this.selectedWorkflow = workflow;
+      //  this.workflowId = workflow?.id
+        console.log('Selected workflow:', workflow);
+      });
+
+    if (this.selectedWorkflow) {
+      this.loadEnquiries();
+    }
+  }
+
+  loadEnquiries(): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    if (!this.selectedWorkflow?.id) return;
+
+    this.workflowService.getInitialEnquiryForWorkflow(this.selectedWorkflow?.id).subscribe({
+      next: (data) => {
+        this.enquiries = data;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading enquiries:', error);
+        this.errorMessage = 'Failed to load enquiries. Please try again.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  onSubmit(): void {
+    if (this.enquiryForm.valid) {
+      const enquiryData: InitialEnquiryDto = {
+        workflowId: this.workflowId,
+        comments: this.enquiryForm.value.comments,
+        email: this.enquiryForm.value.email,
+        images: this.enquiryForm.value.images || ''
+      };
+
+      if (this.isEditMode && this.selectedEnquiryId) {
+        enquiryData.enquiryId = this.selectedEnquiryId;
+        this.updateEnquiry(enquiryData);
+      } else {
+        this.createEnquiry(enquiryData);
+      }
+    } else {
+      this.markFormGroupTouched(this.enquiryForm);
+    }
+  }
+
+  createEnquiry(enquiry: InitialEnquiryDto): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.workflowService.addInitialEnquiry(enquiry).subscribe({
+      next: (response) => {
+        console.log('Enquiry created successfully', response);
+        this.successMessage = 'Enquiry added successfully!';
+        this.loadEnquiries();
+        this.resetForm();
+        this.isLoading = false;
+        this.clearMessagesAfterDelay();
+      },
+      error: (error) => {
+        console.error('Error creating enquiry:', error);
+        this.errorMessage = 'Failed to create enquiry. Please try again.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  updateEnquiry(enquiry: InitialEnquiryDto): void {
+    this.isLoading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.workflowService.updateInitialEnquiry(enquiry).subscribe({
+      next: (response) => {
+        console.log('Enquiry updated successfully', response);
+        this.successMessage = 'Enquiry updated successfully!';
+        this.loadEnquiries();
+        this.resetForm();
+        this.isLoading = false;
+        this.clearMessagesAfterDelay();
+      },
+      error: (error) => {
+        console.error('Error updating enquiry:', error);
+        this.errorMessage = 'Failed to update enquiry. Please try again.';
+        this.isLoading = false;
+      }
+    });
+  }
+
+  editEnquiry(enquiry: InitialEnquiryDto): void {
+    this.isEditMode = true;
+    this.selectedEnquiryId = enquiry.enquiryId;
+    this.errorMessage = '';
+    this.successMessage = '';
+    
+    this.enquiryForm.patchValue({
+      comments: enquiry.comments,
+      email: enquiry.email,
+      images: enquiry.images
     });
 
-    // Get selected workflow from service
-    this.workflowStateService.selectedWorkflow$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(workflow => {
-        this.selectedWorkflowData = workflow;
-        if (workflow) {
-          // Pre-populate with selected workflow
-          this.workflows = [{
-            id: workflow.id,
-            name: workflow.product,
-            product: workflow.product
-          }];
-          this.selectedWorkflow = workflow.id;
-        } else {
-          // If no workflow selected, redirect back to list
-          this.router.navigate(['/workflow/list'], {
-            queryParams: {
-              customerId: this.customerId,
-              customerName: this.customerName
-            }
-          });
-        }
-      });
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  resetForm(): void {
+    this.enquiryForm.reset();
+    this.isEditMode = false;
+    this.selectedEnquiryId = undefined;
   }
 
-  setActiveTab(tab: string) {
-    this.activeTab = tab;
+  cancelEdit(): void {
+    this.resetForm();
+    this.errorMessage = '';
+    this.successMessage = '';
   }
 
-  goToNextStage() {
-    const nextStage = this.workflowStateService.getNextEnabledStage('initial-enquiry');
-    if (nextStage) {
-      this.router.navigate([`/workflow/${nextStage}`], {
-        queryParams: {
-          customerId: this.customerId,
-          customerName: this.customerName
-        }
-      });
-    } else {
-      // No more stages, go back to workflow list
-      this.router.navigate(['/workflow/list'], {
-        queryParams: {
-          customerId: this.customerId,
-          customerName: this.customerName
-        }
-      });
-    }
+  private markFormGroupTouched(formGroup: FormGroup): void {
+    Object.keys(formGroup.controls).forEach(key => {
+      const control = formGroup.get(key);
+      control?.markAsTouched();
+    });
   }
 
-  onFileSelect(event: any) {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      for (let i = 0; i < files.length; i++) {
-        this.images.push(files[i]);
-      }
-    }
-  }
-
-  removeImage(index: number) {
-    this.images.splice(index, 1);
-  }
-
-  saveComments() {
-    if (!this.selectedWorkflow) {
-      alert('Please select a workflow');
-      return;
-    }
-
-    this.isLoading = true;
-    
-    // Simulate API call
+  private clearMessagesAfterDelay(): void {
     setTimeout(() => {
-      this.successMessage = 'Comments saved successfully!';
-      this.isLoading = false;
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => {
-        this.successMessage = '';
-        // Move to next stage
-        this.goToNextStage();
-      }, 2000);
-    }, 1000);
-
-    // Here you would make an actual API call
-    // this.workflowService.saveInitialEnquiry(this.selectedWorkflow, {
-    //   comments: this.comments,
-    //   email: this.emailContent,
-    //   images: this.images
-    // }).subscribe(...)
+      this.successMessage = '';
+      this.errorMessage = '';
+    }, 3000);
   }
 
-  saveEmail() {
-    if (!this.selectedWorkflow) {
-      alert('Please select a workflow');
-      return;
-    }
-
-    this.isLoading = true;
-    
-    setTimeout(() => {
-      this.successMessage = 'Email saved successfully!';
-      this.isLoading = false;
-      
-      setTimeout(() => {
-        this.successMessage = '';
-      }, 3000);
-    }, 1000);
+  get comments() {
+    return this.enquiryForm.get('comments');
   }
 
-  saveImages() {
-    if (!this.selectedWorkflow) {
-      alert('Please select a workflow');
-      return;
-    }
+  get email() {
+    return this.enquiryForm.get('email');
+  }
 
-    if (this.images.length === 0) {
-      alert('Please select at least one image');
-      return;
-    }
-
-    this.isLoading = true;
-    
-    setTimeout(() => {
-      this.successMessage = 'Images uploaded successfully!';
-      this.isLoading = false;
-      
-      setTimeout(() => {
-        this.successMessage = '';
-      }, 3000);
-    }, 1000);
+  get images() {
+    return this.enquiryForm.get('images');
   }
 }
