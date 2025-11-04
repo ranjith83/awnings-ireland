@@ -24,6 +24,7 @@ import {
   BracketDto
 } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
+import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
 
 interface QuoteItemDisplay extends CreateQuoteItemDto {
   id?: number;
@@ -71,7 +72,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   quoteDate: string = new Date().toISOString().split('T')[0];
   followUpDate: string = this.getDefaultFollowUpDate();
   notes: string = '';
-  terms: string = 'Payment due within 30 days';
+  terms: string = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
+  
+  // Customer address fields (you may need to get these from your customer service)
+  customerAddress: string = '';
+  customerCity: string = '';
+  customerPostalCode: string = '';
   
   // Quote items
   quoteItems: QuoteItemDisplay[] = [];
@@ -96,6 +102,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     private createQuoteService: CreateQuoteService,
     private workflowService: WorkflowService,
     private workflowStateService: WorkflowStateService,
+    private pdfService: PdfGenerationService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
@@ -115,6 +122,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       .subscribe(params => {
         this.customerId = params['customerId'] ? +params['customerId'] : null;
         this.customerName = params['customerName'] || '';
+        this.customerAddress = params['customerAddress'] || '';
+        this.customerCity = params['customerCity'] || '';
+        this.customerPostalCode = params['customerPostalCode'] || '';
 
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
 
@@ -302,9 +312,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.checkAndGenerateFirstLineItem();
   }
 
-  /**
-   * Check if both width and awning are selected, then generate first line item
-   */
   private checkAndGenerateFirstLineItem() {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) {
       return;
@@ -329,19 +336,19 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Generate the first line item based on selected width and awning/projection
-   * Format: "Markilux 990 closed cassette awning 500cm wide x 300cm"
-   */
   private generateFirstLineItem() {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedProductName) {
       return;
     }
 
-    // Create description
-    const description = `${this.selectedProductName} closed cassette awning ${this.selectedWidthCm}cm wide x ${this.selectedAwning}cm`;
+    // Convert cm to meters for display
+    const widthM = (this.selectedWidthCm / 100).toFixed(1);
+    const projectionM = (this.selectedAwning / 100).toFixed(0);
 
-    // Calculate amount: unit price + tax
+    // Create description matching the reference PDF format
+    const description = `${this.selectedProductName} closed cassette awning\n${widthM}m wide x ${projectionM}m projection`;
+
+    // Calculate amount: unit price * quantity * (1 + tax rate)
     const unitPrice = this.calculatedPrice;
     const taxRate = this.vatRate;
     const amount = this.calculateAmount(1, unitPrice, taxRate, 0);
@@ -363,10 +370,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handle bracket selection change
-   * Adds as 2nd line item after main product
-   */
   onBracketChange() {
     if (!this.selectedBrackets) {
       this.removeAddonLineItem('bracket');
@@ -375,7 +378,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const bracket = this.brackets.find(b => b.bracketId.toString() === this.selectedBrackets);
     if (bracket) {
-      // Calculate amount: unit price + tax
       const amount = this.calculateAmount(1, bracket.price, this.vatRate, 0);
       
       const lineItem: QuoteItemDisplay = {
@@ -392,10 +394,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handle arm selection change
-   * Adds as 3rd line item after bracket
-   */
   onArmChange() {
     if (!this.selectedArms) {
       this.removeAddonLineItem('arm');
@@ -404,7 +402,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const arm = this.arms.find(a => a.armId.toString() === this.selectedArms);
     if (arm) {
-      // Calculate amount: unit price + tax
       const amount = this.calculateAmount(1, arm.price, this.vatRate, 0);
       
       const lineItem: QuoteItemDisplay = {
@@ -421,10 +418,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handle motor selection change
-   * Adds as 4th line item after arm
-   */
   onMotorChange() {
     if (!this.selectedMotor) {
       this.removeAddonLineItem('motor');
@@ -433,7 +426,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const motor = this.motors.find(m => m.motorId.toString() === this.selectedMotor);
     if (motor) {
-      // Calculate amount: unit price + tax
       const amount = this.calculateAmount(1, motor.price, this.vatRate, 0);
       
       const lineItem: QuoteItemDisplay = {
@@ -450,10 +442,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handle heater selection change
-   * Adds as 5th line item after motor
-   */
   onHeaterChange() {
     if (!this.selectedHeater) {
       this.removeAddonLineItem('heater');
@@ -462,7 +450,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const heater = this.heaters.find(h => h.heaterId.toString() === this.selectedHeater);
     if (heater) {
-      // Calculate amount: unit price + tax
       const amount = this.calculateAmount(1, heater.price, this.vatRate, 0);
       
       const lineItem: QuoteItemDisplay = {
@@ -479,37 +466,24 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Calculate amount: unit price + tax
-   * Formula: (quantity * unitPrice * (1 - discount%/100)) * (1 + tax%/100)
-   */
   private calculateAmount(quantity: number, unitPrice: number, taxRate: number, discountPercentage: number): number {
     const subtotal = quantity * unitPrice;
     const discount = subtotal * (discountPercentage / 100);
     const taxableAmount = subtotal - discount;
-    const tax = taxableAmount * (taxRate / 100);
-    return taxableAmount + tax;
+    return taxableAmount; // Amount before tax (as per the reference PDF)
   }
 
-  /**
-   * Add or update addon line item in correct position
-   */
   private addOrUpdateAddonLineItem(type: string, lineItem: QuoteItemDisplay) {
     const existingIndex = this.quoteItems.findIndex(item => item.id === lineItem.id);
     
     if (existingIndex !== -1) {
-      // Update existing item
       this.quoteItems[existingIndex] = lineItem;
     } else {
-      // Add new item in correct position
       const insertIndex = this.getAddonInsertIndex(type);
       this.quoteItems.splice(insertIndex, 0, lineItem);
     }
   }
 
-  /**
-   * Remove addon line item
-   */
   private removeAddonLineItem(type: string) {
     const itemId = this.getAddonItemId(type);
     const index = this.quoteItems.findIndex(item => item.id === itemId);
@@ -518,9 +492,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Get addon item ID based on type
-   */
   private getAddonItemId(type: string): number {
     const typeIds: { [key: string]: number } = {
       'bracket': 100001,
@@ -531,18 +502,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     return typeIds[type] || 0;
   }
 
-  /**
-   * Get the insert index for addon items based on type
-   * Order: Main product (1st), Bracket (2nd), Arm (3rd), Motor (4th), Heater (5th)
-   */
   private getAddonInsertIndex(type: string): number {
     const typeOrder = ['bracket', 'arm', 'motor', 'heater'];
     const currentTypeIndex = typeOrder.indexOf(type);
     
-    // Start after the first item (main product)
     let insertIndex = 1;
     
-    // Find the correct position based on existing addon items
     for (let i = 0; i < currentTypeIndex; i++) {
       const existingType = typeOrder[i];
       const exists = this.quoteItems.some(item => item.id === this.getAddonItemId(existingType));
@@ -554,9 +519,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     return insertIndex;
   }
 
-  /**
-   * Handle quantity change for quote items
-   */
   onQuantityChange(item: QuoteItemDisplay) {
     const taxRate = item?.taxRate || 0;
     item.amount = this.calculateAmount(item.quantity, item.unitPrice, taxRate, item.discountPercentage || 0);
@@ -564,7 +526,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   private getDefaultFollowUpDate(): string {
     const date = new Date();
-    date.setDate(date.getDate() + 7);
+    date.setDate(date.getDate() + 60); // 60 days expiry
     return date.toISOString().split('T')[0];
   }
 
@@ -620,7 +582,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   get totalAmount(): number {
-    return this.quoteItems.reduce((sum, item) => sum + item.amount, 0);
+    return this.subtotal + this.totalTax;
   }
 
   isFormValid(): boolean {
@@ -666,6 +628,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         next: (createdQuote) => {
           console.log('Quote created successfully:', createdQuote);
           this.successMessage = `Quote ${createdQuote.quoteNumber} created successfully!`;
+          
+          // Generate PDF
+          this.generatePdf(createdQuote);
+          
           this.isLoading = false;
           
           setTimeout(() => {
@@ -680,11 +646,39 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
+  private generatePdf(quote: QuoteDto) {
+    const pdfData: QuotePdfData = {
+      quoteNumber: quote.quoteNumber,
+      quoteDate: (quote.quoteDate instanceof Date)?
+                 quote.quoteDate.toLocaleDateString('en-GB') : quote.quoteDate,
+      expiryDate: this.followUpDate,
+      customerName: this.customerName,
+      customerAddress: this.customerAddress || '12 OSWALD ROAD',
+      customerCity: this.customerCity || 'DUBLIN 4',
+      customerPostalCode: this.customerPostalCode || 'D04 X470',
+      reference: this.selectedProductName || 'Awning Quote',
+      items: this.quoteItems.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        tax: item.taxRate || this.vatRate,
+        amount: item.amount
+      })),
+      subtotal: this.subtotal,
+      totalTax: this.totalTax,
+      taxRate: this.vatRate,
+      total: this.totalAmount,
+      terms: this.terms
+    };
+
+    this.pdfService.generateQuotePdf(pdfData);
+  }
+
   resetFormPartial() {
     this.quoteDate = new Date().toISOString().split('T')[0];
     this.followUpDate = this.getDefaultFollowUpDate();
     this.notes = '';
-    this.terms = 'Payment due within 30 days';
+    this.terms = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
     
     const firstItem = this.quoteItems.find(item => 
       item.description.includes('wide x')
