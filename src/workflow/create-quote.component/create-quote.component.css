@@ -588,3 +588,52 @@
 .quote-table tbody tr {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Add these styles to your existing create-quote.component.css */
+
+/* Input fields in table */
+.price-input,
+.tax-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.price-input:focus,
+.tax-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.price-input:disabled,
+.tax-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+/* Readonly text input for product name */
+.form-input[readonly] {
+  background-color: #f5f5f5;
+  cursor: default;
+  color: #333;
+}
+
+/* Adjust qty-input if not already styled */
+.qty-input {
+  width: 80px;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.qty-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}

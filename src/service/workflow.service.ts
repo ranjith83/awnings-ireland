@@ -48,7 +48,7 @@ export interface InitialEnquiryDto {
 export interface BracketDto {
   bracketId: number;
   productId: number;
-  description: string;
+  bracketName: string;
   price: number;
 }
 
@@ -174,8 +174,9 @@ export class WorkflowService {
    * Get arms for a product
    * Maps to: GET /api/Product/{productId}/arms
    */
-  getArmsForProduct(productId: number): Observable<ArmDto[]> {
-    return this.http.get<ArmDto[]>(`${this.apiUrl}/${productId}/GeArmsForProduct`)
+getArmsForProduct(productId: number): Observable<ArmDto[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<ArmDto[]>(`${this.apiUrl}/GeArmsForProduct`, { params })
       .pipe(catchError(this.handleError));
   }
 
@@ -184,7 +185,8 @@ export class WorkflowService {
    * Maps to: GET /api/Product/{productId}/motors
    */
   getMotorsForProduct(productId: number): Observable<MotorDto[]> {
-    return this.http.get<MotorDto[]>(`${this.apiUrl}/${productId}/GeMotorsForProduct`)
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<MotorDto[]>(`${this.apiUrl}/GeMotorsForProduct`, { params })
       .pipe(catchError(this.handleError));
   }
 
@@ -193,7 +195,8 @@ export class WorkflowService {
    * Maps to: GET /api/Product/{productId}/heaters
    */
   getHeatersForProduct(productId: number): Observable<HeaterDto[]> {
-    return this.http.get<HeaterDto[]>(`${this.apiUrl}/${productId}/GeHeatersForProduct`)
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<HeaterDto[]>(`${this.apiUrl}/GeHeatersForProduct`, { params })
       .pipe(catchError(this.handleError));
   }
 

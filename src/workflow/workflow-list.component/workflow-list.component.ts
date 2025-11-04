@@ -334,6 +334,7 @@ workflows: WorkflowDto[] = [];
   selectWorkflow(workflow: WorkflowDto) {
     const selected: SelectedWorkflow = {
       id: workflow.workflowId,
+      productId: workflow.productId,
       product: workflow.productName,
       description: workflow.description,
       stages: {

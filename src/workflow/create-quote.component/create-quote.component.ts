@@ -2,7 +2,6 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
-//import { Quote, QuoteItem, Workflow, Supplier, ProductModel } from '../../model/create-quote';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProductModel, QuoteItem, Supplier, Workflow } from '../../model/create-quote';
 
@@ -12,7 +11,6 @@ import {
   CreateQuoteItemDto, 
   QuoteDto,
   QuoteItemDto, 
-
 } from '../../service/create-quote.service';
 import { 
   WorkflowService, 
@@ -32,16 +30,15 @@ interface QuoteItemDisplay extends CreateQuoteItemDto {
   amount: number;
 }
 
-
 @Component({
   selector: 'app-create-quote.component',
-  standalone:true,
+  standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './create-quote.component.html',
   styleUrl: './create-quote.component.css'
 })
-export class CreateQuoteComponent  implements OnInit, OnDestroy {
- // Workflow and selection data
+export class CreateQuoteComponent implements OnInit, OnDestroy {
+  // Workflow and selection data
   workflowId: number | null = null;
   customerId: number | null = null;
   customerName: string = '';
@@ -64,7 +61,7 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
   availableWidths: number[] = [];
   availableProjections: number[] = [];
   selectedWidthCm: number | null = null;
-  selectedAwning: number | null = null; // This will be projection
+  selectedAwning: number | null = null;
   
   // Product details
   selectedProductName: string = '';
@@ -121,25 +118,25 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
 
-        if (!this.customerId) {
-          const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-          this.customerId = selectedWorkflow?.customerId || null;
-          this.customerName = selectedWorkflow?.customerName || '';
-        }
+        let workflowId = 0;
 
         if (!this.customerId) {
           this.errorMessage = 'No customer selected. Please select a customer first.';
           return;
         }
 
-        this.loadWorkflowsForCustomer(paramWorkflowId);
+         if (this.customerId) {
+          const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
+          this.customerId = selectedWorkflow?.customerId || null;
+          this.customerName = selectedWorkflow?.customerName || '';
+          workflowId = selectedWorkflow?.id || 0;
+        }
+
+        this.loadWorkflowsForCustomer(workflowId);
         this.loadSuppliers();
       });
   }
 
-  /**
-   * Load all suppliers
-   */
   private loadSuppliers() {
     this.workflowService.getAllSuppliers()
       .pipe(takeUntil(this.destroy$))
@@ -154,9 +151,6 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Load all workflows for the customer
-   */
   private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null) {
     if (!this.customerId) return;
 
@@ -168,13 +162,21 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
           this.workflows = workflows;
           this.isLoading = false;
 
-          if (this.workflows.length === 1) {
-            this.selectedWorkflowId = this.workflows[0].workflowId;
-            this.workflowId = this.workflows[0].workflowId;
-            this.onWorkflowChange();
-          } else if (preselectedWorkflowId && this.workflows.some(w => w.workflowId === preselectedWorkflowId)) {
+          // Priority 1: Use preselected workflow ID from query params
+          if (preselectedWorkflowId && this.workflows.some(w => w.workflowId === preselectedWorkflowId)) {
             this.selectedWorkflowId = preselectedWorkflowId;
             this.workflowId = preselectedWorkflowId;
+            this.onWorkflowChange();
+          }
+          // Priority 2: Use workflow ID from workflow state service
+          else if (this.selectedWorkflowId && this.workflows.some(w => w.workflowId === this.selectedWorkflowId)) {
+            this.workflowId = this.selectedWorkflowId;
+            this.onWorkflowChange();
+          }
+          // Priority 3: If only one workflow, select it
+          else if (this.workflows.length === 1) {
+            this.selectedWorkflowId = this.workflows[0].workflowId;
+            this.workflowId = this.workflows[0].workflowId;
             this.onWorkflowChange();
           }
         },
@@ -186,9 +188,6 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Handle workflow selection change - auto-populate model
-   */
   onWorkflowChange() {
     if (!this.selectedWorkflowId) return;
 
@@ -196,25 +195,16 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
     const selectedWorkflow = this.workflows.find(w => w.workflowId == this.selectedWorkflowId);
     
     if (selectedWorkflow) {
-      // Auto-populate supplier and model based on workflow
       this.selectedSupplierId = selectedWorkflow.supplierId;
       this.selectedModelId = selectedWorkflow.productId;
       this.selectedProductName = selectedWorkflow.productName;
       
-      // Load models for the supplier
       this.onSupplierChange();
-      
-      // Load widths and projections for the product
       this.loadProductWidthsAndProjections();
-      
-      // Load product addons (brackets, arms, motors, heaters)
       this.loadProductAddons();
     }
   }
 
-  /**
-   * Load product addons (brackets, arms, motors, heaters)
-   */
   private loadProductAddons() {
     if (!this.selectedModelId) return;
 
@@ -267,31 +257,13 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Handle supplier change - load models
-   */
   onSupplierChange() {
     if (!this.selectedSupplierId) {
       this.models = [];
       return;
     }
-/**
-    this.workflowService.getProductsBySupplierId(this.selectedSupplierId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (products) => {
-          this.models = products;
-        },
-        error: (error) => {
-          console.error('Error loading models:', error);
-          this.errorMessage = 'Failed to load models';
-        }
-      }); */
   }
 
-  /**
-   * Load available widths and projections for selected product
-   */
   private loadProductWidthsAndProjections() {
     if (!this.selectedModelId) return;
 
@@ -322,16 +294,10 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Handle width selection
-   */
   onWidthChange() {
     this.checkAndGenerateFirstLineItem();
   }
 
-  /**
-   * Handle awning/projection selection
-   */
   onAwningChange() {
     this.checkAndGenerateFirstLineItem();
   }
@@ -365,21 +331,20 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
   /**
    * Generate the first line item based on selected width and awning/projection
-   * Format: "Markilux 990 closed cassette awning 500m wide x 300m"
+   * Format: "Markilux 990 closed cassette awning 500cm wide x 300cm"
    */
   private generateFirstLineItem() {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedProductName) {
       return;
     }
 
-    // Create description with cm values as shown in requirements
-    const description = `${this.selectedProductName} closed cassette awning ${this.selectedWidthCm}m wide x ${this.selectedAwning}m`;
+    // Create description
+    const description = `${this.selectedProductName} closed cassette awning ${this.selectedWidthCm}cm wide x ${this.selectedAwning}cm`;
 
-    // Calculate amount with tax
+    // Calculate amount: unit price + tax
     const unitPrice = this.calculatedPrice;
     const taxRate = this.vatRate;
-    const taxAmount = unitPrice * (taxRate / 100);
-    const totalAmount = unitPrice + taxAmount;
+    const amount = this.calculateAmount(1, unitPrice, taxRate, 0);
 
     const firstLineItem: QuoteItemDisplay = {
       description: description,
@@ -387,24 +352,20 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
       unitPrice: unitPrice,
       taxRate: taxRate,
       discountPercentage: 0,
-      amount: totalAmount
+      amount: amount
     };
 
-    // Check if first item is already auto-generated
+    // Check if first item is already auto-generated (main product)
     if (this.quoteItems.length > 0 && this.quoteItems[0].description.includes('wide x')) {
       this.quoteItems[0] = firstLineItem;
     } else {
       this.quoteItems.unshift(firstLineItem);
     }
-
-    this.successMessage = 'First line item generated successfully';
-    setTimeout(() => {
-      this.successMessage = '';
-    }, 3000);
   }
 
   /**
    * Handle bracket selection change
+   * Adds as 2nd line item after main product
    */
   onBracketChange() {
     if (!this.selectedBrackets) {
@@ -414,12 +375,26 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
     const bracket = this.brackets.find(b => b.bracketId.toString() === this.selectedBrackets);
     if (bracket) {
-      this.addOrUpdateAddonLineItem('bracket', bracket.description, bracket.price);
+      // Calculate amount: unit price + tax
+      const amount = this.calculateAmount(1, bracket.price, this.vatRate, 0);
+      
+      const lineItem: QuoteItemDisplay = {
+        description: bracket.bracketName,
+        quantity: 1,
+        unitPrice: bracket.price,
+        taxRate: this.vatRate,
+        discountPercentage: 0,
+        amount: amount,
+        id: this.getAddonItemId('bracket')
+      };
+
+      this.addOrUpdateAddonLineItem('bracket', lineItem);
     }
   }
 
   /**
    * Handle arm selection change
+   * Adds as 3rd line item after bracket
    */
   onArmChange() {
     if (!this.selectedArms) {
@@ -429,12 +404,26 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
     const arm = this.arms.find(a => a.armId.toString() === this.selectedArms);
     if (arm) {
-      this.addOrUpdateAddonLineItem('arm', arm.description, arm.price);
+      // Calculate amount: unit price + tax
+      const amount = this.calculateAmount(1, arm.price, this.vatRate, 0);
+      
+      const lineItem: QuoteItemDisplay = {
+        description: arm.description,
+        quantity: 1,
+        unitPrice: arm.price,
+        taxRate: this.vatRate,
+        discountPercentage: 0,
+        amount: amount,
+        id: this.getAddonItemId('arm')
+      };
+
+      this.addOrUpdateAddonLineItem('arm', lineItem);
     }
   }
 
   /**
    * Handle motor selection change
+   * Adds as 4th line item after arm
    */
   onMotorChange() {
     if (!this.selectedMotor) {
@@ -444,12 +433,26 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
     const motor = this.motors.find(m => m.motorId.toString() === this.selectedMotor);
     if (motor) {
-      this.addOrUpdateAddonLineItem('motor', motor.description, motor.price);
+      // Calculate amount: unit price + tax
+      const amount = this.calculateAmount(1, motor.price, this.vatRate, 0);
+      
+      const lineItem: QuoteItemDisplay = {
+        description: motor.description,
+        quantity: 1,
+        unitPrice: motor.price,
+        taxRate: this.vatRate,
+        discountPercentage: 0,
+        amount: amount,
+        id: this.getAddonItemId('motor')
+      };
+
+      this.addOrUpdateAddonLineItem('motor', lineItem);
     }
   }
 
   /**
    * Handle heater selection change
+   * Adds as 5th line item after motor
    */
   onHeaterChange() {
     if (!this.selectedHeater) {
@@ -459,36 +462,46 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
 
     const heater = this.heaters.find(h => h.heaterId.toString() === this.selectedHeater);
     if (heater) {
-      this.addOrUpdateAddonLineItem('heater', heater.description, heater.price);
+      // Calculate amount: unit price + tax
+      const amount = this.calculateAmount(1, heater.price, this.vatRate, 0);
+      
+      const lineItem: QuoteItemDisplay = {
+        description: heater.description,
+        quantity: 1,
+        unitPrice: heater.price,
+        taxRate: this.vatRate,
+        discountPercentage: 0,
+        amount: amount,
+        id: this.getAddonItemId('heater')
+      };
+
+      this.addOrUpdateAddonLineItem('heater', lineItem);
     }
   }
 
   /**
-   * Add or update addon line item
+   * Calculate amount: unit price + tax
+   * Formula: (quantity * unitPrice * (1 - discount%/100)) * (1 + tax%/100)
    */
-  private addOrUpdateAddonLineItem(type: string, description: string, price: number) {
-    const taxRate = this.vatRate;
-    const taxAmount = price * (taxRate / 100);
-    const totalAmount = price + taxAmount;
+  private calculateAmount(quantity: number, unitPrice: number, taxRate: number, discountPercentage: number): number {
+    const subtotal = quantity * unitPrice;
+    const discount = subtotal * (discountPercentage / 100);
+    const taxableAmount = subtotal - discount;
+    const tax = taxableAmount * (taxRate / 100);
+    return taxableAmount + tax;
+  }
 
-    const lineItem: QuoteItemDisplay = {
-      description: description,
-      quantity: 1,
-      unitPrice: price,
-      taxRate: taxRate,
-      discountPercentage: 0,
-      amount: totalAmount,
-      id: this.getAddonItemId(type)
-    };
-
-    // Find existing addon item of this type
-    const existingIndex = this.quoteItems.findIndex(item => item.id === this.getAddonItemId(type));
+  /**
+   * Add or update addon line item in correct position
+   */
+  private addOrUpdateAddonLineItem(type: string, lineItem: QuoteItemDisplay) {
+    const existingIndex = this.quoteItems.findIndex(item => item.id === lineItem.id);
     
     if (existingIndex !== -1) {
       // Update existing item
       this.quoteItems[existingIndex] = lineItem;
     } else {
-      // Add new item after the first item (main product)
+      // Add new item in correct position
       const insertIndex = this.getAddonInsertIndex(type);
       this.quoteItems.splice(insertIndex, 0, lineItem);
     }
@@ -545,7 +558,8 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
    * Handle quantity change for quote items
    */
   onQuantityChange(item: QuoteItemDisplay) {
-    this.onItemChange(item);
+    const taxRate = item?.taxRate || 0;
+    item.amount = this.calculateAmount(item.quantity, item.unitPrice, taxRate, item.discountPercentage || 0);
   }
 
   private getDefaultFollowUpDate(): string {
@@ -554,7 +568,6 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
     return date.toISOString().split('T')[0];
   }
 
-  // Quote item management
   addQuoteItem() {
     this.quoteItems.push({
       description: '',
@@ -573,20 +586,14 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
   }
 
   calculateItemAmount(item: QuoteItemDisplay): number {
-    const discountPercentage = item?.discountPercentage || 0;
     const taxRate = item?.taxRate || 0;
-    const subtotal = item.quantity * item.unitPrice;
-    const discount = subtotal * (discountPercentage / 100);
-    const taxableAmount = subtotal - discount;
-    const tax = taxableAmount * (taxRate / 100);
-    return taxableAmount + tax;
+    return this.calculateAmount(item.quantity, item.unitPrice, taxRate, item.discountPercentage || 0);
   }
 
   onItemChange(item: QuoteItemDisplay) {
     item.amount = this.calculateItemAmount(item);
   }
 
-  // Calculations
   get subtotal(): number {
     return this.quoteItems.reduce((sum, item) => 
       sum + (item.quantity * item.unitPrice), 0
@@ -616,7 +623,6 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
     return this.quoteItems.reduce((sum, item) => sum + item.amount, 0);
   }
 
-  // Form validation
   isFormValid(): boolean {
     if (!this.workflowId || !this.customerId) return false;
     if (this.quoteItems.length === 0) return false;
@@ -628,7 +634,6 @@ export class CreateQuoteComponent  implements OnInit, OnDestroy {
     );
   }
 
-  // Generate quote
   generateQuote() {
     if (!this.isFormValid()) {
       this.errorMessage = 'Please fill in all required fields and ensure at least one quote item exists';

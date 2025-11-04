@@ -20,7 +20,7 @@
       <div class="form-row">
         <div class="form-group full-width">
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
-            <option [value]="null" disabled selected>Select Workflow</option>
+            <option [value]="null" disabled>Select Workflow</option>
             <option *ngFor="let workflow of workflows" [value]="workflow.workflowId">
               {{ workflow.workflowName || 'Workflow #' + workflow.workflowId }}
             </option>
@@ -44,13 +44,13 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Select Model</label>
-          <select class="form-select" [(ngModel)]="selectedModelId" [disabled]="!selectedSupplierId">
-            <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let model of models" [value]="model.productId">
-              {{ model.productName }}
-            </option>
-          </select>
+          <label class="form-label">Product Model</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="selectedProductName" 
+            readonly
+            placeholder="Product will be displayed here">
         </div>
 
         <div class="form-group">
@@ -84,7 +84,7 @@
           <select class="form-select" [(ngModel)]="selectedBrackets" (change)="onBracketChange()">
             <option value="" disabled selected>Select</option>
             <option *ngFor="let bracket of brackets" [value]="bracket.bracketId">
-              {{ bracket.description }} - €{{ bracket.price | number:'1.2-2' }}
+              {{ bracket.bracketName }} - €{{ bracket.price | number:'1.2-2' }}
             </option>
           </select>
         </div>
@@ -161,9 +161,26 @@
                 (ngModelChange)="onQuantityChange(item)"
                 min="1">
             </td>
-            <td>{{ item.unitPrice | number:'1.2-2' }}</td>
-            <td>{{ item.taxRate }}%</td>
-            <td>{{ item.amount | number:'1.2-2' }}</td>
+            <td>
+              <input 
+                type="number" 
+                class="price-input" 
+                [(ngModel)]="item.unitPrice"
+                (ngModelChange)="onItemChange(item)"
+                min="0"
+                step="0.01">
+            </td>
+            <td>
+              <input 
+                type="number" 
+                class="tax-input" 
+                [(ngModel)]="item.taxRate"
+                (ngModelChange)="onItemChange(item)"
+                min="0"
+                max="100"
+                step="0.5">
+            </td>
+            <td>€{{ item.amount | number:'1.2-2' }}</td>
             <td>
               <button class="btn-remove" (click)="removeQuoteItem(i)" *ngIf="quoteItems.length > 1">
                 Remove

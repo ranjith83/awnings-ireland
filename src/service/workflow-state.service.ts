@@ -12,6 +12,7 @@ export interface WorkflowStages {
 export interface SelectedWorkflow {
   id: number;
   product: string;
+  productId: number;
   description: string;
   stages: WorkflowStages;
   customerId?: number;
