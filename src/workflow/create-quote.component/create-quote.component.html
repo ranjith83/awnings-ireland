@@ -23,7 +23,7 @@
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
             <option *ngFor="let workflow of workflows" [value]="workflow.workflowId">
-              {{ workflow.workflowName || 'Workflow #' + workflow.workflowId }}
+              {{ workflow.description }}
             </option>
           </select>
         </div>
