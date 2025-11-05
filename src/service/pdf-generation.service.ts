@@ -320,6 +320,7 @@ export class PdfGenerationService {
     return `${day} ${month} ${year}`;
   }
 
+  
   generateInvoicePdf(data: InvoicePdfData) {
     const doc = new jsPDF();
     
@@ -495,4 +496,5 @@ export class PdfGenerationService {
     // Save the PDF
     doc.save(`Invoice-${data.invoiceNumber}.pdf`);
   }
+  
 }

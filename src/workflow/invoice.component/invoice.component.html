@@ -120,6 +120,20 @@
           </select>
         </div>
       </div>
+
+      <!-- Electrician Checkbox -->
+      <div class="form-row" style="margin-top: 15px;">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              class="checkbox-input" 
+              [(ngModel)]="includeElectrician"
+              (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
+        </div>
+      </div>
     </div>
 
     <!-- Invoice Details -->

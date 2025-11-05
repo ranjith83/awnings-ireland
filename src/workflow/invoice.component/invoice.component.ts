@@ -73,6 +73,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   selectedArms: string = '';
   selectedMotor: string = '';
   selectedHeater: string = '';
+  includeElectrician: boolean = false;
+  electricianPrice: number = 280.00;
   
   calculatedPrice: number = 0;
   
@@ -345,7 +347,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   private loadInvoiceItemsFromQuote(quote: QuoteDto) {
-
     this.invoiceItems = quote.quoteItems.map(item => ({
       description: item.description,
       quantity: item.quantity,
@@ -357,7 +358,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     }));
 
     /**
-
     // Load terms and notes from quote if available
     if (quote.notes) {
       this.notes = quote.notes;
@@ -365,7 +365,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     if (quote.terms) {
       this.terms = quote.terms;
     }
-   */
+       */
   }
 
   private presetSelectionsFromQuote(quote: QuoteDto) {
@@ -429,6 +429,12 @@ export class InvoiceComponent implements OnInit, OnDestroy {
           this.selectedHeater = heater.heaterId.toString();
         }
         
+        // Check for electrician
+        if (desc.includes('electric connection') || desc.includes('qualified electrician')) {
+          this.includeElectrician = true;
+          this.electricianPrice = item.unitPrice;
+        }
+        
         // Check for installation fee
         if (desc.includes('installation')) {
           this.installationFee = item.unitPrice;
@@ -444,6 +450,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedArms = '';
     this.selectedMotor = '';
     this.selectedHeater = '';
+    this.includeElectrician = false;
     this.installationFee = 0;
   }
 
@@ -614,6 +621,28 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     }
   }
 
+  onElectricianChange() {
+    if (!this.includeElectrician) {
+      this.removeAddonLineItem('electrician');
+      return;
+    }
+
+    const totalPrice = this.calculateItemTotal(1, this.electricianPrice, this.vatRate, 0);
+    
+    const lineItem: InvoiceItemDisplay = {
+      description: 'Electric connection by our Qualified Electrician',
+      quantity: 1,
+      unitPrice: this.electricianPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      unit: 'service',
+      totalPrice: totalPrice,
+      id: this.getAddonItemId('electrician')
+    };
+
+    this.addOrUpdateAddonLineItem('electrician', lineItem);
+  }
+
   onInstallationFeeChange() {
     if (!this.installationFee || this.installationFee <= 0) {
       this.removeAddonLineItem('installation');
@@ -668,13 +697,14 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       'arm': 100002,
       'motor': 100003,
       'heater': 100004,
-      'installation': 100005
+      'electrician': 100005,
+      'installation': 100006
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'installation'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation'];
     const currentTypeIndex = typeOrder.indexOf(type);
     
     let insertIndex = 1;
