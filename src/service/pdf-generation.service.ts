@@ -5,32 +5,61 @@ import autoTable from 'jspdf-autotable';
 export interface QuotePdfData {
   quoteNumber: string;
   quoteDate: string;
-  expiryDate: string | Date;
+  expiryDate: string;
   customerName: string;
   customerAddress: string;
   customerCity: string;
   customerPostalCode: string;
   reference: string;
-  items: Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    tax: number;
-    amount: number;
-  }>;
+  items: QuotePdfItem[];
   subtotal: number;
   totalTax: number;
   taxRate: number;
   total: number;
-  terms?: string;
+  terms: string;
+}
+
+export interface QuotePdfItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  tax: number;
+  amount: number;
+}
+
+export interface InvoicePdfData {
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  customerName: string;
+  customerAddress: string;
+  customerCity: string;
+  customerPostalCode: string;
+  items: InvoicePdfItem[];
+  subtotal: number;
+  totalTax: number;
+  taxRate: number;
+  total: number;
+  terms: string;
+  notes?: string;
+  status: string;
+  amountPaid?: number;
+  amountDue?: number;
+}
+
+export interface InvoicePdfItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  tax: number;
+  amount: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class PdfGenerationService {
-  
-  private readonly COMPANY_NAME = 'MM Awnings Ltd.';
+   private readonly COMPANY_NAME = 'MM Awnings Ltd.';
   private readonly COMPANY_TRADING_AS = 't/a Awnings of Ireland';
   private readonly COMPANY_ADDRESS_LINE1 = 'Unit 2 Hillview House';
   private readonly COMPANY_ADDRESS_LINE2 = '52 Bracken Road';
@@ -40,10 +69,13 @@ export class PdfGenerationService {
   private readonly COMPANY_WEBSITE = 'www.awningsofireland.com';
   private readonly COMPANY_VAT = '3533984BH';
   private readonly COMPANY_REG = '622756';
+  private readonly LOGO_URL = 'assets/logo.png'; // Update this path to your logo location
+  private readonly ELECTRICIAN_PRICE = 280.00; // Default electrician connection price
   
-  constructor() {}
 
-  generateQuotePdf(data: QuotePdfData): void {
+  constructor() { }
+
+  async generateQuotePdf(data: QuotePdfData): Promise<void> {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -55,6 +87,19 @@ export class PdfGenerationService {
     
     let yPosition = 20;
 
+    // ===== LOGO SECTION =====
+    try {
+      // Load and add logo
+      const logoImg = await this.loadImage(this.LOGO_URL);
+      const logoWidth = 60;
+      const logoHeight = 15;
+      doc.addImage(logoImg, 'PNG', 20, yPosition, logoWidth, logoHeight);
+      yPosition += logoHeight + 10;
+    } catch (error) {
+      console.warn('Logo not loaded, continuing without it', error);
+      yPosition = 20;
+    }
+
     // ===== HEADER SECTION =====
     // QUOTE title
     doc.setFontSize(24);
@@ -63,25 +108,26 @@ export class PdfGenerationService {
     doc.text('QUOTE', 20, yPosition);
     
     // Company info (right aligned)
+    let companyYPos = 20;
     doc.setFontSize(10);
     doc.setTextColor(...textColor);
     doc.setFont('helvetica', 'bold');
-    doc.text(this.COMPANY_NAME, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
+    doc.text(this.COMPANY_NAME, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
     doc.setFont('helvetica', 'normal');
-    doc.text(this.COMPANY_TRADING_AS, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_ADDRESS_LINE1, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_ADDRESS_LINE2, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_ADDRESS_LINE3, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_ADDRESS_LINE4, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_EMAIL, pageWidth - 20, yPosition, { align: 'right' });
-    yPosition += 5;
-    doc.text(this.COMPANY_WEBSITE, pageWidth - 20, yPosition, { align: 'right' });
+    doc.text(this.COMPANY_TRADING_AS, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_ADDRESS_LINE1, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_ADDRESS_LINE2, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_ADDRESS_LINE3, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_ADDRESS_LINE4, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_EMAIL, pageWidth - 20, companyYPos, { align: 'right' });
+    companyYPos += 5;
+    doc.text(this.COMPANY_WEBSITE, pageWidth - 20, companyYPos, { align: 'right' });
     
     // ===== CUSTOMER & QUOTE INFO SECTION =====
     yPosition = 65;
@@ -111,8 +157,7 @@ export class PdfGenerationService {
     doc.setFont('helvetica', 'bold');
     doc.text('Expiry', labelX, yPosition);
     doc.setFont('helvetica', 'normal');
-    let expiryDate = (data.expiryDate instanceof Date) ? data.expiryDate.toISOString()
-                    : data.expiryDate
+    let expiryDate = new Date(data.expiryDate).toISOString();
     doc.text(this.formatDate(expiryDate), valueX, yPosition, { align: 'right' });
     yPosition += 5;
     
@@ -160,6 +205,10 @@ export class PdfGenerationService {
         fontStyle: 'bold',
         halign: 'left',
       },
+      bodyStyles: {
+        lineColor: [220, 220, 220],
+        lineWidth: 0.1,
+      },
       columnStyles: {
         0: { cellWidth: 'auto' },
         1: { cellWidth: 25, halign: 'center' },
@@ -168,6 +217,20 @@ export class PdfGenerationService {
         4: { cellWidth: 35, halign: 'right' },
       },
       margin: { left: 20, right: 20 },
+      didDrawCell: (data) => {
+        // Draw horizontal line between rows (not after header)
+        if (data.section === 'body' && data.row.index < tableData.length - 1) {
+          const { doc, cell } = data;
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.1);
+          doc.line(
+            cell.x,
+            cell.y + cell.height,
+            cell.x + cell.width,
+            cell.y + cell.height
+          );
+        }
+      }
     });
     
     // Get Y position after table
@@ -228,11 +291,208 @@ export class PdfGenerationService {
     doc.save(fileName);
   }
   
+  private loadImage(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          reject(new Error('Could not get canvas context'));
+        }
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = url;
+    });
+  }
+  
   private formatDate(dateString: string): string {
     const date = new Date(dateString);
     const day = date.getDate();
     const month = date.toLocaleDateString('en-US', { month: 'short' });
     const year = date.getFullYear();
     return `${day} ${month} ${year}`;
+  }
+
+  generateInvoicePdf(data: InvoicePdfData) {
+    const doc = new jsPDF();
+    
+    // Company header
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('AWNINGS IRELAND', 105, 20, { align: 'center' });
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Unit 5, Bluebell Business Park', 105, 27, { align: 'center' });
+    doc.text('Dublin 12, Ireland', 105, 32, { align: 'center' });
+    doc.text('Tel: +353 1 234 5678', 105, 37, { align: 'center' });
+    doc.text('Email: info@awningsireland.ie', 105, 42, { align: 'center' });
+    
+    // Divider line
+    doc.setLineWidth(0.5);
+    doc.line(20, 48, 190, 48);
+    
+    // Invoice title with status
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('INVOICE', 20, 58);
+    
+    // Status badge
+    const statusColors: { [key: string]: number[] } = {
+      'Draft': [200, 200, 200],
+      'Sent': [52, 152, 219],
+      'Paid': [46, 204, 113],
+      'Overdue': [231, 76, 60],
+      'Cancelled': [149, 165, 166],
+      'Partially Paid': [241, 196, 15]
+    };
+    
+    const statusColor = statusColors[data.status] || [200, 200, 200];
+    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+    doc.roundedRect(150, 53, 35, 8, 2, 2, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.text(data.status.toUpperCase(), 167.5, 58, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    
+    // Invoice details (left side)
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Invoice Number:', 20, 68);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.invoiceNumber, 55, 68);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Invoice Date:', 20, 74);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.invoiceDate, 55, 74);
+    
+    doc.setFont('helvetica', 'bold');
+    doc.text('Due Date:', 20, 80);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.dueDate, 55, 80);
+    
+    // Customer details (right side)
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bill To:', 130, 68);
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.customerName, 130, 74);
+    doc.text(data.customerAddress, 130, 80);
+    doc.text(`${data.customerCity} ${data.customerPostalCode}`, 130, 86);
+    
+    // Items table
+    const tableStartY = 95;
+    
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [['Description', 'Quantity', 'Unit Price', 'Tax %', 'Amount EUR']],
+      body: data.items.map(item => [
+        item.description,
+        item.quantity.toString(),
+        `€${item.unitPrice.toFixed(2)}`,
+        `${item.tax}%`,
+        `€${item.amount.toFixed(2)}`
+      ]),
+      theme: 'striped',
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center'
+      },
+      bodyStyles: {
+        fontSize: 10
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'center', cellWidth: 25 },
+        2: { halign: 'right', cellWidth: 30 },
+        3: { halign: 'center', cellWidth: 20 },
+        4: { halign: 'right', cellWidth: 35 }
+      },
+      margin: { left: 10, right: 10 }
+    });
+    
+    // Get the final Y position after the table
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Totals section
+    const totalsX = 130;
+    let totalsY = finalY;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.text('Sub Total:', totalsX, totalsY);
+    doc.text(`€${data.subtotal.toFixed(2)}`, 185, totalsY, { align: 'right' });
+    
+    totalsY += 6;
+    doc.text(`Total Sales TAX ${data.taxRate}%:`, totalsX, totalsY);
+    doc.text(`€${data.totalTax.toFixed(2)}`, 185, totalsY, { align: 'right' });
+    
+    totalsY += 8;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Total EUR:', totalsX, totalsY);
+    doc.text(`€${data.total.toFixed(2)}`, 185, totalsY, { align: 'right' });
+    
+    // Payment information if invoice is partially paid or has payments
+    if (data.amountPaid && data.amountPaid > 0) {
+      totalsY += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Amount Paid:', totalsX, totalsY);
+      doc.text(`€${data.amountPaid.toFixed(2)}`, 185, totalsY, { align: 'right' });
+      
+      totalsY += 6;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Amount Due:', totalsX, totalsY);
+      doc.text(`€${(data.amountDue || 0).toFixed(2)}`, 185, totalsY, { align: 'right' });
+    }
+    
+    // Notes section (if provided)
+    let currentY = totalsY + 15;
+    if (data.notes && data.notes.trim()) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.text('Notes:', 20, currentY);
+      
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      const notes = data.notes.split('\n');
+      currentY += 6;
+      notes.forEach(line => {
+        doc.text(line, 20, currentY);
+        currentY += 5;
+      });
+      currentY += 5;
+    }
+    
+    // Terms and conditions
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('Payment Terms:', 20, currentY);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const terms = data.terms.split('\n');
+    currentY += 6;
+    terms.forEach(line => {
+      doc.text(line, 20, currentY);
+      currentY += 5;
+    });
+    
+    // Footer
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text('Thank you for your business!', 105, 280, { align: 'center' });
+    
+    // Save the PDF
+    doc.save(`Invoice-${data.invoiceNumber}.pdf`);
   }
 }

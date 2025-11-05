@@ -4,7 +4,8 @@
     <!-- Logo Section -->
     <div class="sidebar-header">
       <div class="logo">
-        <span class="logo-icon">🏠</span>
+      <!---<span class="logo-icon"></span> -->
+        <img src="assets/awnings.png" alt="Logo" class="logo-icon" />
         <span class="logo-text" *ngIf="!isSidebarCollapsed">Awnings of Ireland</span>
       </div>
       <button class="toggle-btn" (click)="toggleSidebar()">
@@ -20,7 +21,8 @@
         class="nav-item" 
         [class.active]="isActive(item.route)"
         (click)="navigateTo(item.route)">
-        <span class="nav-icon">{{ item.icon }}</span>
+        <!--<span class="nav-icon">{{ item.icon }}</span>-->
+        <fa-icon [icon]="item.icon" class="nav-icon"></fa-icon>
         <span class="nav-label" *ngIf="!isSidebarCollapsed">{{ item.label }}</span>
         <span class="nav-badge" *ngIf="item.badge && !isSidebarCollapsed">{{ item.badge }}</span>
       </div>

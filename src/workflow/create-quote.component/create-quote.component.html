@@ -14,31 +14,16 @@
   </div>
 
   <div class="quote-content">
-    <!-- Select Workflow -->
+    <!-- Select Workflow and Product Model -->
     <div class="form-section">
-      <h3 class="section-title">Select Workflow</h3>
+      <h3 class="section-title">Select Workflow & Product</h3>
       <div class="form-row">
-        <div class="form-group full-width">
+        <div class="form-group">
+          <label class="form-label">Select Workflow</label>
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
             <option *ngFor="let workflow of workflows" [value]="workflow.workflowId">
               {{ workflow.workflowName || 'Workflow #' + workflow.workflowId }}
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- Select Product -->
-    <div class="form-section">
-      <h3 class="section-title">Select Product</h3>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Select Supplier Type</label>
-          <select class="form-select" [(ngModel)]="selectedSupplierId" (change)="onSupplierChange()">
-            <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let supplier of suppliers" [value]="supplier.supplierId">
-              {{ supplier.supplierName }}
             </option>
           </select>
         </div>
@@ -52,7 +37,13 @@
             readonly
             placeholder="Product will be displayed here">
         </div>
+      </div>
+    </div>
 
+    <!-- Select Dimensions -->
+    <div class="form-section">
+      <h3 class="section-title">Select Dimensions</h3>
+      <div class="form-row">
         <div class="form-group">
           <label class="form-label">Widths in cm</label>
           <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
@@ -117,6 +108,20 @@
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
             </option>
           </select>
+        </div>
+      </div>
+
+      <!-- Electrician Checkbox -->
+      <div class="form-row" style="margin-top: 15px;">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              class="checkbox-input" 
+              [(ngModel)]="includeElectrician"
+              (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
         </div>
       </div>
     </div>

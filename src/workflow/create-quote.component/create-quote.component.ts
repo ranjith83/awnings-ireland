@@ -89,6 +89,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   selectedArms: string = '';
   selectedMotor: string = '';
   selectedHeater: string = '';
+  includeElectrician: boolean = false;
+  electricianPrice: number = 280.00;
   emailToCustomer: boolean = false;
   
   // UI state
@@ -209,7 +211,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       this.selectedModelId = selectedWorkflow.productId;
       this.selectedProductName = selectedWorkflow.productName;
       
-      this.onSupplierChange();
       this.loadProductWidthsAndProjections();
       this.loadProductAddons();
     }
@@ -265,13 +266,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           console.error('Error loading heaters:', error);
         }
       });
-  }
-
-  onSupplierChange() {
-    if (!this.selectedSupplierId) {
-      this.models = [];
-      return;
-    }
   }
 
   private loadProductWidthsAndProjections() {
@@ -466,6 +460,27 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
+  onElectricianChange() {
+    if (!this.includeElectrician) {
+      this.removeAddonLineItem('electrician');
+      return;
+    }
+
+    const amount = this.calculateAmount(1, this.electricianPrice, this.vatRate, 0);
+    
+    const lineItem: QuoteItemDisplay = {
+      description: 'Electric connection by our Qualified Electrician',
+      quantity: 1,
+      unitPrice: this.electricianPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: amount,
+      id: this.getAddonItemId('electrician')
+    };
+
+    this.addOrUpdateAddonLineItem('electrician', lineItem);
+  }
+
   private calculateAmount(quantity: number, unitPrice: number, taxRate: number, discountPercentage: number): number {
     const subtotal = quantity * unitPrice;
     const discount = subtotal * (discountPercentage / 100);
@@ -497,13 +512,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       'bracket': 100001,
       'arm': 100002,
       'motor': 100003,
-      'heater': 100004
+      'heater': 100004,
+      'electrician': 100005
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician'];
     const currentTypeIndex = typeOrder.indexOf(type);
     
     let insertIndex = 1;

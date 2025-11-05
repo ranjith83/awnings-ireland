@@ -87,11 +87,11 @@
   background-color: transparent;
   color: #cbd5e1;
 }
-
+/*
 .tab-content {
   padding: 30px;
 }
-
+*/
 @media screen and (max-width: 992px) {
   .tabs-nav {
     overflow-x: auto;
@@ -99,7 +99,7 @@
   }
   
   .tab-content {
-    padding: 20px;
+    padding: 20px; 
   }
 
   .header-content {
