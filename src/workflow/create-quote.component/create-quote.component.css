@@ -80,9 +80,9 @@
 
 /* Form Section Styles */
 .form-section {
-/**  margin-bottom: 5px;
-  padding-bottom: 5px;
-  border-bottom: 2px solid #e9ecef; **/
+
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e9ecef;
 }
 
 .form-section:last-of-type {
@@ -95,7 +95,7 @@
   color:  #3b82f6;
   margin-bottom: 2px;
   padding-bottom: 1px;
-  border-bottom: 2px solid #3498db; 
+  margin-top: 5px;
   display: inline-block;
 }
 
