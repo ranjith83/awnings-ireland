@@ -7,6 +7,8 @@ import { Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
 import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
+import { Customer, CustomerService } from '../../service/customer-service';
+//import { CustomerService, Customer } from '../../service/customer.service';
 
 interface EmailTemplate {
   id: string;
@@ -36,6 +38,8 @@ export class InitialEnquiryComponent implements OnInit {
   
   selectedWorkflow: SelectedWorkflow | null = null;
   customerName: string = '';
+  customerId: number | null = null;
+  contactName: string = '';
   private subscription!: Subscription;
 
   // Email Template properties
@@ -51,6 +55,7 @@ export class InitialEnquiryComponent implements OnInit {
     private fb: FormBuilder,
     private workflowService: WorkflowService,
     private workflowStateService: WorkflowStateService,
+    private customerService: CustomerService,
     private route: ActivatedRoute
   ) {
     this.enquiryForm = this.fb.group({
@@ -67,21 +72,30 @@ export class InitialEnquiryComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Get customer name from route params
+    // Get customer ID from route params
     this.route.queryParams.subscribe(params => {
+      this.customerId = params['customerId'] ? +params['customerId'] : null;
       this.customerName = params['customerName'] || '';
-      // Initialize templates with customer name after we have it
-      this.initializeEmailTemplates();
+      
+      // Fetch customer details to get contact name
+      if (this.customerId) {
+        this.loadCustomerContact(this.customerId);
+      } else {
+        // Initialize templates with placeholder if no customer ID
+        this.initializeEmailTemplates();
+      }
     });
 
     this.subscription = this.workflowStateService.selectedWorkflow$
       .subscribe(workflow => {
         this.selectedWorkflow = workflow;
-        if (workflow?.customerName) {
-          this.customerName = workflow.customerName;
-          // Re-initialize templates if customer name changes
-          this.initializeEmailTemplates();
+        
+        // If workflow has customerId and we haven't loaded contact yet
+        if (workflow?.customerId && !this.contactName) {
+          this.customerId = workflow.customerId;
+          this.loadCustomerContact(workflow.customerId);
         }
+        
         console.log('Selected workflow:', workflow);
       });
 
@@ -90,16 +104,41 @@ export class InitialEnquiryComponent implements OnInit {
     }
   }
 
+  private loadCustomerContact(customerId: number): void {
+    this.customerService.getCustomerById(customerId).subscribe({
+      next: (fullCustomer: Customer) => {
+        const contact = fullCustomer.customerContacts?.[0];
+        
+        // Build contact name from first and last name
+        if (contact?.firstName || contact?.lastName) {
+          this.contactName = `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim();
+        } else {
+          // Fallback to customer name if no contact name
+          this.contactName = this.customerName || '[Insert Name]';
+        }
+        
+        // Initialize templates with contact name
+        this.initializeEmailTemplates();
+      },
+      error: (error: Error) => {
+        console.error('Error loading customer contact:', error);
+        // Fallback to customer name on error
+        this.contactName = this.customerName || '[Insert Name]';
+        this.initializeEmailTemplates();
+      }
+    });
+  }
+
   private initializeEmailTemplates(): void {
-    // Use customer name or placeholder
-    const customerDisplayName = this.customerName || '[Insert Name]';
+    // Use contact name, fallback to customer name, or placeholder
+    const displayName = this.contactName || this.customerName || '[Insert Name]';
     
     this.emailTemplates = [
       {
         id: 'template-enquiry',
         name: 'Template-Enquiry',
         subject: 'Thank You for Your Enquiry',
-        body: `Hi ${customerDisplayName},
+        body: `Hi ${displayName},
 
 Thank you for reaching out to us.
 
@@ -119,7 +158,7 @@ www.awningsofireland.com`
         id: 'template-quote',
         name: 'Template-Quote',
         subject: 'Your Quote from Awnings of Ireland',
-        body: `Dear ${customerDisplayName},
+        body: `Dear ${displayName},
 
 Thank you for your enquiry.
 
@@ -140,7 +179,7 @@ Markilux awnings, Retractable roof systems, Giant umbrellas, Cafe screens, Outdo
         id: 'template-renson-inquiry',
         name: 'Template-Renson-Inquiry',
         subject: 'Renson Enquiry – Brochure & Showroom Visit',
-        body: `Dear ${customerDisplayName},
+        body: `Dear ${displayName},
 
 We received your enquiry via Renson, who kindly passed along your details to us as their official ambassadors in Ireland.
 Unfortunately, we weren't able to reach you by phone as no contact number was provided.
@@ -156,7 +195,7 @@ Awnings of Ireland`
         id: 'template-checkin',
         name: 'Template-CheckIn',
         subject: 'Quick Check-In on Your Project',
-        body: `Hi ${customerDisplayName},
+        body: `Hi ${displayName},
 
 Just wanted to check in and see if your project is still moving forward. If it's no longer active, a quick heads-up would be really appreciated.
 
@@ -171,7 +210,7 @@ Awnings of Ireland`
         id: 'template-followup-renson',
         name: 'Template-FollowUp-Renson',
         subject: 'Follow-Up on Renson Camargue Quotes',
-        body: `Hi ${customerDisplayName},
+        body: `Hi ${displayName},
 
 I hope you're keeping well. I just wanted to follow up on the quotes I sent over on [insert date].
 
@@ -233,7 +272,8 @@ Awnings of Ireland`
       subject: this.emailForm.value.subject,
       body: this.emailForm.value.body,
       workflow: this.selectedWorkflow,
-      customerName: this.customerName
+      customerName: this.customerName,
+      contactName: this.contactName
     });
 
     this.successMessage = 'Email sent successfully!';
