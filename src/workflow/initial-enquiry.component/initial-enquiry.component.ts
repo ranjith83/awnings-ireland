@@ -4,6 +4,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
 import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
 
@@ -34,6 +35,7 @@ export class InitialEnquiryComponent implements OnInit {
   successMessage = '';
   
   selectedWorkflow: SelectedWorkflow | null = null;
+  customerName: string = '';
   private subscription!: Subscription;
 
   // Email Template properties
@@ -43,104 +45,13 @@ export class InitialEnquiryComponent implements OnInit {
   emailSubject: string = '';
   loggedInUserName: string = 'Michael'; // Default user name
 
-  emailTemplates: EmailTemplate[] = [
-    {
-      id: 'template-enquiry',
-      name: 'Template-Enquiry',
-      subject: 'Thank You for Your Enquiry',
-      body: `Hi [Insert Name],
-
-Thank you for reaching out to us.
-
-A member of our sales team will be in touch with you shortly. In the meantime, if you haven't already, please send us a photo of the area along with approximate measurements. This will help us provide you with an initial estimate.
-
-Should you wish to proceed, we'll arrange a site survey, after which a detailed quote will follow.
-
-Kindest regards,
-${this.loggedInUserName}
-
-Awnings of Ireland
-Markilux awnings, Retractable roof systems, Giant umbrellas, Cafe screens, Outdoor heaters & outdoor flooring for business or leisure.
-Tel: +353 (0) 1 652 3014
-www.awningsofireland.com`
-    },
-    {
-      id: 'template-quote',
-      name: 'Template-Quote',
-      subject: 'Your Quote from Awnings of Ireland',
-      body: `Dear [Insert Name],
-
-Thank you for your enquiry.
-
-Please find your quote [Insert Quote Number] for [Insert Value] attached.
-
-You can also view your quote online here: [Insert Link]
-From the online portal, you'll be able to accept, decline, comment, or print your quote at your convenience.
-
-If you have any queries, please do not hesitate to contact me.
-
-Kindest regards,
-${this.loggedInUserName}
-
-Awnings of Ireland
-Markilux awnings, Retractable roof systems, Giant umbrellas, Cafe screens, Outdoor heaters & outdoor flooring for business or leisure.`
-    },
-    {
-      id: 'template-renson-inquiry',
-      name: 'Template-Renson-Inquiry',
-      subject: 'Renson Enquiry – Brochure & Showroom Visit',
-      body: `Dear [Recipient's Name],
-
-We received your enquiry via Renson, who kindly passed along your details to us as their official ambassadors in Ireland.
-Unfortunately, we weren't able to reach you by phone as no contact number was provided.
-
-Please find our brochure attached for your review. If you have any questions or would like to arrange a visit to our showroom, we'd be delighted to assist you.
-
-Kind regards,
-${this.loggedInUserName}
-
-Awnings of Ireland`
-    },
-    {
-      id: 'template-checkin',
-      name: 'Template-CheckIn',
-      subject: 'Quick Check-In on Your Project',
-      body: `Hi [Recipient's Name],
-
-Just wanted to check in and see if your project is still moving forward. If it's no longer active, a quick heads-up would be really appreciated.
-
-If I don't hear back, I'll plan to follow up again next week.
-
-All the best,
-${this.loggedInUserName}
-
-Awnings of Ireland`
-    },
-    {
-      id: 'template-followup-renson',
-      name: 'Template-FollowUp-Renson',
-      subject: 'Follow-Up on Renson Camargue Quotes',
-      body: `Hi [Recipient's Name],
-
-I hope you're keeping well. I just wanted to follow up on the quotes I sent over on [insert date].
-
-If you have any questions or need further details, please don't hesitate to get in touch — I'm happy to help.
-
-If you're interested, you're very welcome to visit our showroom in Sandyford to see the Renson Camargue in person.
-
-Looking forward to hearing from you.
-
-Best regards,
-${this.loggedInUserName}
-
-Awnings of Ireland`
-    }
-  ];
+  emailTemplates: EmailTemplate[] = [];
 
   constructor(
     private fb: FormBuilder,
     private workflowService: WorkflowService,
-    private workflowStateService: WorkflowStateService
+    private workflowStateService: WorkflowStateService,
+    private route: ActivatedRoute
   ) {
     this.enquiryForm = this.fb.group({
       comments: ['', [Validators.required, Validators.minLength(10)]],
@@ -156,15 +67,126 @@ Awnings of Ireland`
   }
 
   ngOnInit(): void {
+    // Get customer name from route params
+    this.route.queryParams.subscribe(params => {
+      this.customerName = params['customerName'] || '';
+      // Initialize templates with customer name after we have it
+      this.initializeEmailTemplates();
+    });
+
     this.subscription = this.workflowStateService.selectedWorkflow$
       .subscribe(workflow => {
         this.selectedWorkflow = workflow;
+        if (workflow?.customerName) {
+          this.customerName = workflow.customerName;
+          // Re-initialize templates if customer name changes
+          this.initializeEmailTemplates();
+        }
         console.log('Selected workflow:', workflow);
       });
 
     if (this.selectedWorkflow) {
       this.loadEnquiries();
     }
+  }
+
+  private initializeEmailTemplates(): void {
+    // Use customer name or placeholder
+    const customerDisplayName = this.customerName || '[Insert Name]';
+    
+    this.emailTemplates = [
+      {
+        id: 'template-enquiry',
+        name: 'Template-Enquiry',
+        subject: 'Thank You for Your Enquiry',
+        body: `Hi ${customerDisplayName},
+
+Thank you for reaching out to us.
+
+A member of our sales team will be in touch with you shortly. In the meantime, if you haven't already, please send us a photo of the area along with approximate measurements. This will help us provide you with an initial estimate.
+
+Should you wish to proceed, we'll arrange a site survey, after which a detailed quote will follow.
+
+Kindest regards,
+${this.loggedInUserName}
+
+Awnings of Ireland
+Markilux awnings, Retractable roof systems, Giant umbrellas, Cafe screens, Outdoor heaters & outdoor flooring for business or leisure.
+Tel: +353 (0) 1 652 3014
+www.awningsofireland.com`
+      },
+      {
+        id: 'template-quote',
+        name: 'Template-Quote',
+        subject: 'Your Quote from Awnings of Ireland',
+        body: `Dear ${customerDisplayName},
+
+Thank you for your enquiry.
+
+Please find your quote [Insert Quote Number] for [Insert Value] attached.
+
+You can also view your quote online here: [Insert Link]
+From the online portal, you'll be able to accept, decline, comment, or print your quote at your convenience.
+
+If you have any queries, please do not hesitate to contact me.
+
+Kindest regards,
+${this.loggedInUserName}
+
+Awnings of Ireland
+Markilux awnings, Retractable roof systems, Giant umbrellas, Cafe screens, Outdoor heaters & outdoor flooring for business or leisure.`
+      },
+      {
+        id: 'template-renson-inquiry',
+        name: 'Template-Renson-Inquiry',
+        subject: 'Renson Enquiry – Brochure & Showroom Visit',
+        body: `Dear ${customerDisplayName},
+
+We received your enquiry via Renson, who kindly passed along your details to us as their official ambassadors in Ireland.
+Unfortunately, we weren't able to reach you by phone as no contact number was provided.
+
+Please find our brochure attached for your review. If you have any questions or would like to arrange a visit to our showroom, we'd be delighted to assist you.
+
+Kind regards,
+${this.loggedInUserName}
+
+Awnings of Ireland`
+      },
+      {
+        id: 'template-checkin',
+        name: 'Template-CheckIn',
+        subject: 'Quick Check-In on Your Project',
+        body: `Hi ${customerDisplayName},
+
+Just wanted to check in and see if your project is still moving forward. If it's no longer active, a quick heads-up would be really appreciated.
+
+If I don't hear back, I'll plan to follow up again next week.
+
+All the best,
+${this.loggedInUserName}
+
+Awnings of Ireland`
+      },
+      {
+        id: 'template-followup-renson',
+        name: 'Template-FollowUp-Renson',
+        subject: 'Follow-Up on Renson Camargue Quotes',
+        body: `Hi ${customerDisplayName},
+
+I hope you're keeping well. I just wanted to follow up on the quotes I sent over on [insert date].
+
+If you have any questions or need further details, please don't hesitate to get in touch – I'm happy to help.
+
+If you're interested, you're very welcome to visit our showroom in Sandyford to see the Renson Camargue in person.
+
+Looking forward to hearing from you.
+
+Best regards,
+${this.loggedInUserName}
+
+Awnings of Ireland`
+      }
+    ];
   }
 
   // Tab switching
@@ -210,7 +232,8 @@ Awnings of Ireland`
     console.log('Sending email:', {
       subject: this.emailForm.value.subject,
       body: this.emailForm.value.body,
-      workflow: this.selectedWorkflow
+      workflow: this.selectedWorkflow,
+      customerName: this.customerName
     });
 
     this.successMessage = 'Email sent successfully!';
@@ -354,5 +377,11 @@ Awnings of Ireland`
 
   get images() {
     return this.enquiryForm.get('images');
+  }
+
+  ngOnDestroy(): void {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
   }
 }
