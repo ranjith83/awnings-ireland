@@ -8,6 +8,7 @@ import { InviteShowroomComponent } from '../workflow/invite-showroom.component/i
 import { SetupSiteVisitComponent } from '../workflow/setup-site-visit.component/setup-site-visit.component';
 import { InvoiceComponent } from '../workflow/invoice.component/invoice.component';
 import { InitialEnquiryComponent } from '../workflow/initial-enquiry.component/initial-enquiry.component';
+import { DashboardComponent } from '../workflow/dashboard.component/dashboard.component';
 
 
 export const routes: Routes = [
@@ -16,9 +17,8 @@ export const routes: Routes = [
     component: AppLayoutComponent,
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-      //{ path: 'dashboard', component: DashboardComponent },
+      { path: 'dashboard', component: DashboardComponent },
       { path: 'customers', component: CustomerDetails },
-     // { path: 'workflow', component: CreateQuoteComponent },
       { path: 'workflow',
         component: WorkflowComponent,
         children: [

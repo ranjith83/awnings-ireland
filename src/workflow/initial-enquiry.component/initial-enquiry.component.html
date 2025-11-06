@@ -7,75 +7,175 @@
     {{ errorMessage }}
   </div>
 
-  <!-- Form Section -->
+  <!-- Form Section with Tabs -->
   <div class="enquiry-form-section">
     <h2>{{ isEditMode ? 'Edit Initial Enquiry' : 'Add Initial Enquiry' }}</h2>
     
-    <form [formGroup]="enquiryForm" (ngSubmit)="onSubmit()">
-      <div class="form-group">
-        <label for="email">Email Address <span class="required">*</span></label>
-        <input 
-          type="email" 
-          id="email" 
-          formControlName="email" 
-          class="form-control"
-          [class.invalid]="email?.invalid && email?.touched"
-          placeholder="customer@example.com"
-        />
-        <div class="error-message" *ngIf="email?.invalid && email?.touched">
-          <span *ngIf="email?.errors?.['required']">Email is required</span>
-          <span *ngIf="email?.errors?.['email']">Please enter a valid email address</span>
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button 
+        type="button"
+        class="tab-button" 
+        [class.active]="activeTab === 'comments'"
+        (click)="switchTab('comments')">
+        Comments
+      </button>
+      <button 
+        type="button"
+        class="tab-button" 
+        [class.active]="activeTab === 'email'"
+        (click)="switchTab('email')">
+        Email
+      </button>
+      <button 
+        type="button"
+        class="tab-button" 
+        [class.active]="activeTab === 'images'"
+        (click)="switchTab('images')">
+        Images
+      </button>
+    </div>
+
+    <!-- Comments Tab -->
+    <div class="tab-content" *ngIf="activeTab === 'comments'">
+      <form [formGroup]="enquiryForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="email">Email Address <span class="required">*</span></label>
+          <input 
+            type="email" 
+            id="email" 
+            formControlName="email" 
+            class="form-control"
+            [class.invalid]="email?.invalid && email?.touched"
+            placeholder="customer@example.com"
+          />
+          <div class="error-message" *ngIf="email?.invalid && email?.touched">
+            <span *ngIf="email?.errors?.['required']">Email is required</span>
+            <span *ngIf="email?.errors?.['email']">Please enter a valid email address</span>
+          </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="comments">Comments <span class="required">*</span></label>
-        <textarea 
-          id="comments" 
-          formControlName="comments" 
-          class="form-control"
-          [class.invalid]="comments?.invalid && comments?.touched"
-          rows="5"
-          placeholder="Enter enquiry details, requirements, or any specific questions..."
-        ></textarea>
-        <div class="error-message" *ngIf="comments?.invalid && comments?.touched">
-          <span *ngIf="comments?.errors?.['required']">Comments are required</span>
-          <span *ngIf="comments?.errors?.['minlength']">Comments must be at least 10 characters</span>
+        <div class="form-group">
+          <label for="comments">Comments <span class="required">*</span></label>
+          <textarea 
+            id="comments" 
+            formControlName="comments" 
+            class="form-control"
+            [class.invalid]="comments?.invalid && comments?.touched"
+            rows="5"
+            placeholder="Enter enquiry details, requirements, or any specific questions..."
+          ></textarea>
+          <div class="error-message" *ngIf="comments?.invalid && comments?.touched">
+            <span *ngIf="comments?.errors?.['required']">Comments are required</span>
+            <span *ngIf="comments?.errors?.['minlength']">Comments must be at least 10 characters</span>
+          </div>
         </div>
-      </div>
 
-      <div class="form-group">
-        <label for="images">Images (URLs or file references)</label>
-        <input 
-          type="text" 
-          id="images" 
-          formControlName="images" 
-          class="form-control"
-          placeholder="Enter image URLs or file paths"
-        />
-        <small class="form-hint">Optional: Add references to related images or documents</small>
-      </div>
+        <div class="form-actions">
+          <button 
+            type="submit" 
+            class="btn btn-primary" 
+            [disabled]="isLoading"
+          >
+            <span *ngIf="!isLoading">{{ isEditMode ? 'Update Enquiry' : 'Add Enquiry' }}</span>
+            <span *ngIf="isLoading">Processing...</span>
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-secondary" 
+            (click)="cancelEdit()"
+            *ngIf="isEditMode"
+            [disabled]="isLoading"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
 
-      <div class="form-actions">
-        <button 
-          type="submit" 
-          class="btn btn-primary" 
-          [disabled]="isLoading"
-        >
-          <span *ngIf="!isLoading">{{ isEditMode ? 'Update Enquiry' : 'Add Enquiry' }}</span>
-          <span *ngIf="isLoading">Processing...</span>
-        </button>
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          (click)="cancelEdit()"
-          *ngIf="isEditMode"
-          [disabled]="isLoading"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+    <!-- Email Tab -->
+    <div class="tab-content" *ngIf="activeTab === 'email'">
+      <form [formGroup]="emailForm">
+        <div class="form-group">
+          <label for="emailTemplate">Choose Email Template</label>
+          <select 
+            id="emailTemplate" 
+            class="form-control"
+            formControlName="template"
+            (change)="onTemplateSelect($event)">
+            <option value="">Select a template...</option>
+            <option *ngFor="let template of emailTemplates" [value]="template.id">
+              {{ template.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="emailSubject">
+          <label for="emailSubject">Subject</label>
+          <input 
+            type="text" 
+            id="emailSubject" 
+            class="form-control"
+            formControlName="subject"
+            [value]="emailSubject"
+            readonly
+          />
+        </div>
+
+        <div class="form-group" *ngIf="emailContent">
+          <label for="emailBody">Email Content</label>
+          <textarea 
+            id="emailBody" 
+            class="form-control email-template-body"
+            formControlName="body"
+            rows="15"
+            placeholder="Email template will appear here"
+            [value]="emailContent"
+          ></textarea>
+        </div>
+
+        <div class="form-actions" *ngIf="emailContent">
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            (click)="sendEmail()"
+            [disabled]="isLoading">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+              <polyline points="22,6 12,13 2,6"></polyline>
+            </svg>
+            Send Email
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Images Tab -->
+    <div class="tab-content" *ngIf="activeTab === 'images'">
+      <form [formGroup]="enquiryForm">
+        <div class="form-group">
+          <label for="images">Images (URLs or file references)</label>
+          <input 
+            type="text" 
+            id="images" 
+            formControlName="images" 
+            class="form-control"
+            placeholder="Enter image URLs or file paths"
+          />
+          <small class="form-hint">Optional: Add references to related images or documents</small>
+        </div>
+
+        <div class="form-actions">
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            (click)="onSubmit()"
+            [disabled]="isLoading">
+            Save Images
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Enquiries List Section -->

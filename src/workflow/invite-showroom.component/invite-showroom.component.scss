@@ -1,116 +1,54 @@
-
 .workflow-container {
- /* max-width: 1200px;
-  margin: 0 auto; */
-  padding: 2px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f8f9fa;
-  min-height: 100vh;
-}
-
-.workflow-header {
-  margin-bottom: 20px;
-
-  h1 {
-    font-size: 28px;
-    font-weight: 600;
-    color: #1a1a2e;
-    margin: 0;
-  }
-}
-
-.workflow-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 30px;
-  border-bottom: 1px solid #e0e0e0;
-  overflow-x: auto;
-
-  .tab {
-    padding: 12px 20px;
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    color: #9e9e9e;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.3s ease;
-
-    &:hover {
-      color: #616161;
-    }
-
-    &.active {
-      color: #2563eb;
-      border-bottom-color: #2563eb;
-    }
-  }
+ /** max-width: 900px;
+  margin: 0 auto; **/
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .booking-form {
-  background: white;
-  border-radius: 8px;
-  padding: 30px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 100%;
 }
 
 .form-section {
-  margin-bottom: 30px;
-
-  &:last-of-type {
-    margin-bottom: 20px;
-  }
+  margin-bottom: 40px;
 }
 
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: #2563eb;
-  margin-bottom: 20px;
+  color: #3b82f6;
+  margin-bottom: 24px;
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+}
 
-  label {
-    display: block;
-    font-size: 14px;
-    font-weight: 500;
-    color: #374151;
-    margin-bottom: 8px;
-  }
+label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
 }
 
 .form-control {
-  width: 90%;
-  padding: 10px 14px;
-  font-size: 14px;
+  width: 100%;
+  padding: 12px 16px;
   border: 1px solid #d1d5db;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  background-color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1f2937;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
 
   &:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
-
-  &:disabled {
-    background-color: #f3f4f6;
-    cursor: not-allowed;
-  }
-}
-
-select.form-control {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 36px;
-  cursor: pointer;
 }
 
 textarea.form-control {
@@ -120,111 +58,152 @@ textarea.form-control {
 
 // Calendar Styles
 .calendar-container {
-  margin-top: 10px;
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .calendar-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: 20px;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
 
-  .month-year {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
+.month-year {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.nav-btn {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+
+  &:hover {
+    background-color: #f3f4f6;
+    border-color: #9ca3af;
   }
 
-  .nav-btn {
-    background: none;
-    border: none;
-    color: #6b7280;
-    cursor: pointer;
-    padding: 8px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-
-    &:hover {
-      background-color: #f3f4f6;
-      color: #1f2937;
-    }
+  svg {
+    width: 20px;
+    height: 20px;
   }
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  background: white;
 }
 
 .calendar-weekday {
+  padding: 16px 12px;
   text-align: center;
   font-size: 13px;
   font-weight: 600;
-  color: #2563eb;
-  padding: 12px 4px;
+  color: #3b82f6;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
+
+  &:last-child {
+    border-right: none;
+  }
 }
 
 .calendar-day {
- // height: 60px;
-  border: 1px solid #e5e7eb;
+  min-height: 80px;
+  padding: 12px;
+  text-align: center;
   background: white;
-  color: #2563eb;
-  font-size: 14px;
+  border: none;
+  border-bottom: 1px solid #e5e7eb;
+  border-right: 1px solid #e5e7eb;
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  font-size: 14px;
+  color: #1f2937;
+  transition: all 0.2s;
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 0;
 
-  &:hover:not(.empty):not(:disabled) {
-    background-color: #dbeafe;
-    border-color: #2563eb;
+  &:nth-child(7n) {
+    border-right: none;
+  }
+
+  &.empty {
+    background-color: #f9fafb;
+    color: #d1d5db;
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  &:not(.empty):not(.selected):hover {
+    background-color: #eff6ff;
   }
 
   &.selected {
     background-color: #fef3c7;
-    border-color: #f59e0b;
+    color: #92400e;
     font-weight: 600;
-  }
+    position: relative;
 
-  &.empty {
-    border: none;
-    cursor: default;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid #f59e0b;
+      pointer-events: none;
+    }
   }
 
   &:disabled {
     cursor: not-allowed;
-    color: transparent;
+    opacity: 0.5;
+  }
+
+  // Remove bottom border from last row
+  &:nth-last-child(-n+7) {
+    border-bottom: none;
   }
 }
 
-// Checkbox Group
+// Checkbox
 .checkbox-group {
-  .checkbox-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
+  display: flex;
+  align-items: center;
+  margin-top: 20px;
+}
 
-    .checkbox-input {
-      width: 18px;
-      height: 18px;
-      margin-right: 10px;
-      cursor: pointer;
-      accent-color: #2563eb;
-    }
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 400;
+  font-size: 14px;
+  color: #374151;
+}
 
-    span {
-      font-size: 14px;
-      color: #374151;
-    }
-  }
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #3b82f6;
 }
 
 // Action Buttons
@@ -232,25 +211,44 @@ textarea.form-control {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding-top: 20px;
+  margin-top: 40px;
+  padding-top: 24px;
   border-top: 1px solid #e5e7eb;
 }
 
 .btn {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
 
   svg {
     width: 16px;
     height: 16px;
+  }
+}
+
+.btn-secondary {
+  background-color: #f3f4f6;
+  color: #374151;
+
+  &:hover {
+    background-color: #e5e7eb;
+  }
+}
+
+.btn-primary {
+  background-color: #3b82f6;
+  color: white;
+
+  &:hover {
+    background-color: #2563eb;
   }
 
   &:disabled {
@@ -259,54 +257,51 @@ textarea.form-control {
   }
 }
 
-.btn-secondary {
-  background-color: white;
-  color: #6b7280;
-  border: 1px solid #d1d5db;
-
-  &:hover:not(:disabled) {
-    background-color: #f9fafb;
-    border-color: #9ca3af;
-  }
-}
-
-.btn-primary {
-  background-color: #2563eb;
-  color: white;
-
-  &:hover:not(:disabled) {
-    background-color: #1d4ed8;
-    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
-  }
-}
-
 // Responsive Design
 @media (max-width: 768px) {
   .workflow-container {
-    padding: 10px;
-  }
-
-  .booking-form {
-    padding: 20px;
-  }
-
-  .workflow-tabs {
-    .tab {
-      padding: 10px 15px;
-      font-size: 13px;
-    }
+    padding: 24px;
+    margin: 20px;
   }
 
   .calendar-day {
+    min-height: 60px;
+    font-size: 13px;
+    padding: 8px;
+  }
+
+  .calendar-weekday {
+    padding: 12px 8px;
     font-size: 12px;
   }
 
   .form-actions {
-    flex-direction: column;
+    flex-direction: column-reverse;
 
     .btn {
       width: 100%;
       justify-content: center;
     }
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-day {
+    min-height: 50px;
+    font-size: 12px;
+    padding: 6px;
+  }
+
+  .calendar-weekday {
+    padding: 10px 4px;
+    font-size: 11px;
+  }
+
+  .calendar-header {
+    padding: 16px;
+  }
+
+  .month-year {
+    font-size: 16px;
   }
 }
