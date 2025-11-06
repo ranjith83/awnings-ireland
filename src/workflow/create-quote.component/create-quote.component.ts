@@ -298,6 +298,27 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
+  onInstallationFeeChange() {
+    if (!this.installationFee || this.installationFee <= 0) {
+      this.removeAddonLineItem('installation');
+      return;
+    }
+
+    const amount = this.calculateAmount(1, this.installationFee, this.vatRate, 0);
+    
+    const lineItem: QuoteItemDisplay = {
+      description: 'Installation Fee',
+      quantity: 1,
+      unitPrice: this.installationFee,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: amount,
+      id: this.getAddonItemId('installation')
+    };
+
+    this.addOrUpdateAddonLineItem('installation', lineItem);
+  }
+
   onWidthChange() {
     this.checkAndGenerateFirstLineItem();
   }
@@ -513,13 +534,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       'arm': 100002,
       'motor': 100003,
       'heater': 100004,
-      'electrician': 100005
+      'electrician': 100005,
+      'installation': 100006
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation'];
     const currentTypeIndex = typeOrder.indexOf(type);
     
     let insertIndex = 1;

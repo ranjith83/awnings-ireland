@@ -132,7 +132,7 @@
       <div class="form-row installation-row">
         <div class="form-group small">
           <label class="form-label">Fee</label>
-          <input type="number" class="form-input" [(ngModel)]="installationFee" placeholder="0.00">
+          <input type="number" class="form-input" [(ngModel)]="installationFee" placeholder="0.00"  (change)="onInstallationFeeChange()">
         </div>
         <div class="vat-text">{{ vatRate }}% VAT</div>
       </div>

@@ -80,9 +80,9 @@
 
 /* Form Section Styles */
 .form-section {
-  margin-bottom: 30px;
-  padding-bottom: 25px;
-  border-bottom: 2px solid #e9ecef;
+/**  margin-bottom: 5px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid #e9ecef; **/
 }
 
 .form-section:last-of-type {
@@ -92,10 +92,10 @@
 .section-title {
   font-size: 18px;
   font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid #3498db;
+  color:  #3b82f6;
+  margin-bottom: 2px;
+  padding-bottom: 1px;
+  border-bottom: 2px solid #3498db; 
   display: inline-block;
 }
 
@@ -103,14 +103,15 @@
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  margin-top: 15px;
+  gap: 5px;
+  margin-top: 5px;
 }
 
 .form-row.installation-row {
   display: flex;
   align-items: flex-end;
   gap: 15px;
+  
 }
 
 .form-group {
@@ -127,13 +128,12 @@
 }
 
 .form-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: #495057;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
   margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
+
 
 /* Form Inputs */
 .form-select,
