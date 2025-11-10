@@ -43,6 +43,8 @@ export class CustomerDetails {
       name: ['', [Validators.required, Validators.minLength(2)]],
       companyNumber: [''],
       residential: [false],
+      taxNumber: [''],
+      vatNumber: [''],
       address1: ['', Validators.required],
       address2: [''],
       address3: [''],
@@ -102,6 +104,8 @@ export class CustomerDetails {
           name: fullCustomer.name,
           companyNumber: fullCustomer.companyNumber,
           residential: fullCustomer.residential,
+          taxNumber: fullCustomer.taxNumber || '',
+          vatNumber: fullCustomer.vatNumber || '',
           address1: fullCustomer.address1,
           address2: fullCustomer.address2,
           address3: fullCustomer.address3,
@@ -133,6 +137,18 @@ export class CustomerDetails {
     this.errorMessage = '';
   }
 
+  onResidentialChange(): void {
+    const isResidential = this.customerForm.get('residential')?.value;
+    
+    // Clear tax and VAT fields when switching to residential
+    if (isResidential) {
+      this.customerForm.patchValue({
+        taxNumber: '',
+        vatNumber: ''
+      });
+    }
+  }
+
   onSubmit(): void {
     if (this.customerForm.invalid) {
       Object.keys(this.customerForm.controls).forEach(key => {
@@ -158,6 +174,8 @@ export class CustomerDetails {
       name: formValue.name,
       companyNumber: formValue.companyNumber,
       residential: formValue.residential,
+      taxNumber: formValue.residential ? null : formValue.taxNumber,
+      vatNumber: formValue.residential ? null : formValue.vatNumber,
       address1: formValue.address1,
       address2: formValue.address2,
       address3: formValue.address3,
@@ -198,6 +216,8 @@ export class CustomerDetails {
       name: formValue.name,
       companyNumber: formValue.companyNumber,
       residential: formValue.residential,
+      taxNumber: formValue.residential ? null : formValue.taxNumber,
+      vatNumber: formValue.residential ? null : formValue.vatNumber,
       address1: formValue.address1,
       address2: formValue.address2,
       address3: formValue.address3,
