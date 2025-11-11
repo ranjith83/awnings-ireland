@@ -168,6 +168,11 @@
   border: none;
 }
 
+.customer-table th.actions-column {
+  width: 100px;
+  text-align: center;
+}
+
 .customer-table tbody {
   background: white;
 }
@@ -178,6 +183,54 @@
   color: #374151;
   font-size: 13px;
   vertical-align: middle;
+}
+
+.customer-table td.actions-cell {
+  text-align: center;
+  padding: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  width: 32px;
+  height: 32px;
+}
+
+.btn-icon-edit {
+  color: #4a90e2;
+}
+
+.btn-icon-edit:hover {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.btn-icon-delete {
+  color: #ef4444;
+}
+
+.btn-icon-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-icon svg {
+  display: block;
 }
 
 .customer-table tbody tr {
@@ -198,23 +251,6 @@
 
 .customer-table tbody tr:last-child td {
   border-bottom: none;
-}
-
-.btn-edit {
-  background: transparent;
-  color: #4a90e2;
-  border: 1px solid #4a90e2;
-  padding: 6px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s;
-}
-
-.btn-edit:hover {
-  background: #4a90e2;
-  color: white;
 }
 
 .no-data {
@@ -257,6 +293,10 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: slideUp 0.3s;
   overflow: auto;
+}
+
+.modal-content.modal-small {
+  max-width: 500px;
 }
 
 @keyframes slideUp {
@@ -312,6 +352,21 @@
   padding: 25px;
   overflow-y: auto;
   flex: 1;
+}
+
+/* Delete Confirmation Modal */
+.delete-confirmation-text {
+  font-size: 15px;
+  color: #374151;
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+
+.delete-warning-text {
+  font-size: 13px;
+  color: #ef4444;
+  margin: 0;
+  font-weight: 500;
 }
 
 /* Form Sections */
@@ -456,6 +511,29 @@ textarea.form-control {
   box-shadow: none;
 }
 
+.btn-delete {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.btn-delete:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-delete:disabled {
+  background: #d1d5db;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* Icons */
 .icon-plus::before {
   content: '+';
@@ -519,5 +597,10 @@ textarea.form-control {
 
   .modal-overlay {
     padding: 10px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 4px;
   }
 }

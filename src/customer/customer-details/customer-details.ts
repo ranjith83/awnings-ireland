@@ -19,8 +19,10 @@ export class CustomerDetails {
   filteredCustomers: CustomerMainViewDto[] = [];
   
   showModal = false;
+  showDeleteModal = false;
   modalMode: 'add' | 'edit' = 'add';
   customerForm: FormGroup;
+  customerToDelete: CustomerMainViewDto | null = null;
   
   isLoading = false;
   errorMessage = '';
@@ -131,10 +133,41 @@ export class CustomerDetails {
     });
   }
 
+  openDeleteModal(customer: CustomerMainViewDto): void {
+    this.customerToDelete = customer;
+    this.showDeleteModal = true;
+  }
+
   closeModal(): void {
     this.showModal = false;
     this.customerForm.reset();
     this.errorMessage = '';
+  }
+
+  closeDeleteModal(): void {
+    this.showDeleteModal = false;
+    this.customerToDelete = null;
+  }
+
+  confirmDelete(): void {
+    if (!this.customerToDelete) return;
+
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    this.customerService.deleteCompany(this.customerToDelete.companyId).subscribe({
+      next: () => {
+        console.log('Customer deleted successfully');
+        alert('Customer deleted successfully');
+        this.loadCustomers();
+        this.closeDeleteModal();
+      },
+      error: (error: Error) => {
+        console.error('Error deleting customer:', error);
+        this.errorMessage = 'Failed to delete customer. Please try again.';
+        this.isLoading = false;
+      }
+    });
   }
 
   onResidentialChange(): void {

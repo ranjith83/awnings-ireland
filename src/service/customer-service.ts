@@ -157,6 +157,18 @@ export class CustomerService {
   }
 
   /**
+   * Add a new company with contact
+   * Maps to: POST /api/customers/add-company-with-contact
+   */
+  deleteCompany(customerId: Number): Observable<Boolean> {
+    return this.http.post<Boolean>(`${this.apiUrl}/delete-customer`, customerId)
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+
+  /**
    * Add a contact to an existing company
    * Maps to: POST /api/customers/add-contact-to-company
    */
