@@ -10,52 +10,42 @@ import {
   faCog
 } from '@fortawesome/free-solid-svg-icons';
 
-
-
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-
+import { AuthService } from '../../service/auth.service';
 
 interface MenuItem {
-  icon: string;
+  icon: any; // Changed from string to any for FontAwesome icons
   label: string;
   route: string;
   badge?: number;
 }
 
 @Component({
-  selector: 'app-layout.component',
+  selector: 'app-layout', // Fixed: removed .component from selector
   standalone: true,
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './app-layout.component.html',
   styleUrl: './app-layout.component.css'
 })
-
 export class AppLayoutComponent {
   isSidebarCollapsed = false;
   activeRoute = '';
 
-  /**
-    menuItems: MenuItem[] = [
-      { icon: '📊', label: 'Dashboard', route: '/dashboard' },
-      { icon: '👥', label: 'Customers', route: '/customers' },
-      { icon: '🔄', label: 'Workflow', route: '/workflow', badge: 5 },
-      { icon: '📄', label: 'Follow ups', route: '/followups' },
-      { icon: '📈', label: 'Reports', route: '/reports' },
-      { icon: '⚙️', label: 'Settings', route: '/settings' }
+  menuItems: MenuItem[] = [
+    { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
+    { icon: faUsers, label: 'Customers', route: '/customers' },
+    { icon: faProjectDiagram, label: 'Workflow', route: '/workflow', badge: 5 },
+    { icon: faClipboardList, label: 'Follow ups', route: '/followups' },
+    { icon: faFileAlt, label: 'Reports', route: '/reports' },
+    { icon: faCog, label: 'Settings', route: '/settings' },
+    { icon: faCog, label: 'Task', route: '/task' },
+    { icon: faCog, label: 'Task Detail', route: '/taskdetail' }
   ];
-  */
 
-  menuItems = [
-  { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
-  { icon: faUsers, label: 'Customers', route: '/customers' },
-  { icon: faProjectDiagram, label: 'Workflow', route: '/workflow', badge: 5 },
-  { icon: faClipboardList, label: 'Follow ups', route: '/followups' },
-  { icon: faFileAlt, label: 'Reports', route: '/reports' },
-  { icon: faCog, label: 'Settings', route: '/settings' }
-];
-
-
-  constructor(private router: Router) {
+  constructor(
+    private router: Router,
+    private authService: AuthService
+  ) {
     this.activeRoute = this.router.url;
   }
 
@@ -73,13 +63,13 @@ export class AppLayoutComponent {
   }
 
   logout() {
-    // Implement logout logic
     console.log('Logging out...');
+    this.authService.logout(); // Uncommented this
     this.router.navigate(['/login']);
   }
 
   getPageTitle() {
     const activeItem = this.menuItems.find(item => item.route === this.activeRoute);
-    return activeItem?.label;
+    return activeItem?.label || 'Dashboard';
   }
 }

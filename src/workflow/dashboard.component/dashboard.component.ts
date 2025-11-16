@@ -13,9 +13,9 @@ export class DashboardComponent implements AfterViewInit {
   activeTab: 'Today' | 'Month' | 'Year' = 'Today';
 
   ngAfterViewInit(): void {
-    this.initChart();
+   // this.initChart();
   }
-
+/**
   private initChart(): void {
     const ctx = this.salesChartRef.nativeElement.getContext('2d');
 
@@ -110,4 +110,5 @@ export class DashboardComponent implements AfterViewInit {
     this.salesChart.update();
 
 }
+     */
 }

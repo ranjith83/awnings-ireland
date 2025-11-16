@@ -1,0 +1,169 @@
+<!-- task-list.component.html -->
+<div class="task-container">
+  <!-- Header -->
+  <div class="page-header">
+    <h2 class="page-title">Task Management</h2>
+    <button class="btn-add" (click)="openCreateTaskModal()">
+      <i class="icon-plus"></i> Create Task
+    </button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="task-tabs">
+    <button 
+      class="task-tab"
+      [class.active]="activeTab === 'all'"
+      (click)="setActiveTab('all')">
+      All Tasks
+    </button>
+    <button 
+      class="task-tab"
+      [class.active]="activeTab === 'my-tasks'"
+      (click)="setActiveTab('my-tasks')">
+      My Tasks
+    </button>
+    <button 
+      class="task-tab"
+      [class.active]="activeTab === 'created-by-me'"
+      (click)="setActiveTab('created-by-me')">
+      Created by Me
+    </button>
+    <button 
+      class="task-tab"
+      [class.active]="activeTab === 'overdue'"
+      (click)="setActiveTab('overdue')">
+      Overdue
+    </button>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="search-section">
+    <div class="search-bar">
+      <input 
+        type="text" 
+        placeholder="Search tasks by title, description, or assignee..." 
+        [(ngModel)]="searchText"
+        (ngModelChange)="onSearchChange()"
+        class="search-input">
+      <button class="btn-filter" (click)="toggleFilters()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+        Filters
+      </button>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="filter-panel" *ngIf="showFilters" [formGroup]="filterForm">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Status</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label" *ngFor="let status of [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.UNDER_REVIEW, TaskStatus.COMPLETED]">
+              <input type="checkbox" [value]="status" (change)="applyFilters()">
+              <span>{{ status | titlecase }}</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <label>Priority</label>
+          <div class="checkbox-group">
+            <label class="checkbox-label" *ngFor="let priority of [TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT]">
+              <input type="checkbox" [value]="priority" (change)="applyFilters()">
+              <span>{{ priority | titlecase }}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn-clear" (click)="clearFilters()">Clear Filters</button>
+        <button class="btn-apply" (click)="applyFilters()">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="isLoading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading tasks...</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="error-banner">
+    {{ errorMessage }}
+    <button class="btn-retry" (click)="loadTasks()">Retry</button>
+  </div>
+
+  <!-- Task Grid -->
+  <div class="task-grid" *ngIf="!isLoading">
+    <div 
+      *ngFor="let task of filteredTasks" 
+      class="task-card"
+      [class.overdue]="isOverdue(task)"
+      (click)="viewTaskDetails(task)">
+      
+      <!-- Task Header -->
+      <div class="task-header">
+        <h3 class="task-title">{{ task.title }}</h3>
+        <button class="btn-icon btn-icon-delete" (click)="deleteTask(task, $event)" title="Delete Task">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Task Description -->
+      <p class="task-description">{{ task.description }}</p>
+
+      <!-- Task Meta Info -->
+      <div class="task-meta">
+        <div class="task-meta-row">
+          <span class="task-label">Assigned to:</span>
+          <span class="task-value">{{ task.assignedToName }}</span>
+        </div>
+        <div class="task-meta-row">
+          <span class="task-label">Due Date:</span>
+          <span class="task-value" [class.overdue-text]="isOverdue(task)">
+            {{ formatDate(task.dueDate) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Task Footer -->
+      <div class="task-footer">
+        <span class="badge" [ngClass]="getStatusClass(task.status)">
+          {{ task.status | titlecase }}
+        </span>
+        <span class="badge" [ngClass]="getPriorityClass(task.priority)">
+          {{ task.priority | titlecase }}
+        </span>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="task-actions" (click)="$event.stopPropagation()">
+        <select 
+          class="status-select"
+          [value]="task.status"
+          (change)="updateTaskStatus(task, $any($event.target).value)">
+          <option [value]="TaskStatus.TODO">To Do</option>
+          <option [value]="TaskStatus.IN_PROGRESS">In Progress</option>
+          <option [value]="TaskStatus.UNDER_REVIEW">Under Review</option>
+          <option [value]="TaskStatus.COMPLETED">Completed</option>
+          <option [value]="TaskStatus.ON_HOLD">On Hold</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- No Tasks -->
+    <div *ngIf="filteredTasks.length === 0" class="no-tasks">
+      <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M9 11l3 3L22 4"></path>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+      <p>No tasks found</p>
+    </div>
+  </div>
+</div>

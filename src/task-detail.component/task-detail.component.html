@@ -1,0 +1,245 @@
+<!-- task-detail.component.html -->
+<div class="task-detail-container" *ngIf="task">
+  <!-- Header -->
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="19" y1="12" x2="5" y2="12"></line>
+        <polyline points="12 19 5 12 12 5"></polyline>
+      </svg>
+      Back to Tasks
+    </button>
+    <h2 class="page-title">{{ task.title }}</h2>
+  </div>
+
+  <!-- Task Overview -->
+  <div class="task-overview">
+    <div class="task-info-grid">
+      <div class="info-item">
+        <span class="info-label">Status</span>
+        <select 
+          class="status-select"
+          [value]="task.status"
+          (change)="updateTaskStatus($any($event.target).value)">
+          <option [value]="TaskStatus.TODO">To Do</option>
+          <option [value]="TaskStatus.IN_PROGRESS">In Progress</option>
+          <option [value]="TaskStatus.UNDER_REVIEW">Under Review</option>
+          <option [value]="TaskStatus.COMPLETED">Completed</option>
+          <option [value]="TaskStatus.ON_HOLD">On Hold</option>
+        </select>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Priority</span>
+        <span class="badge" [ngClass]="getPriorityClass(task.priority)">
+          {{ task.priority | titlecase }}
+        </span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Assigned To</span>
+        <span class="info-value">{{ task.assignedToName }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Created By</span>
+        <span class="info-value">{{ task.createdByName }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Due Date</span>
+        <span class="info-value">{{ formatDate(task.dueDate) }}</span>
+      </div>
+
+      <div class="info-item">
+        <span class="info-label">Created Date</span>
+        <span class="info-value">{{ formatDate(task.createdAt) }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="detail-tabs">
+    <button 
+      class="detail-tab"
+      [class.active]="activeTab === 'details'"
+      (click)="setActiveTab('details')">
+      Details
+    </button>
+    <button 
+      class="detail-tab"
+      [class.active]="activeTab === 'comments'"
+      (click)="setActiveTab('comments')">
+      Comments ({{ comments.length }})
+    </button>
+    <button 
+      class="detail-tab"
+      [class.active]="activeTab === 'attachments'"
+      (click)="setActiveTab('attachments')">
+      Attachments ({{ attachments.length }})
+    </button>
+    <button 
+      class="detail-tab"
+      [class.active]="activeTab === 'audit'"
+      (click)="setActiveTab('audit')">
+      Audit Trail ({{ auditTrail.length }})
+    </button>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="tab-content-section">
+    <!-- Details Tab -->
+    <div *ngIf="activeTab === 'details'" class="content-panel">
+      <h3 class="section-title">Description</h3>
+      <p class="task-description">{{ task.description }}</p>
+
+      <div class="task-metrics" *ngIf="task.estimatedHours || task.actualHours">
+        <div class="metric-item">
+          <span class="metric-label">Estimated Hours</span>
+          <span class="metric-value">{{ task.estimatedHours || 'N/A' }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Actual Hours</span>
+          <span class="metric-value">{{ task.actualHours || 'N/A' }}</span>
+        </div>
+      </div>
+
+      <div class="task-tags" *ngIf="task.tags && task.tags.length">
+        <span class="tag-label">Tags:</span>
+        <span class="tag" *ngFor="let tag of task.tags">{{ tag }}</span>
+      </div>
+    </div>
+
+    <!-- Comments Tab -->
+    <div *ngIf="activeTab === 'comments'" class="content-panel">
+      <!-- Add Comment Form -->
+      <div class="add-comment-form">
+        <textarea 
+          [(ngModel)]="newCommentText"
+          placeholder="Write a comment..."
+          class="comment-textarea"
+          rows="3"></textarea>
+        <button 
+          class="btn-add-comment"
+          [disabled]="!newCommentText.trim() || isAddingComment"
+          (click)="addComment()">
+          {{ isAddingComment ? 'Adding...' : 'Add Comment' }}
+        </button>
+      </div>
+
+      <!-- Comments List -->
+      <div class="comments-list">
+        <div *ngFor="let comment of comments" class="comment-item">
+          <div class="comment-header">
+            <div class="comment-author">
+              <strong>{{ comment.createdByName }}</strong>
+              <span class="comment-date">{{ formatDateTime(comment.createdAt) }}</span>
+            </div>
+            <button 
+              *ngIf="comment.createdBy === currentUserId"
+              class="btn-delete-comment"
+              (click)="deleteComment(comment)">
+              Delete
+            </button>
+          </div>
+          <p class="comment-text">{{ comment.commentText }}</p>
+        </div>
+
+        <div *ngIf="comments.length === 0" class="no-comments">
+          No comments yet. Be the first to comment!
+        </div>
+      </div>
+    </div>
+
+    <!-- Attachments Tab -->
+    <div *ngIf="activeTab === 'attachments'" class="content-panel">
+      <!-- Upload Form -->
+      <div class="upload-section">
+        <input 
+          type="file" 
+          #fileInput
+          (change)="onFileSelected($event)"
+          style="display: none">
+        <button 
+          class="btn-upload"
+          [disabled]="isUploadingFile"
+          (click)="fileInput.click()">
+          {{ isUploadingFile ? 'Uploading...' : 'Upload File' }}
+        </button>
+      </div>
+
+      <!-- Attachments List -->
+      <div class="attachments-list">
+        <div *ngFor="let attachment of attachments" class="attachment-item">
+          <div class="attachment-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+              <polyline points="13 2 13 9 20 9"></polyline>
+            </svg>
+          </div>
+          <div class="attachment-info">
+            <div class="attachment-name">{{ attachment.fileName }}</div>
+            <div class="attachment-meta">
+              {{ formatFileSize(attachment.fileSize) }} • 
+              Uploaded by {{ attachment.uploadedByName }} • 
+              {{ formatDateTime(attachment.uploadedAt) }}
+            </div>
+          </div>
+          <div class="attachment-actions">
+            <a [href]="attachment.fileUrl" target="_blank" class="btn-download">
+              Download
+            </a>
+            <button 
+              *ngIf="attachment.uploadedBy === currentUserId"
+              class="btn-delete-attachment"
+              (click)="deleteAttachment(attachment)">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <div *ngIf="attachments.length === 0" class="no-attachments">
+          No attachments yet. Upload a file to get started!
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Trail Tab -->
+    <div *ngIf="activeTab === 'audit'" class="content-panel">
+      <div class="audit-timeline">
+        <div *ngFor="let audit of auditTrail" class="audit-item">
+          <div class="audit-icon">{{ getAuditActionIcon(audit.action) }}</div>
+          <div class="audit-content">
+            <div class="audit-header">
+              <strong>{{ audit.performedByName }}</strong>
+              <span class="audit-action">{{ audit.action | titlecase | lowercase }}</span>
+            </div>
+            <p class="audit-description">{{ audit.description }}</p>
+            <div class="audit-changes" *ngIf="audit.oldValue || audit.newValue">
+              <span *ngIf="audit.oldValue" class="old-value">{{ audit.oldValue }}</span>
+              <span *ngIf="audit.oldValue && audit.newValue" class="arrow">→</span>
+              <span *ngIf="audit.newValue" class="new-value">{{ audit.newValue }}</span>
+            </div>
+            <span class="audit-date">{{ formatDateTime(audit.performedAt) }}</span>
+          </div>
+        </div>
+
+        <div *ngIf="auditTrail.length === 0" class="no-audit">
+          No audit trail available.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading State -->
+<div *ngIf="isLoading" class="loading-container">
+  <div class="spinner"></div>
+  <p>Loading task details...</p>
+</div>
+
+<!-- Error State -->
+<div *ngIf="errorMessage && !isLoading" class="error-container">
+  <p>{{ errorMessage }}</p>
+  <button class="btn-retry" (click)="goBack()">Go Back</button>
+</div>

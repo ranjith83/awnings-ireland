@@ -2,31 +2,73 @@ import { Component, OnInit } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService } from '../../service/customer-service';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
+import { map, shareReplay, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-customer-details',
   standalone: true,
-  imports: [  CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './customer-details.html',
   styleUrl: './customer-details.css'
 })
-export class CustomerDetails {
+export class CustomerDetails implements OnInit {
 
- customers: CustomerMainViewDto[] = [];
-  filteredCustomers: CustomerMainViewDto[] = [];
+  // Observable state management
+  private customersSubject = new BehaviorSubject<CustomerMainViewDto[]>([]);
+  customers$ = this.customersSubject.asObservable();
   
-  showModal = false;
-  showDeleteModal = false;
-  modalMode: 'add' | 'edit' = 'add';
+  private searchFiltersSubject = new BehaviorSubject({
+    companyName: '',
+    contact: '',
+    mobile: '',
+    email: '',
+    siteAddress: ''
+  });
+  searchFilters$ = this.searchFiltersSubject.asObservable();
+  
+  // Computed filtered customers
+  filteredCustomers$: Observable<CustomerMainViewDto[]> = combineLatest([
+    this.customers$,
+    this.searchFilters$
+  ]).pipe(
+    map(([customers, filters]) => {
+      return customers.filter(customer => {
+        return (
+          customer.companyName.toLowerCase().includes(filters.companyName.toLowerCase()) &&
+          customer.contactName.toLowerCase().includes(filters.contact.toLowerCase()) &&
+          (customer.mobilePhone || '').includes(filters.mobile) &&
+          customer.contactEmail.toLowerCase().includes(filters.email.toLowerCase()) &&
+          customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase())
+        );
+      });
+    }),
+    shareReplay(1)
+  );
+  
+  private showModalSubject = new BehaviorSubject(false);
+  showModal$ = this.showModalSubject.asObservable();
+  
+  private showDeleteModalSubject = new BehaviorSubject(false);
+  showDeleteModal$ = this.showDeleteModalSubject.asObservable();
+  
+  private modalModeSubject = new BehaviorSubject<'add' | 'edit'>('add');
+  modalMode$ = this.modalModeSubject.asObservable();
+  
+  private customerToDeleteSubject = new BehaviorSubject<CustomerMainViewDto | null>(null);
+  customerToDelete$ = this.customerToDeleteSubject.asObservable();
+  
+  private isLoadingSubject = new BehaviorSubject(false);
+  isLoading$ = this.isLoadingSubject.asObservable();
+  
+  private errorMessageSubject = new BehaviorSubject('');
+  errorMessage$ = this.errorMessageSubject.asObservable();
+  
   customerForm: FormGroup;
-  customerToDelete: CustomerMainViewDto | null = null;
   
-  isLoading = false;
-  errorMessage = '';
-  
+  // Keep these for template two-way binding with ngModel
   searchFilters = {
     companyName: '',
     contact: '',
@@ -67,38 +109,37 @@ export class CustomerDetails {
   }
 
   loadCustomers(): void {
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoadingSubject.next(true);
+    this.errorMessageSubject.next('');
     
-    this.customerService.getAllCustomers().subscribe({
-      next: (data: CustomerMainViewDto[]) => {
-        this.customers = data;
-        this.filteredCustomers = [...this.customers];
-        this.isLoading = false;
-      },
+    this.customerService.getAllCustomers().pipe(
+      tap(data => {
+        this.customersSubject.next(data);
+        this.isLoadingSubject.next(false);
+      })
+    ).subscribe({
       error: (error: Error) => {
         console.error('Error loading customers:', error);
-        this.errorMessage = 'Failed to load customers. Please try again.';
-        this.isLoading = false;
+        this.errorMessageSubject.next('Failed to load customers. Please try again.');
+        this.isLoadingSubject.next(false);
       }
     });
   }
 
   openAddModal(): void {
-    this.modalMode = 'add';
+    this.modalModeSubject.next('add');
     this.customerForm.reset({
       residential: false
     });
-    this.showModal = true;
+    this.showModalSubject.next(true);
   }
 
   openEditModal(customer: CustomerMainViewDto): void {
-    this.modalMode = 'edit';
+    this.modalModeSubject.next('edit');
+    this.isLoadingSubject.next(true);
     
-    // Load full customer details
-    this.isLoading = true;
-    this.customerService.getCustomerById(customer.companyId).subscribe({
-      next: (fullCustomer: Customer) => {
+    this.customerService.getCustomerById(customer.companyId).pipe(
+      tap(fullCustomer => {
         const contact = fullCustomer.customerContacts?.[0];
         
         this.customerForm.patchValue({
@@ -122,50 +163,53 @@ export class CustomerDetails {
           contactEmail: contact?.email || ''
         });
         
-        this.isLoading = false;
-        this.showModal = true;
-      },
+        this.isLoadingSubject.next(false);
+        this.showModalSubject.next(true);
+      })
+    ).subscribe({
       error: (error: Error) => {
         console.error('Error loading customer details:', error);
-        this.errorMessage = 'Failed to load customer details';
-        this.isLoading = false;
+        this.errorMessageSubject.next('Failed to load customer details');
+        this.isLoadingSubject.next(false);
       }
     });
   }
 
   openDeleteModal(customer: CustomerMainViewDto): void {
-    this.customerToDelete = customer;
-    this.showDeleteModal = true;
+    this.customerToDeleteSubject.next(customer);
+    this.showDeleteModalSubject.next(true);
   }
 
   closeModal(): void {
-    this.showModal = false;
+    this.showModalSubject.next(false);
     this.customerForm.reset();
-    this.errorMessage = '';
+    this.errorMessageSubject.next('');
   }
 
   closeDeleteModal(): void {
-    this.showDeleteModal = false;
-    this.customerToDelete = null;
+    this.showDeleteModalSubject.next(false);
+    this.customerToDeleteSubject.next(null);
   }
 
   confirmDelete(): void {
-    if (!this.customerToDelete) return;
+    const customer = this.customerToDeleteSubject.value;
+    if (!customer) return;
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoadingSubject.next(true);
+    this.errorMessageSubject.next('');
 
-    this.customerService.deleteCompany(this.customerToDelete.companyId).subscribe({
-      next: () => {
+    this.customerService.deleteCompany(customer.companyId).pipe(
+      tap(() => {
         console.log('Customer deleted successfully');
         alert('Customer deleted successfully');
         this.loadCustomers();
         this.closeDeleteModal();
-      },
+      })
+    ).subscribe({
       error: (error: Error) => {
         console.error('Error deleting customer:', error);
-        this.errorMessage = 'Failed to delete customer. Please try again.';
-        this.isLoading = false;
+        this.errorMessageSubject.next('Failed to delete customer. Please try again.');
+        this.isLoadingSubject.next(false);
       }
     });
   }
@@ -173,7 +217,6 @@ export class CustomerDetails {
   onResidentialChange(): void {
     const isResidential = this.customerForm.get('residential')?.value;
     
-    // Clear tax and VAT fields when switching to residential
     if (isResidential) {
       this.customerForm.patchValue({
         taxNumber: '',
@@ -190,10 +233,10 @@ export class CustomerDetails {
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoadingSubject.next(true);
+    this.errorMessageSubject.next('');
 
-    if (this.modalMode === 'add') {
+    if (this.modalModeSubject.value === 'add') {
       this.addCustomer();
     } else {
       this.updateCustomer();
@@ -225,17 +268,18 @@ export class CustomerDetails {
       }]
     };
 
-    this.customerService.addCompanyWithContact(newCustomer).subscribe({
-      next: (response: Customer) => {
+    this.customerService.addCompanyWithContact(newCustomer).pipe(
+      tap(response => {
         console.log('Customer added:', response);
         alert('Customer added successfully');
         this.loadCustomers();
         this.closeModal();
-      },
+      })
+    ).subscribe({
       error: (error: Error) => {
         console.error('Error adding customer:', error);
-        this.errorMessage = 'Failed to add customer. Please try again.';
-        this.isLoading = false;
+        this.errorMessageSubject.next('Failed to add customer. Please try again.');
+        this.isLoadingSubject.next(false);
       }
     });
   }
@@ -259,38 +303,31 @@ export class CustomerDetails {
       mobile: formValue.mobile,
       email: formValue.email,
       eircode: formValue.eircode,
-      updatedBy: 1 // Replace with actual user ID from auth service
+      updatedBy: 1
     };
 
-    this.customerService.updateCompany(companyId, updateData).subscribe({
-      next: (response: Customer) => {
+    this.customerService.updateCompany(companyId, updateData).pipe(
+      tap(response => {
         console.log('Customer updated:', response);
         alert('Customer updated successfully');
         this.loadCustomers();
         this.closeModal();
-      },
+      })
+    ).subscribe({
       error: (error: Error) => {
         console.error('Error updating customer:', error);
-        this.errorMessage = 'Failed to update customer. Please try again.';
-        this.isLoading = false;
+        this.errorMessageSubject.next('Failed to update customer. Please try again.');
+        this.isLoadingSubject.next(false);
       }
     });
   }
 
   onSearchChange(): void {
-    this.filteredCustomers = this.customers.filter(customer => {
-      return (
-        customer.companyName.toLowerCase().includes(this.searchFilters.companyName.toLowerCase()) &&
-        customer.contactName.toLowerCase().includes(this.searchFilters.contact.toLowerCase()) &&
-        (customer.mobilePhone || '').includes(this.searchFilters.mobile) &&
-        customer.contactEmail.toLowerCase().includes(this.searchFilters.email.toLowerCase()) &&
-        customer.siteAddress.toLowerCase().includes(this.searchFilters.siteAddress.toLowerCase())
-      );
-    });
+    // Update the BehaviorSubject with current filter values
+    this.searchFiltersSubject.next({ ...this.searchFilters });
   }
 
   navigateToWorkflow(customer: CustomerMainViewDto): void {
-    // Navigate to workflow screen with customer ID
     this.router.navigate(['/workflow'], { 
       queryParams: { 
         customerId: customer.companyId,
@@ -311,7 +348,7 @@ export class CustomerDetails {
       if (control.errors['pattern']) {
         return 'Mobile must be 9-10 digits';
       }
-      if (control.errors['minLength']) {
+      if (control.errors['minlength']) {
         return `${this.getFieldLabel(fieldName)} is too short`;
       }
     }

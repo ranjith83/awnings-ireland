@@ -1,0 +1,311 @@
+<div class="reports-container">
+  <!-- Header -->
+  <div class="reports-header">
+    <div class="header-content">
+      <div class="header-left">
+        <i class="lucide-file-text header-icon"></i>
+        <h1 class="header-title">Reports</h1>
+      </div>
+      <div class="header-right">
+        <button 
+          class="btn btn-primary"
+          (click)="exportReport('csv')"
+          [disabled]="isExporting">
+          <i class="lucide-download"></i>
+          <span>{{ isExporting ? 'Exporting...' : 'Export Report' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reports-content">
+    <!-- Error Message -->
+    <div class="error-banner" *ngIf="errorMessage">
+      <div class="error-content">
+        <i class="lucide-alert-triangle"></i>
+        <span>{{ errorMessage }}</span>
+      </div>
+      <button class="btn-retry" (click)="retryLoad()">
+        Retry
+      </button>
+    </div>
+
+    <!-- Report Type Selection -->
+    <div class="report-types-grid">
+      <button
+        *ngFor="let report of reportTypes; trackBy: trackByReportId"
+        class="report-type-card"
+        [class.active]="selectedReport === report.id"
+        (click)="selectReportType(report.id)">
+        <div class="report-type-content">
+          <div class="report-icon" [ngClass]="report.color">
+            <i [class]="getIconClass(report.icon)"></i>
+          </div>
+          <span class="report-name">{{ report.name }}</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div class="filters-header">
+        <i class="lucide-filter"></i>
+        <h2>Filters</h2>
+      </div>
+      <div class="filters-grid">
+        <div class="form-group">
+          <label>Date Range</label>
+          <select 
+            class="form-control"
+            [(ngModel)]="filters.dateRange"
+            (change)="onDateRangeChange()">
+            <option *ngFor="let range of dateRanges" [value]="range.id">
+              {{ range.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group" *ngIf="selectedReport === 'customer'">
+          <label>Search Customer</label>
+          <input 
+            type="text"
+            class="form-control"
+            [(ngModel)]="filters.customerName"
+            (ngModelChange)="onCustomerNameChange()"
+            placeholder="Search by company name...">
+        </div>
+        <div class="form-group" *ngIf="selectedReport === 'invoice'">
+          <label>Invoice Status</label>
+          <select 
+            class="form-control"
+            [(ngModel)]="filters.status"
+            (change)="onStatusChange()">
+            <option *ngFor="let status of invoiceStatuses" [value]="status.id">
+              {{ status.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group" *ngIf="selectedReport === 'invoice'">
+          <label>Search Customer</label>
+          <input 
+            type="text"
+            class="form-control"
+            [(ngModel)]="filters.customerName"
+            (ngModelChange)="onCustomerNameChange()"
+            placeholder="Search by customer name...">
+        </div>
+        <div class="form-group filter-actions">
+          <button class="btn btn-secondary" (click)="clearFilters()">
+            Clear Filters
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" *ngIf="isLoading">
+      <div class="spinner"></div>
+      <p>Loading report data...</p>
+    </div>
+
+    <!-- Report Content (shown when not loading) -->
+    <ng-container *ngIf="!isLoading">
+      <!-- Summary Statistics -->
+      <div class="summary-grid">
+        <div class="summary-card" *ngFor="let stat of summaryStats">
+          <p class="summary-label">{{ stat.label }}</p>
+          <div class="summary-content">
+            <p class="summary-value">{{ stat.value }}</p>
+            <span 
+              class="summary-change"
+              [class.positive]="stat.positive"
+              [class.negative]="!stat.positive">
+              {{ stat.change }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts and Activity Grid -->
+      <div class="dashboard-grid">
+        <!-- Status Distribution Chart (Invoice Reports Only) -->
+        <div class="card status-chart" *ngIf="selectedReport === 'invoice' && statusDistribution.length > 0">
+          <h3 class="card-title">Invoice Status Distribution</h3>
+          <div class="status-list">
+            <div 
+              class="status-item"
+              *ngFor="let item of statusDistribution; trackBy: trackByStatusName">
+              <div class="status-header">
+                <span class="status-name">{{ item.status }}</span>
+                <span class="status-count">{{ item.count }}</span>
+              </div>
+              <div class="progress-bar">
+                <div 
+                  class="progress-fill"
+                  [style.width.%]="item.percentage">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card recent-activity" [class.full-width]="selectedReport !== 'invoice' || statusDistribution.length === 0">
+          <h3 class="card-title">Recent Activity</h3>
+          <div class="activity-list">
+            <div 
+              class="activity-item"
+              *ngFor="let item of recentActivity">
+              <div class="activity-icon">
+                <i class="lucide-calendar"></i>
+              </div>
+              <div class="activity-content">
+                <p class="activity-customer">{{ item.customer }}</p>
+                <p class="activity-details">{{ item.workflow }} - {{ item.product }}</p>
+              </div>
+              <div class="activity-meta">
+                <span class="badge" [ngClass]="getStatusBadgeClass(item.status)">
+                  {{ item.status }}
+                </span>
+                <span class="activity-date">{{ item.date }}</span>
+                <span class="activity-value">{{ item.value }}</span>
+              </div>
+            </div>
+            <div *ngIf="recentActivity.length === 0" class="no-activity">
+              No recent activity
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Report Table -->
+      <div class="card table-card" *ngIf="selectedReport === 'customer'">
+        <div class="table-header">
+          <h3 class="card-title">Customer Report</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>COMPANY NAME</th>
+                <th>CONTACT</th>
+                <th>EMAIL</th>
+                <th>MOBILE</th>
+                <th>SITE ADDRESS</th>
+                <th>INVOICES</th>
+                <th>REVENUE</th>
+                <th>OUTSTANDING</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                *ngFor="let customer of customerData; trackBy: trackByCustomerId"
+                class="table-row">
+                <td class="font-medium">{{ customer.companyName }}</td>
+                <td>{{ customer.contactName }}</td>
+                <td>{{ customer.email }}</td>
+                <td>{{ customer.mobile }}</td>
+                <td>{{ customer.siteAddress }}</td>
+                <td class="text-center">{{ customer.totalInvoices }}</td>
+                <td class="font-medium">€{{ customer.totalRevenue | number:'1.2-2' }}</td>
+                <td class="font-medium" [class.text-danger]="customer.outstandingAmount > 0">
+                  €{{ customer.outstandingAmount | number:'1.2-2' }}
+                </td>
+              </tr>
+              <tr *ngIf="customerData.length === 0">
+                <td colspan="8" class="text-center">No customer data found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+          <p class="pagination-text">{{ getPaginationText() }}</p>
+          <div class="pagination-controls">
+            <button 
+              class="btn btn-pagination"
+              (click)="previousPage()"
+              [disabled]="currentPage === 1">
+              Previous
+            </button>
+            <button 
+              class="btn btn-pagination btn-pagination-active"
+              (click)="nextPage()"
+              [disabled]="currentPage === totalPages">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Invoice Report Table -->
+      <div class="card table-card" *ngIf="selectedReport === 'invoice'">
+        <div class="table-header">
+          <h3 class="card-title">Invoice Report</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>INVOICE #</th>
+                <th>CUSTOMER</th>
+                <th>INVOICE DATE</th>
+                <th>DUE DATE</th>
+                <th>AMOUNT</th>
+                <th>PAID</th>
+                <th>DUE</th>
+                <th>STATUS</th>
+                <th>OVERDUE DAYS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr 
+                *ngFor="let invoice of invoiceData; trackBy: trackByInvoiceId"
+                class="table-row">
+                <td class="font-medium">{{ invoice.invoiceNumber }}</td>
+                <td>{{ invoice.customerName }}</td>
+                <td>{{ invoice.invoiceDate }}</td>
+                <td>{{ invoice.dueDate }}</td>
+                <td class="font-medium">€{{ invoice.totalAmount | number:'1.2-2' }}</td>
+                <td class="text-success">€{{ invoice.amountPaid | number:'1.2-2' }}</td>
+                <td class="font-medium" [class.text-danger]="invoice.amountDue > 0">
+                  €{{ invoice.amountDue | number:'1.2-2' }}
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getStatusBadgeClass(invoice.status)">
+                    {{ invoice.status }}
+                  </span>
+                </td>
+                <td class="text-center" [class.text-danger]="invoice.daysOverdue > 0">
+                  {{ invoice.daysOverdue > 0 ? invoice.daysOverdue : '-' }}
+                </td>
+              </tr>
+              <tr *ngIf="invoiceData.length === 0">
+                <td colspan="9" class="text-center">No invoice data found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="table-footer">
+          <p class="pagination-text">{{ getPaginationText() }}</p>
+          <div class="pagination-controls">
+            <button 
+              class="btn btn-pagination"
+              (click)="previousPage()"
+              [disabled]="currentPage === 1">
+              Previous
+            </button>
+            <button 
+              class="btn btn-pagination btn-pagination-active"
+              (click)="nextPage()"
+              [disabled]="currentPage === totalPages">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+</div>

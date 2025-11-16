@@ -1,29 +1,107 @@
 <div class="workflow-container">
   <form [formGroup]="siteVisitForm" class="site-visit-form">
-    <!-- Select Workflow Section -->
+    <!-- Select Workflow and Product Model Section -->
     <div class="form-section">
       <h2 class="section-title">Select Workflow</h2>
-      <div class="form-row">
-        <div class="form-group full-width">
+      <div class="form-row two-columns">
+        <div class="form-group">
+          <label>Workflow</label>
           <select formControlName="workflow" class="form-control">
-            <option value="">Markilux 990</option>
+            <option value="">Select Workflow</option>
             <option *ngFor="let workflow of workflows" [value]="workflow.id">
               {{ workflow.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Product Model</label>
+          <select formControlName="productModel" class="form-control">
+            <option value="">Select Product Model</option>
+            <option *ngFor="let model of productModels" [value]="model.id">
+              {{ model.name }}
             </option>
           </select>
         </div>
       </div>
     </div>
 
-    <!-- Product Tabs Section -->
-    <div class="form-section">
+    <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
+    <div class="form-section" *ngIf="selectedProductModel && !showFullTabs">
+      <h2 class="section-title">Product Details</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Model</label>
+          <select formControlName="model" class="form-control">
+            <option value="">Select Model</option>
+            <option *ngFor="let value of ['Renson', 'Practic', 'Markilux']" [value]="value">
+              {{ value }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Other please specify</label>
+          <input 
+            type="text" 
+            formControlName="otherPleaseSpecify" 
+            class="form-control"
+            placeholder="Enter other details">
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Tabs Section (only for Awning and Roof System) -->
+    <div class="form-section" *ngIf="selectedProductModel && showFullTabs">
+      <!-- Other Specify Section (always shown first outside tabs for Awning/RoofSystem) -->
+      <h2 class="section-title">Product Details</h2>
+      <div class="form-row two-columns other-specify-section">
+        <div class="form-group">
+          <label>Model</label>
+          <select formControlName="model" class="form-control">
+            <option value="">Select Model</option>
+            <option *ngFor="let value of ['Renson', 'Practic', 'Markilux']" [value]="value">
+              {{ value }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Other please specify</label>
+          <input 
+            type="text" 
+            formControlName="otherPleaseSpecify" 
+            class="form-control"
+            placeholder="Enter other details">
+        </div>
+      </div>
+
+      <!-- Tabs -->
       <div class="product-tabs">
         <button 
           type="button"
           class="product-tab"
-          [class.active]="activeTab === 'select-product'"
-          (click)="setActiveTab('select-product')">
-          Select Product
+          [class.active]="activeTab === 'product-model'"
+          (click)="setActiveTab('product-model')">
+          Product Model
+        </button>
+        <button 
+          type="button"
+          class="product-tab"
+          [class.active]="activeTab === 'model-details'"
+          (click)="setActiveTab('model-details')">
+          Model Details
+        </button>
+        <button 
+          type="button"
+          class="product-tab"
+          [class.active]="activeTab === 'shadeplus'"
+          (click)="setActiveTab('shadeplus')">
+          ShadePlus
+        </button>
+        <button 
+          type="button"
+          class="product-tab"
+          [class.active]="activeTab === 'lights'"
+          (click)="setActiveTab('lights')">
+          Lights
         </button>
         <button 
           type="button"
@@ -35,238 +113,203 @@
         <button 
           type="button"
           class="product-tab"
-          [class.active]="activeTab === 'site-survey'"
-          (click)="setActiveTab('site-survey')">
-          Site Survey
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
           [class.active]="activeTab === 'images'"
           (click)="setActiveTab('images')">
           Images
         </button>
       </div>
 
-      <!-- Select Products Content -->
-      <div class="tab-content" *ngIf="activeTab === 'select-product'">
-        <h3 class="subsection-title">Select Products (Multiple Products)</h3>
+      <!-- Product Model Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'product-model'">
+        <h3 class="subsection-title">Product Model Section</h3>
 
-        <!-- Row 1 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>Select Supplier Type</label>
-            <select formControlName="supplierType" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let type of supplierTypes" [value]="type.id">
-                {{ type.name }}
-              </option>
-            </select>
-          </div>
+        <div class="dynamic-fields">
+          <ng-container *ngFor="let field of productModelFields">
+            <div class="form-group" *ngIf="isFieldVisible(field)">
+              <label>{{ field.label }}</label>
+              
+              <!-- Dropdown -->
+              <select 
+                *ngIf="field.type === 'dropdown'" 
+                [formControlName]="field.name" 
+                class="form-control">
+                <option value="">Select {{ field.label }}</option>
+                <option *ngFor="let value of field.values" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
 
-          <div class="form-group">
-            <label>Select Model</label>
-            <select formControlName="model" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let model of models" [value]="model.id">
-                {{ model.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Width In Cm(Switch Between feet and cm)</label>
-            <input 
-              type="text" 
-              formControlName="width" 
-              class="form-control"
-              placeholder="">
-          </div>
-        </div>
-
-        <!-- Row 2 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>Select Awnings</label>
-            <select formControlName="awnings" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let awning of awnings" [value]="awning.id">
-                {{ awning.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Height of Awnings to be Mounted</label>
-            <select formControlName="heightAwnings" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let model of models" [value]="model.id">
-                {{ model.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Wall Type</label>
-            <select formControlName="wallType" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let type of wallTypes" [value]="type.id">
-                {{ type.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 3 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>External Thickness</label>
-            <input 
-              type="text" 
-              formControlName="externalThickness" 
-              class="form-control"
-              placeholder="">
-          </div>
-
-          <div class="form-group">
-            <label>Wall Finish</label>
-            <select formControlName="wallFinish" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let finish of wallFinishes" [value]="finish.id">
-                {{ finish.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Bracket Type</label>
-            <select formControlName="bracketType" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let bracket of bracketTypes" [value]="bracket.id">
-                {{ bracket.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 4 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>Operation</label>
-            <select formControlName="operation" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let op of operations" [value]="op.id">
-                {{ op.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Operation Side</label>
-            <select formControlName="operationSide" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let side of operationSides" [value]="side.id">
-                {{ side.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Fabric</label>
-            <select formControlName="fabric" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let fabric of fabrics" [value]="fabric.id">
-                {{ fabric.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 5 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>RAL</label>
-            <select formControlName="ral" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let ral of ralOptions" [value]="ral.id">
-                {{ ral.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Valance Shape</label>
-            <input 
-              type="text" 
-              formControlName="valanceShape" 
-              class="form-control"
-              placeholder="">
-          </div>
-
-          <div class="form-group">
-            <label>Electrician</label>
-            <select formControlName="electrician" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let electrician of electricians" [value]="electrician.id">
-                {{ electrician.name }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Row 6 -->
-        <div class="form-row three-columns">
-          <div class="form-group">
-            <label>Wall Sealing Profile</label>
-            <select formControlName="wallSealingProfile" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let profile of sealingProfiles" [value]="profile.id">
-                {{ profile.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Standoff Brackets</label>
-            <select formControlName="standoffBrackets" class="form-control">
-              <option value="">Markilux 990</option>
-              <option *ngFor="let bracket of standoffBrackets" [value]="bracket.id">
-                {{ bracket.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="form-group checkbox-container">
-            <label class="checkbox-label">
+              <!-- Text Input -->
               <input 
-                type="checkbox"
-                formControlName="corrosionProduction"
-                class="checkbox-input">
-              <span>Corrosion Production</span>
-            </label>
-            <label class="checkbox-label">
-              <input 
-                type="checkbox"
-                formControlName="valance"
-                class="checkbox-input">
-              <span>Valance</span>
-            </label>
-          </div>
+                *ngIf="field.type === 'text'" 
+                type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+
+              <!-- Checkbox -->
+              <label *ngIf="field.type === 'checkbox'" class="checkbox-label">
+                <input 
+                  type="checkbox"
+                  [formControlName]="field.name"
+                  class="checkbox-input">
+                <span>{{ field.label }}</span>
+              </label>
+            </div>
+          </ng-container>
         </div>
       </div>
 
-      <!-- Other Tab Contents (Placeholder) -->
+      <!-- Model Details Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'model-details'">
+        <h3 class="subsection-title">Model Details Section</h3>
+
+        <div class="dynamic-fields">
+          <ng-container *ngFor="let field of modelDetailsFields">
+            <div class="form-group" *ngIf="isFieldVisible(field)">
+              <label>{{ field.label }}</label>
+              
+              <!-- Dropdown -->
+              <select 
+                *ngIf="field.type === 'dropdown'" 
+                [formControlName]="field.name" 
+                class="form-control">
+                <option value="">Select {{ field.label }}</option>
+                <option *ngFor="let value of field.values" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
+
+              <!-- Text Input -->
+              <input 
+                *ngIf="field.type === 'text'" 
+                type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- ShadePlus Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'shadeplus'">
+        <h3 class="subsection-title">ShadePlus Section</h3>
+
+        <div class="dynamic-fields">
+          <ng-container *ngFor="let field of shadePlusFields">
+            <div class="form-group" *ngIf="isFieldVisible(field)">
+              <label>{{ field.label }}</label>
+              
+              <!-- Dropdown -->
+              <select 
+                *ngIf="field.type === 'dropdown'" 
+                [formControlName]="field.name" 
+                class="form-control">
+                <option value="">Select {{ field.label }}</option>
+                <option *ngFor="let value of field.values" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
+
+              <!-- Text Input -->
+              <input 
+                *ngIf="field.type === 'text'" 
+                type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Lights Tab Content -->
+      <div class="tab-content" *ngIf="activeTab === 'lights'">
+        <h3 class="subsection-title">Lights Section</h3>
+
+        <div class="dynamic-fields">
+          <ng-container *ngFor="let field of lightsFields">
+            <div class="form-group" *ngIf="isFieldVisible(field)">
+              <label>{{ field.label }}</label>
+              
+              <!-- Dropdown -->
+              <select 
+                *ngIf="field.type === 'dropdown'" 
+                [formControlName]="field.name" 
+                class="form-control">
+                <option value="">Select {{ field.label }}</option>
+                <option *ngFor="let value of field.values" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
+
+              <!-- Text Input -->
+              <input 
+                *ngIf="field.type === 'text'" 
+                type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- Heater Tab Content -->
       <div class="tab-content" *ngIf="activeTab === 'heater'">
-        <p class="placeholder-text">Heater configuration will appear here</p>
+        <h3 class="subsection-title">Heater Section</h3>
+
+        <div class="dynamic-fields">
+          <ng-container *ngFor="let field of heaterFields">
+            <div class="form-group" *ngIf="isFieldVisible(field)">
+              <label>{{ field.label }}</label>
+              
+              <!-- Dropdown -->
+              <select 
+                *ngIf="field.type === 'dropdown'" 
+                [formControlName]="field.name" 
+                class="form-control">
+                <option value="">Select {{ field.label }}</option>
+                <option *ngFor="let value of field.values" [value]="value">
+                  {{ value }}
+                </option>
+              </select>
+
+              <!-- Text Input -->
+              <input 
+                *ngIf="field.type === 'text'" 
+                type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+            </div>
+          </ng-container>
+        </div>
       </div>
 
-      <div class="tab-content" *ngIf="activeTab === 'site-survey'">
-        <p class="placeholder-text">Site survey details will appear here</p>
-      </div>
-
+      <!-- Images Tab Content -->
       <div class="tab-content" *ngIf="activeTab === 'images'">
+        <h3 class="subsection-title">Images</h3>
         <p class="placeholder-text">Image upload will appear here</p>
       </div>
+    </div>
+
+    <!-- No Product Model Selected Message -->
+    <div class="form-section" *ngIf="!selectedProductModel">
+      <div class="no-equipment-message">
+        <p>Please select a product model to continue</p>
+      </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="form-actions" *ngIf="selectedProductModel">
+      <button type="button" class="btn-secondary" (click)="resetForm()">
+        Reset
+      </button>
+      <button type="submit" class="btn-primary" (click)="onSubmit()">
+        Submit Site Visit
+      </button>
     </div>
   </form>
 </div>
