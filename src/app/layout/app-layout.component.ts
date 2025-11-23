@@ -7,7 +7,9 @@ import {
   faProjectDiagram,
   faClipboardList,
   faFileAlt,
-  faCog
+  faCog,
+  faFileSignature,
+  faUserPlus
 } from '@fortawesome/free-solid-svg-icons';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -35,13 +37,15 @@ export class AppLayoutComponent {
     { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
     { icon: faUsers, label: 'Customers', route: '/customers' },
     { icon: faProjectDiagram, label: 'Workflow', route: '/workflow', badge: 5 },
-    { icon: faClipboardList, label: 'Follow ups', route: '/followups' },
+   // { icon: faClipboardList, label: 'Follow ups', route: '/followups' },
     { icon: faFileAlt, label: 'Reports', route: '/reports' },
-    { icon: faCog, label: 'Settings', route: '/settings' },
+   // { icon: faCog, label: 'Settings', route: '/settings' },
     { icon: faCog, label: 'Task', route: '/task' },
-    { icon: faCog, label: 'Task Detail', route: '/taskdetail' }
+    { icon: faUserPlus, label: 'User Register', route: '/user-management' },
+    { icon: faFileSignature, label: 'Audit', route: '/audit' }
   ];
 
+  
   constructor(
     private router: Router,
     private authService: AuthService

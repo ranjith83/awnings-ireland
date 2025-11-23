@@ -1,9 +1,9 @@
 <div class="workflow-list-container">
   <!-- Success/Error Messages -->
-  <div class="alert alert-success" *ngIf="successMessage">
+  <div class="alert alert-success" *ngIf="successMessage$ | async as successMessage">
     {{ successMessage }}
   </div>
-  <div class="alert alert-error" *ngIf="errorMessage">
+  <div class="alert alert-error" *ngIf="errorMessage$ | async as errorMessage">
     {{ errorMessage }}
   </div>
 
@@ -14,14 +14,13 @@
     <div class="select-row">
       <div class="select-group">
         <label class="select-label">Select Supplier</label>
-       <select 
+        <select 
           class="select-input"
           [(ngModel)]="selectedSupplier"
           (ngModelChange)="onSupplierChange($event)"
-          [disabled]="isLoading">
-          
+          [disabled]="(isLoading$ | async) === true">
           <option [ngValue]="null" disabled>Choose a supplier</option>
-          <option *ngFor="let supplier of suppliers" [ngValue]="supplier.supplierId">
+          <option *ngFor="let supplier of suppliers$ | async" [ngValue]="supplier.supplierId">
             {{ supplier.supplierName }}
           </option>
         </select>
@@ -33,9 +32,9 @@
           class="select-input" 
           [(ngModel)]="selectedProductType"
           (ngModelChange)="onProductTypeChange($event)"
-          [disabled]="!selectedSupplier || isLoading">
+          [disabled]="!selectedSupplier || (isLoading$ | async) === true">
           <option [value]="null" disabled selected>Choose a product type</option>
-          <option *ngFor="let type of productTypes" [ngValue]="type.productTypeId">
+          <option *ngFor="let type of productTypes$ | async" [ngValue]="type.productTypeId">
             {{ type.description }}
           </option>
         </select>
@@ -47,9 +46,9 @@
           class="select-input" 
           [(ngModel)]="selectedProduct"
           (ngModelChange)="onProductChange($event)"
-          [disabled]="!selectedProductType || isLoading">
+          [disabled]="!selectedProductType || (isLoading$ | async) === true">
           <option [value]="null" disabled selected>Choose a product</option>
-          <option *ngFor="let product of products" [ngValue]="product.productId">
+          <option *ngFor="let product of products$ | async" [ngValue]="product.productId">
             {{ product.productName }}
           </option>
         </select>
@@ -58,9 +57,9 @@
       <button 
         class="btn-add-workflow" 
         (click)="addNewWorkflow()"
-        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || isLoading">
-        <span *ngIf="!isLoading">Add New Workflow</span>
-        <span *ngIf="isLoading">Creating...</span>
+        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || (isLoading$ | async) === true">
+        <span *ngIf="(isLoading$ | async) === false">Add New Workflow</span>
+        <span *ngIf="(isLoading$ | async) === true">Creating...</span>
       </button>
     </div>
   </div>
@@ -82,10 +81,10 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let workflow of paginatedWorkflows" 
+        <tr *ngFor="let workflow of paginatedWorkflows$ | async" 
             (click)="selectWorkflow(workflow)" 
             class="workflow-row"
-            [class.loading-row]="isLoading">
+            [class.loading-row]="(isLoading$ | async) === true">
           <td class="product-cell">{{ workflow.productName }}</td>
           <td class="description-cell">{{ workflow.description }}</td>
           <td class="stage-cell">
@@ -93,7 +92,7 @@
               class="stage-btn" 
               [class.active]="workflow.initialEnquiry"
               (click)="toggleStage(workflow, 'initialEnquiry', $event)"
-              [disabled]="isLoading"
+              [disabled]="(isLoading$ | async) === true"
               title="{{ workflow.initialEnquiry ? 'Enabled' : 'Disabled' }}">
             </button>
           </td>
@@ -102,7 +101,7 @@
               class="stage-btn" 
               [class.active]="workflow.createQuotation"
               (click)="toggleStage(workflow, 'createQuote', $event)"
-              [disabled]="isLoading"
+              [disabled]="(isLoading$ | async) === true"
               title="{{ workflow.createQuotation ? 'Enabled' : 'Disabled' }}">
             </button>
           </td>
@@ -111,7 +110,7 @@
               class="stage-btn" 
               [class.active]="workflow.inviteShowRoomVisit"
               (click)="toggleStage(workflow, 'inviteShowroom', $event)"
-              [disabled]="isLoading"
+              [disabled]="(isLoading$ | async) === true"
               title="{{ workflow.inviteShowRoomVisit ? 'Enabled' : 'Disabled' }}">
             </button>
           </td>
@@ -120,7 +119,7 @@
               class="stage-btn" 
               [class.active]="workflow.setupSiteVisit"
               (click)="toggleStage(workflow, 'setupSiteVisit', $event)"
-              [disabled]="isLoading"
+              [disabled]="(isLoading$ | async) === true"
               title="{{ workflow.setupSiteVisit ? 'Enabled' : 'Disabled' }}">
             </button>
           </td>
@@ -129,7 +128,7 @@
               class="stage-btn" 
               [class.active]="workflow.invoiceSent"
               (click)="toggleStage(workflow, 'invoice', $event)"
-              [disabled]="isLoading"
+              [disabled]="(isLoading$ | async) === true"
               title="{{ workflow.invoiceSent ? 'Enabled' : 'Disabled' }}">
             </button>
           </td>
@@ -138,64 +137,68 @@
         </tr>
         
         <!-- Loading State -->
-        <tr *ngIf="isLoading && workflows.length === 0">
-          <td colspan="9" class="loading-cell">
-            <div class="loading-spinner-container">
-              <div class="spinner"></div>
-              <p>Loading workflows...</p>
-            </div>
-          </td>
-        </tr>
-        
-        <!-- Empty State -->
-        <tr *ngIf="!isLoading && workflows.length === 0">
-          <td colspan="9" class="empty-cell">
-            <div class="empty-state">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 11l3 3L22 4"></path>
-                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
-              </svg>
-              <h3>No Workflows Found</h3>
-              <p>Create your first workflow by selecting a supplier and model above.</p>
-            </div>
-          </td>
-        </tr>
+        <ng-container *ngIf="workflows$ | async as workflows">
+          <tr *ngIf="(isLoading$ | async) === true && workflows.length === 0">
+            <td colspan="9" class="loading-cell">
+              <div class="loading-spinner-container">
+                <div class="spinner"></div>
+                <p>Loading workflows...</p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Empty State -->
+          <tr *ngIf="(isLoading$ | async) === false && workflows.length === 0">
+            <td colspan="9" class="empty-cell">
+              <div class="empty-state">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 11l3 3L22 4"></path>
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                </svg>
+                <h3>No Workflows Found</h3>
+                <p>Create your first workflow by selecting a supplier and model above.</p>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
       </tbody>
     </table>
   </div>
 
   <!-- Pagination -->
-  <div class="pagination" *ngIf="!isLoading && workflows.length > pageSize">
-    <button 
-      class="page-btn" 
-      (click)="goToPage(1)"
-      [disabled]="currentPage === 1"
-      title="First Page">
-      «
-    </button>
-    <button 
-      class="page-btn" 
-      (click)="previousPage()"
-      [disabled]="currentPage === 1"
-      title="Previous Page">
-      ‹
-    </button>
-    <span class="page-info">
-      Page {{ currentPage }} of {{ totalPages }}
-    </span>
-    <button 
-      class="page-btn" 
-      (click)="nextPage()"
-      [disabled]="currentPage === totalPages"
-      title="Next Page">
-      ›
-    </button>
-    <button 
-      class="page-btn" 
-      (click)="goToPage(totalPages)"
-      [disabled]="currentPage === totalPages"
-      title="Last Page">
-      »
-    </button>
-  </div>
+  <ng-container *ngIf="{ workflows: workflows$ | async, currentPage: currentPage$ | async, totalPages: totalPages$ | async, isLoading: isLoading$ | async } as data">
+    <div class="pagination" *ngIf="data.isLoading === false && (data.workflows?.length || 0) > pageSize">
+      <button 
+        class="page-btn" 
+        (click)="goToPage(1)"
+        [disabled]="data.currentPage === 1"
+        title="First Page">
+        «
+      </button>
+      <button 
+        class="page-btn" 
+        (click)="previousPage()"
+        [disabled]="data.currentPage === 1"
+        title="Previous Page">
+        ‹
+      </button>
+      <span class="page-info">
+        Page {{ data.currentPage }} of {{ data.totalPages }}
+      </span>
+      <button 
+        class="page-btn" 
+        (click)="nextPage()"
+        [disabled]="data.currentPage === data.totalPages"
+        title="Next Page">
+        ›
+      </button>
+      <button 
+        class="page-btn" 
+        (click)="goToLastPage()"
+        [disabled]="data.currentPage === data.totalPages"
+        title="Last Page">
+        »
+      </button>
+    </div>
+  </ng-container>
 </div>

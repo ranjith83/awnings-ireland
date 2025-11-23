@@ -207,39 +207,43 @@ export class CustomerService {
   private handleError(error: HttpErrorResponse): Observable<never> {
     let errorMessage = 'An error occurred';
 
-    if (error.error instanceof ErrorEvent) {
-      // Client-side error
-      errorMessage = `Client Error: ${error.error.message}`;
+    // SAFE client-side error check (works in SSR)
+    const isClientError =
+        typeof ErrorEvent !== 'undefined' &&
+        error.error instanceof ErrorEvent;
+
+    if (isClientError) {
+        errorMessage = `Client Error: ${error.error.message}`;
     } else {
-      // Server-side error
-      switch (error.status) {
-        case 0:
-          errorMessage = 'Unable to connect to server. Please check if the API is running.';
-          break;
-        case 400:
-          errorMessage = 'Bad Request: Please check your input data';
-          break;
-        case 401:
-          errorMessage = 'Unauthorized: Please login again';
-          break;
-        case 403:
-          errorMessage = 'Forbidden: You do not have permission';
-          break;
-        case 404:
-          errorMessage = 'Not Found: The requested resource was not found';
-          break;
-        case 500:
-          errorMessage = 'Internal Server Error: Please try again later';
-          break;
-        case 503:
-          errorMessage = 'Service Unavailable: Server is temporarily unavailable';
-          break;
-        default:
-          errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
-      }
+        switch (error.status) {
+            case 0:
+                errorMessage = 'Unable to connect to server. Please check if the API is running.';
+                break;
+            case 400:
+                errorMessage = 'Bad Request: Please check your input data';
+                break;
+            case 401:
+                errorMessage = 'Unauthorized: Please login again';
+                break;
+            case 403:
+                errorMessage = 'Forbidden: You do not have permission';
+                break;
+            case 404:
+                errorMessage = 'Not Found: The requested resource was not found';
+                break;
+            case 500:
+                errorMessage = 'Internal Server Error: Please try again later';
+                break;
+            case 503:
+                errorMessage = 'Service Unavailable: Server is temporarily unavailable';
+                break;
+            default:
+                errorMessage = `Error Code: ${error.status}\nMessage: ${error.message}`;
+        }
     }
 
     console.error('HTTP Error:', errorMessage, error);
     return throwError(() => new Error(errorMessage));
-  }
+}
+
 }

@@ -5,11 +5,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const token = localStorage.getItem('token');
   
   // Log for debugging (remove in production)
-  console.log('🔐 Auth Interceptor triggered:', {
-    url: req.url,
-    method: req.method,
-    hasToken: !!token
-  });
+  //console.log('🔐 Auth Interceptor triggered:', { url: req.url,  method: req.method,  hasToken: !!token  });
   
   // If token exists, clone the request and add Authorization header
   if (token) {
@@ -19,8 +15,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
     });
     
-    console.log('✅ Authorization header added:', 
-      clonedRequest.headers.get('Authorization')?.substring(0, 30) + '...');
+    //console.log('✅ Authorization header added:', clonedRequest.headers.get('Authorization')?.substring(0, 30) + '...');
     
     return next(clonedRequest);
   }

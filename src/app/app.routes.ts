@@ -14,6 +14,9 @@ import { ReportsComponent } from '../reports/reports.component';
 import { TaskComponent } from '../task.component/task.component';
 import { AuthGuard } from '../guards/auth-guard';
 import { LoginComponent } from '../login.component/login.component';
+import { RegisterComponent } from '../register.component/register.component';
+import { UserManagementComponent } from '../user-management.component/user-management.component';
+import { AuditHistoryComponent } from '../audit-history.component/audit-history.component';
 
 export const routes: Routes = [
   // Public routes (NO AppLayoutComponent - no sidebar/header)
@@ -26,7 +29,7 @@ export const routes: Routes = [
   {
     path: '',
     component: AppLayoutComponent,
-    canActivate: [AuthGuard], // Uncomment this when AuthGuard is ready
+    //canActivate: [AuthGuard], // Uncomment this when AuthGuard is ready
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
@@ -54,7 +57,10 @@ export const routes: Routes = [
       { path: 'task', component: TaskComponent },
       { path: 'tasks', component: TaskComponent }, // Alias for consistency
       { path: 'tasks/:id', component: TaskDetailComponent },
-      { path: 'taskdetail', component: TaskDetailComponent }
+      { path: 'taskdetail', component: TaskDetailComponent },
+      {  path: 'register', component: RegisterComponent },
+      {  path: 'user-management',  component: UserManagementComponent },
+      {  path: 'audit',  component: AuditHistoryComponent }
     ]
   },
 

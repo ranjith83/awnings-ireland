@@ -1,35 +1,145 @@
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
-import { Chart, ChartConfiguration } from 'chart.js/auto'
+// dashboard.component.ts
+import { AfterViewInit, Component, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Chart, ChartConfiguration } from 'chart.js/auto';
+import { BehaviorSubject, forkJoin, Observable, of, Subject } from 'rxjs';
+import { takeUntil, tap, catchError, finalize } from 'rxjs/operators';
+import { 
+  DashboardService, 
+  DashboardStats, 
+  RecentOrder, 
+  TopCustomer, 
+  ActivityItem 
+} from '../../service/dashboard.service';
 
 @Component({
-  selector: 'app-dashboard.component',
-  imports: [],
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
-export class DashboardComponent implements AfterViewInit {
+export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('salesChart') salesChartRef!: ElementRef<HTMLCanvasElement>;
-  salesChart!: Chart;
-  activeTab: 'Today' | 'Month' | 'Year' = 'Today';
+  
+  private destroy$ = new Subject<void>();
+  private salesChart!: Chart;
+  
+  // Observables for data
+  stats$!: Observable<DashboardStats>;
+  recentOrders$!: Observable<RecentOrder[]>;
+  topCustomers$!: Observable<TopCustomer[]>;
+  recentActivity$!: Observable<ActivityItem[]>;
+  statusDistribution$!: Observable<{ status: string; count: number; percentage: number }[]>;
+  
+  // State management with BehaviorSubjects
+  private statsSubject$ = new BehaviorSubject<DashboardStats>({
+    ordersToDate: { value: 0, change: '0%', positive: true },
+    ordersInProgress: { value: 0, change: '0%', positive: true },
+    ordersNearCompletion: { value: 0, change: '0%', positive: true },
+    totalRevenue: { value: 0, change: '0%', positive: true }
+  });
+  
+  private recentOrdersSubject$ = new BehaviorSubject<RecentOrder[]>([]);
+  private topCustomersSubject$ = new BehaviorSubject<TopCustomer[]>([]);
+  private recentActivitySubject$ = new BehaviorSubject<ActivityItem[]>([]);
+  private statusDistributionSubject$ = new BehaviorSubject<{ status: string; count: number; percentage: number }[]>([]);
+  
+  isLoading$ = new BehaviorSubject<boolean>(false);
+  errorMessage$ = new BehaviorSubject<string>('');
+  
+  activeTab: 'today' | 'month' | 'year' = 'today';
+
+  constructor(private dashboardService: DashboardService) {}
+
+  ngOnInit(): void {
+   // this.initializeObservables();
+   // this.loadDashboardData();
+  }
 
   ngAfterViewInit(): void {
-   // this.initChart();
+    this.initChart();
+    this.loadChartData(this.activeTab);
+    // Small delay to ensure canvas is ready
+    setTimeout(() => {
+      //this.initChart();
+      //this.loadChartData(this.activeTab);
+    }, 100);
   }
-/**
-  private initChart(): void {
-    const ctx = this.salesChartRef.nativeElement.getContext('2d');
 
-    const hours = ['9Am', '10Am', '11Am', '12Pm', '1Pm', '2Pm', '3Pm', '4Pm', '5Pm', '6Pm', '7Pm'];
-    const salesData = [5000, 10000, 8000, 15000, 12000, 18000, 16000, 22000, 19000, 25000, 23000];
-  
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.salesChart) {
+      this.salesChart.destroy();
+    }
+  }
+
+  private initializeObservables(): void {
+    this.stats$ = this.statsSubject$.asObservable();
+    this.recentOrders$ = this.recentOrdersSubject$.asObservable();
+    this.topCustomers$ = this.topCustomersSubject$.asObservable();
+    this.recentActivity$ = this.recentActivitySubject$.asObservable();
+    this.statusDistribution$ = this.statusDistributionSubject$.asObservable();
+  }
+
+  private readonly EMPTY_STATS: DashboardStats = {
+  ordersToDate: { value: 0, change: '0%', positive: true },
+  ordersInProgress: { value: 0, change: '0%', positive: true },
+  ordersNearCompletion: { value: 0, change: '0%', positive: true },
+  totalRevenue: { value: 0, change: '0%', positive: true }
+};
+
+ loadDashboardData(): void {
+  this.isLoading$.next(true);
+  this.errorMessage$.next('');
+
+  forkJoin({
+  stats: this.dashboardService.getDashboardStats()
+    .pipe(catchError(() => of(this.EMPTY_STATS))),
+
+  orders: this.dashboardService.getRecentOrders(5)
+    .pipe(catchError(() => of([]))),
+
+  customers: this.dashboardService.getTopCustomers(5)
+    .pipe(catchError(() => of([]))),
+
+  activity: [], //this.dashboardService.getRecentActivity(10)
+    //.pipe(catchError(() => of([]))),
+
+  distribution: this.dashboardService.getStatusDistribution()
+    .pipe(catchError(() => of([])))
+})
+  .pipe(
+    takeUntil(this.destroy$),
+    tap(result => {
+      this.statsSubject$.next(result.stats);
+      this.recentOrdersSubject$.next(result.orders);
+      this.topCustomersSubject$.next(result.customers);
+      this.recentActivitySubject$.next(result.activity);
+      this.statusDistributionSubject$.next(result.distribution);
+    }),
+    finalize(() => this.isLoading$.next(false))
+  )
+  .subscribe();
+}
+
+  private initChart(): void {
+    if (!this.salesChartRef) {
+      console.warn('Chart canvas not ready');
+      return;
+    }
+
+    const ctx = this.salesChartRef.nativeElement.getContext('2d');
+    if (!ctx) return;
 
     const config: ChartConfiguration<'line'> = {
       type: 'line',
       data: {
-        labels: hours,
+        labels: [],
         datasets: [{
           label: 'Sales',
-          data: salesData,
+          data: [],
           borderColor: '#3b82f6',
           backgroundColor: 'rgba(59, 130, 246, 0.1)',
           fill: true,
@@ -43,6 +153,7 @@ export class DashboardComponent implements AfterViewInit {
         }]
       },
       options: {
+        
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -56,8 +167,7 @@ export class DashboardComponent implements AfterViewInit {
             padding: 12,
             displayColors: false,
             callbacks: {
-               
-              label: context => '$' + context.parsed.y
+              label: context => '€' + context.parsed.y
             }
           }
         },
@@ -65,12 +175,11 @@ export class DashboardComponent implements AfterViewInit {
           y: {
             beginAtZero: true,
             grid: {
-              color: '#f3f4f6',
-             // drawBorder: false
+              color: '#f3f4f6'
             },
             ticks: {
               color: '#9ca3af',
-              callback: value => '$' + (Number(value) / 1000) + 'k'
+              callback: value => '€' + (Number(value) / 1000) + 'k'
             }
           },
           x: {
@@ -85,30 +194,75 @@ export class DashboardComponent implements AfterViewInit {
       }
     };
 
-    this.salesChart = new Chart(ctx!, config);
+    this.salesChart = new Chart(ctx, config);
   }
 
-  switchTab(period: 'Today' | 'Month' | 'Year'): void {
+  loadChartData(period: 'today' | 'month' | 'year'): void {
+    if (!this.salesChart) return;
+
+    this.dashboardService.getChartData(period)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(chartData => {
+          this.salesChart.data.labels = chartData.labels;
+          this.salesChart.data.datasets[0].data = chartData.data;
+          this.salesChart.update();
+        }),
+        catchError(error => {
+          console.error('Error loading chart data:', error);
+          return [];
+        })
+      )
+      .subscribe();
+  }
+
+  switchTab(period: 'today' | 'month' | 'year'): void {
     this.activeTab = period;
+    this.loadChartData(period);
+  }
 
-    let newLabels: string[] = [];
-    let newData: number[] = [];
-
-    if (period === 'Today') {
-      newLabels = ['9Am', '10Am', '11Am', '12Pm', '1Pm', '2Pm', '3Pm', '4Pm', '5Pm', '6Pm', '7Pm'];
-      newData = [5000, 10000, 8000, 15000, 12000, 18000, 16000, 22000, 19000, 25000, 23000];
-    } else if (period === 'Month') {
-      newLabels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-      newData = [45000, 52000, 48000, 58000];
-    } else {
-      newLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      newData = [120000, 135000, 145000, 158000, 162000, 175000, 168000, 182000, 190000, 205000, 198000, 215000];
+  retryLoad(): void {
+    this.errorMessage$.next('');
+    this.loadDashboardData();
+    if (this.salesChart) {
+      this.loadChartData(this.activeTab);
     }
+  }
 
-    this.salesChart.data.labels = newLabels;
-    this.salesChart.data.datasets[0].data = newData;
-    this.salesChart.update();
+  getStatusBadgeClass(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'Draft': 'badge-warning',
+      'Sent': 'badge-info',
+      'Paid': 'badge-success',
+      'Partially Paid': 'badge-primary',
+      'Overdue': 'badge-danger',
+      'Cancelled': 'badge-secondary'
+    };
+    return statusMap[status] || 'badge-default';
+  }
 
-}
-     */
+  getActivityIcon(type: string): string {
+    const iconMap: { [key: string]: string } = {
+      'order': 'package',
+      'invoice': 'file-text',
+      'customer': 'users'
+    };
+    return iconMap[type] || 'circle';
+  }
+
+  trackByOrderId(index: number, order: RecentOrder): number {
+    return order.id;
+  }
+
+  trackByCustomerId(index: number, customer: TopCustomer): number {
+    return customer.id;
+  }
+
+  trackByActivityId(index: number, activity: ActivityItem): number {
+    return activity.id;
+  }
+
+  trackByStatus(index: number, item: { status: string }): string {
+    return item.status;
+  }
 }

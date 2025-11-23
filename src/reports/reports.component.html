@@ -10,9 +10,9 @@
         <button 
           class="btn btn-primary"
           (click)="exportReport('csv')"
-          [disabled]="isExporting">
+          [disabled]="(isExporting$ | async) === true">
           <i class="lucide-download"></i>
-          <span>{{ isExporting ? 'Exporting...' : 'Export Report' }}</span>
+          <span>{{ (isExporting$ | async) ? 'Exporting...' : 'Export Report' }}</span>
         </button>
       </div>
     </div>
@@ -20,7 +20,7 @@
 
   <div class="reports-content">
     <!-- Error Message -->
-    <div class="error-banner" *ngIf="errorMessage">
+    <div class="error-banner" *ngIf="errorMessage$ | async as errorMessage">
       <div class="error-content">
         <i class="lucide-alert-triangle"></i>
         <span>{{ errorMessage }}</span>
@@ -33,7 +33,7 @@
     <!-- Report Type Selection -->
     <div class="report-types-grid">
       <button
-        *ngFor="let report of reportTypes; trackBy: trackByReportId"
+        *ngFor="let report of reportTypes$ | async; trackBy: trackByReportId"
         class="report-type-card"
         [class.active]="selectedReport === report.id"
         (click)="selectReportType(report.id)">
@@ -102,16 +102,16 @@
     </div>
 
     <!-- Loading State -->
-    <div class="loading-state" *ngIf="isLoading">
+    <div class="loading-state" *ngIf="isLoading$ | async">
       <div class="spinner"></div>
       <p>Loading report data...</p>
     </div>
 
     <!-- Report Content (shown when not loading) -->
-    <ng-container *ngIf="!isLoading">
+    <ng-container *ngIf="(isLoading$ | async) === false">
       <!-- Summary Statistics -->
       <div class="summary-grid">
-        <div class="summary-card" *ngFor="let stat of summaryStats">
+        <div class="summary-card" *ngFor="let stat of summaryStats$ | async">
           <p class="summary-label">{{ stat.label }}</p>
           <div class="summary-content">
             <p class="summary-value">{{ stat.value }}</p>
@@ -128,12 +128,12 @@
       <!-- Charts and Activity Grid -->
       <div class="dashboard-grid">
         <!-- Status Distribution Chart (Invoice Reports Only) -->
-        <div class="card status-chart" *ngIf="selectedReport === 'invoice' && statusDistribution.length > 0">
+        <div class="card status-chart" *ngIf="selectedReport === 'invoice' && (statusDistribution$ | async)?.length || 0 > 0">
           <h3 class="card-title">Invoice Status Distribution</h3>
           <div class="status-list">
             <div 
               class="status-item"
-              *ngFor="let item of statusDistribution; trackBy: trackByStatusName">
+              *ngFor="let item of statusDistribution$ | async; trackBy: trackByStatusName">
               <div class="status-header">
                 <span class="status-name">{{ item.status }}</span>
                 <span class="status-count">{{ item.count }}</span>
@@ -149,12 +149,12 @@
         </div>
 
         <!-- Recent Activity -->
-        <div class="card recent-activity" [class.full-width]="selectedReport !== 'invoice' || statusDistribution.length === 0">
+        <div class="card recent-activity" [class.full-width]="selectedReport !== 'invoice' || (statusDistribution$ | async)?.length === 0">
           <h3 class="card-title">Recent Activity</h3>
           <div class="activity-list">
             <div 
               class="activity-item"
-              *ngFor="let item of recentActivity">
+              *ngFor="let item of recentActivity$ | async">
               <div class="activity-icon">
                 <i class="lucide-calendar"></i>
               </div>
@@ -170,7 +170,7 @@
                 <span class="activity-value">{{ item.value }}</span>
               </div>
             </div>
-            <div *ngIf="recentActivity.length === 0" class="no-activity">
+            <div *ngIf="(recentActivity$ | async)?.length === 0" class="no-activity">
               No recent activity
             </div>
           </div>
@@ -198,7 +198,7 @@
             </thead>
             <tbody>
               <tr 
-                *ngFor="let customer of customerData; trackBy: trackByCustomerId"
+                *ngFor="let customer of customerData$ | async; trackBy: trackByCustomerId"
                 class="table-row">
                 <td class="font-medium">{{ customer.companyName }}</td>
                 <td>{{ customer.contactName }}</td>
@@ -211,7 +211,7 @@
                   €{{ customer.outstandingAmount | number:'1.2-2' }}
                 </td>
               </tr>
-              <tr *ngIf="customerData.length === 0">
+              <tr *ngIf="(customerData$ | async)?.length === 0">
                 <td colspan="8" class="text-center">No customer data found</td>
               </tr>
             </tbody>
@@ -220,18 +220,18 @@
 
         <!-- Pagination -->
         <div class="table-footer">
-          <p class="pagination-text">{{ getPaginationText() }}</p>
+          <p class="pagination-text">{{ paginationText$ | async }}</p>
           <div class="pagination-controls">
             <button 
               class="btn btn-pagination"
               (click)="previousPage()"
-              [disabled]="currentPage === 1">
+              [disabled]="(currentPage$ | async) === 1">
               Previous
             </button>
             <button 
               class="btn btn-pagination btn-pagination-active"
               (click)="nextPage()"
-              [disabled]="currentPage === totalPages">
+              [disabled]="(currentPage$ | async) === (totalPages$ | async)">
               Next
             </button>
           </div>
@@ -260,7 +260,7 @@
             </thead>
             <tbody>
               <tr 
-                *ngFor="let invoice of invoiceData; trackBy: trackByInvoiceId"
+                *ngFor="let invoice of invoiceData$ | async; trackBy: trackByInvoiceId"
                 class="table-row">
                 <td class="font-medium">{{ invoice.invoiceNumber }}</td>
                 <td>{{ invoice.customerName }}</td>
@@ -280,7 +280,7 @@
                   {{ invoice.daysOverdue > 0 ? invoice.daysOverdue : '-' }}
                 </td>
               </tr>
-              <tr *ngIf="invoiceData.length === 0">
+              <tr *ngIf="(invoiceData$ | async)?.length === 0">
                 <td colspan="9" class="text-center">No invoice data found</td>
               </tr>
             </tbody>
@@ -289,18 +289,18 @@
 
         <!-- Pagination -->
         <div class="table-footer">
-          <p class="pagination-text">{{ getPaginationText() }}</p>
+          <p class="pagination-text">{{ paginationText$ | async }}</p>
           <div class="pagination-controls">
             <button 
               class="btn btn-pagination"
               (click)="previousPage()"
-              [disabled]="currentPage === 1">
+              [disabled]="(currentPage$ | async) === 1">
               Previous
             </button>
             <button 
               class="btn btn-pagination btn-pagination-active"
               (click)="nextPage()"
-              [disabled]="currentPage === totalPages">
+              [disabled]="(currentPage$ | async) === (totalPages$ | async)">
               Next
             </button>
           </div>

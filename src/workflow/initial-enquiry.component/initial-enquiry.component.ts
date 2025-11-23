@@ -1,14 +1,12 @@
-// Add to initial-enquiry.component.ts
-
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Subscription } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
+import { BehaviorSubject, Subject, of } from 'rxjs';
+import { takeUntil, tap, catchError, finalize } from 'rxjs/operators';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
 import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
 import { Customer, CustomerService } from '../../service/customer-service';
-//import { CustomerService, Customer } from '../../service/customer.service';
 
 interface EmailTemplate {
   id: string;
@@ -18,38 +16,43 @@ interface EmailTemplate {
 }
 
 @Component({
-  selector: 'app-initial-enquiry.component',
+  selector: 'app-initial-enquiry',
   standalone: true,
   imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './initial-enquiry.component.html',
   styleUrl: './initial-enquiry.component.css'
 })
-export class InitialEnquiryComponent implements OnInit {
+export class InitialEnquiryComponent implements OnInit, OnDestroy {
   @Input() workflowId!: number;
   
+  // Forms
   enquiryForm: FormGroup;
   emailForm: FormGroup;
-  enquiries: InitialEnquiryDto[] = [];
-  isLoading = false;
-  isEditMode = false;
-  selectedEnquiryId?: number;
-  errorMessage = '';
-  successMessage = '';
   
+  // Observables - BehaviorSubjects for state management
+  enquiries$ = new BehaviorSubject<InitialEnquiryDto[]>([]);
+  isLoading$ = new BehaviorSubject<boolean>(false);
+  isEditMode$ = new BehaviorSubject<boolean>(false);
+  errorMessage$ = new BehaviorSubject<string>('');
+  successMessage$ = new BehaviorSubject<string>('');
+  
+  // Tab and email state
+  activeTab$ = new BehaviorSubject<'comments' | 'email' | 'images'>('comments');
+  emailContent$ = new BehaviorSubject<string>('');
+  emailSubject$ = new BehaviorSubject<string>('');
+  emailTemplates$ = new BehaviorSubject<EmailTemplate[]>([]);
+  
+  // Customer info
+  customerName$ = new BehaviorSubject<string>('');
+  customerId$ = new BehaviorSubject<number | null>(null);
+  contactName$ = new BehaviorSubject<string>('');
+  
+  // Component state
+  selectedEnquiryId?: number;
   selectedWorkflow: SelectedWorkflow | null = null;
-  customerName: string = '';
-  customerId: number | null = null;
-  contactName: string = '';
-  private subscription!: Subscription;
-
-  // Email Template properties
-  activeTab: 'comments' | 'email' | 'images' = 'comments';
-  selectedTemplate: string = '';
-  emailContent: string = '';
-  emailSubject: string = '';
-  loggedInUserName: string = 'Michael'; // Default user name
-
-  emailTemplates: EmailTemplate[] = [];
+  loggedInUserName: string = 'Michael';
+  
+  private destroy$ = new Subject<void>();
 
   constructor(
     private fb: FormBuilder,
@@ -58,6 +61,7 @@ export class InitialEnquiryComponent implements OnInit {
     private customerService: CustomerService,
     private route: ActivatedRoute
   ) {
+    // Initialize forms
     this.enquiryForm = this.fb.group({
       comments: ['', [Validators.required, Validators.minLength(10)]],
       email: ['', [Validators.required, Validators.email]],
@@ -72,68 +76,79 @@ export class InitialEnquiryComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Get customer ID from route params
-    this.route.queryParams.subscribe(params => {
-      this.customerId = params['customerId'] ? +params['customerId'] : null;
-      this.customerName = params['customerName'] || '';
-      
-      // Fetch customer details to get contact name
-      if (this.customerId) {
-        this.loadCustomerContact(this.customerId);
-      } else {
-        // Initialize templates with placeholder if no customer ID
-        this.initializeEmailTemplates();
-      }
-    });
+    console.log('🔄 Initial Enquiry Component Initialized');
+    
+    // Get customer info from route params
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const customerId = params['customerId'] ? +params['customerId'] : null;
+        const customerName = params['customerName'] || '';
+        
+        this.customerId$.next(customerId);
+        this.customerName$.next(customerName);
+        
+        if (customerId) {
+          this.loadCustomerContact(customerId);
+        } else {
+          this.initializeEmailTemplates();
+        }
+      });
 
-    this.subscription = this.workflowStateService.selectedWorkflow$
+    // Subscribe to selected workflow
+    this.workflowStateService.selectedWorkflow$
+      .pipe(takeUntil(this.destroy$))
       .subscribe(workflow => {
         this.selectedWorkflow = workflow;
         
-        // If workflow has customerId and we haven't loaded contact yet
-        if (workflow?.customerId && !this.contactName) {
-          this.customerId = workflow.customerId;
+        if (workflow?.customerId && !this.contactName$.value) {
+          this.customerId$.next(workflow.customerId);
           this.loadCustomerContact(workflow.customerId);
+        }
+        
+        if (workflow?.id) {
+          this.loadEnquiries(workflow.id);
         }
         
         console.log('Selected workflow:', workflow);
       });
+  }
 
-    if (this.selectedWorkflow) {
-      this.loadEnquiries();
-    }
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private loadCustomerContact(customerId: number): void {
-    this.customerService.getCustomerById(customerId).subscribe({
-      next: (fullCustomer: Customer) => {
-        const contact = fullCustomer.customerContacts?.[0];
-        
-        // Build contact name from first and last name
-        if (contact?.firstName || contact?.lastName) {
-          this.contactName = `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim();
-        } else {
-          // Fallback to customer name if no contact name
-          this.contactName = this.customerName || '[Insert Name]';
+    console.log('🔄 Loading customer contact for ID:', customerId);
+    
+    this.customerService.getCustomerById(customerId)
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(error => {
+          console.error('❌ Error loading customer contact:', error);
+          this.contactName$.next(this.customerName$.value || '[Insert Name]');
+          this.initializeEmailTemplates();
+          return of(null);
+        })
+      )
+      .subscribe(fullCustomer => {
+        if (fullCustomer) {
+          const contact = fullCustomer.customerContacts?.[0];
+          const contactName = contact?.firstName || contact?.lastName
+            ? `${contact?.firstName || ''} ${contact?.lastName || ''}`.trim()
+            : this.customerName$.value || '[Insert Name]';
+          
+          this.contactName$.next(contactName);
         }
-        
-        // Initialize templates with contact name
         this.initializeEmailTemplates();
-      },
-      error: (error: Error) => {
-        console.error('Error loading customer contact:', error);
-        // Fallback to customer name on error
-        this.contactName = this.customerName || '[Insert Name]';
-        this.initializeEmailTemplates();
-      }
-    });
+      });
   }
 
   private initializeEmailTemplates(): void {
-    // Use contact name, fallback to customer name, or placeholder
-    const displayName = this.contactName || this.customerName || '[Insert Name]';
+    const displayName = this.contactName$.value || this.customerName$.value || '[Insert Name]';
     
-    this.emailTemplates = [
+    const templates: EmailTemplate[] = [
       {
         id: 'template-enquiry',
         name: 'Template-Enquiry',
@@ -226,32 +241,29 @@ ${this.loggedInUserName}
 Awnings of Ireland`
       }
     ];
+    
+    this.emailTemplates$.next(templates);
   }
 
-  // Tab switching
   switchTab(tab: 'comments' | 'email' | 'images'): void {
-    this.activeTab = tab;
+    this.activeTab$.next(tab);
   }
 
-  // Email template selection
   onTemplateSelect(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const templateId = selectElement.value;
     
     if (!templateId) {
-      this.emailContent = '';
-      this.emailSubject = '';
-      this.emailForm.patchValue({
-        subject: '',
-        body: ''
-      });
+      this.emailContent$.next('');
+      this.emailSubject$.next('');
+      this.emailForm.patchValue({ subject: '', body: '' });
       return;
     }
 
-    const template = this.emailTemplates.find(t => t.id === templateId);
+    const template = this.emailTemplates$.value.find(t => t.id === templateId);
     if (template) {
-      this.emailSubject = template.subject;
-      this.emailContent = template.body;
+      this.emailSubject$.next(template.subject);
+      this.emailContent$.next(template.body);
       this.emailForm.patchValue({
         subject: template.subject,
         body: template.body
@@ -259,43 +271,44 @@ Awnings of Ireland`
     }
   }
 
-  // Send email
   sendEmail(): void {
     if (!this.emailForm.value.body) {
-      this.errorMessage = 'Please select an email template first';
+      this.errorMessage$.next('Please select an email template first');
       this.clearMessagesAfterDelay();
       return;
     }
 
-    // Here you would implement the actual email sending logic
-    console.log('Sending email:', {
+    console.log('📧 Sending email:', {
       subject: this.emailForm.value.subject,
       body: this.emailForm.value.body,
       workflow: this.selectedWorkflow,
-      customerName: this.customerName,
-      contactName: this.contactName
+      customerName: this.customerName$.value,
+      contactName: this.contactName$.value
     });
 
-    this.successMessage = 'Email sent successfully!';
+    this.successMessage$.next('Email sent successfully!');
     this.clearMessagesAfterDelay();
   }
 
-  loadEnquiries(): void {
-    this.isLoading = true;
-    this.errorMessage = '';
-    if (!this.selectedWorkflow?.id) return;
+  loadEnquiries(workflowId: number): void {
+    console.log('🔄 Loading enquiries for workflow:', workflowId);
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
 
-    this.workflowService.getInitialEnquiryForWorkflow(this.selectedWorkflow?.id).subscribe({
-      next: (data) => {
-        this.enquiries = data;
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading enquiries:', error);
-        this.errorMessage = 'Failed to load enquiries. Please try again.';
-        this.isLoading = false;
-      }
-    });
+    this.workflowService.getInitialEnquiryForWorkflow(workflowId)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(data => console.log('✅ Enquiries loaded:', data.length)),
+        finalize(() => this.isLoading$.next(false)),
+        catchError(error => {
+          console.error('❌ Error loading enquiries:', error);
+          this.errorMessage$.next('Failed to load enquiries. Please try again.');
+          return of([]);
+        })
+      )
+      .subscribe(data => {
+        this.enquiries$.next(data);
+      });
   }
 
   onSubmit(): void {
@@ -307,7 +320,7 @@ Awnings of Ireland`
         images: this.enquiryForm.value.images || ''
       };
 
-      if (this.isEditMode && this.selectedEnquiryId) {
+      if (this.isEditMode$.value && this.selectedEnquiryId) {
         enquiryData.enquiryId = this.selectedEnquiryId;
         this.updateEnquiry(enquiryData);
       } else {
@@ -319,55 +332,71 @@ Awnings of Ireland`
   }
 
   createEnquiry(enquiry: InitialEnquiryDto): void {
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
 
-    this.workflowService.addInitialEnquiry(enquiry).subscribe({
-      next: (response) => {
-        console.log('Enquiry created successfully', response);
-        this.successMessage = 'Enquiry added successfully!';
-        this.loadEnquiries();
-        this.resetForm();
-        this.isLoading = false;
-        this.clearMessagesAfterDelay();
-      },
-      error: (error) => {
-        console.error('Error creating enquiry:', error);
-        this.errorMessage = 'Failed to create enquiry. Please try again.';
-        this.isLoading = false;
-      }
-    });
+    this.workflowService.addInitialEnquiry(enquiry)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isLoading$.next(false)),
+        catchError(error => {
+          console.error('❌ Error creating enquiry:', error);
+          this.errorMessage$.next('Failed to create enquiry. Please try again.');
+          return of(null);
+        })
+      )
+      .subscribe(response => {
+        if (response) {
+          console.log('✅ Enquiry created successfully', response);
+          this.successMessage$.next('Enquiry added successfully!');
+          
+          if (this.selectedWorkflow?.id) {
+            this.loadEnquiries(this.selectedWorkflow.id);
+          }
+          
+          this.resetForm();
+          this.clearMessagesAfterDelay();
+        }
+      });
   }
 
   updateEnquiry(enquiry: InitialEnquiryDto): void {
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
 
-    this.workflowService.updateInitialEnquiry(enquiry).subscribe({
-      next: (response) => {
-        console.log('Enquiry updated successfully', response);
-        this.successMessage = 'Enquiry updated successfully!';
-        this.loadEnquiries();
-        this.resetForm();
-        this.isLoading = false;
-        this.clearMessagesAfterDelay();
-      },
-      error: (error) => {
-        console.error('Error updating enquiry:', error);
-        this.errorMessage = 'Failed to update enquiry. Please try again.';
-        this.isLoading = false;
-      }
-    });
+    this.workflowService.updateInitialEnquiry(enquiry)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isLoading$.next(false)),
+        catchError(error => {
+          console.error('❌ Error updating enquiry:', error);
+          this.errorMessage$.next('Failed to update enquiry. Please try again.');
+          return of(null);
+        })
+      )
+      .subscribe(response => {
+        if (response) {
+          console.log('✅ Enquiry updated successfully', response);
+          this.successMessage$.next('Enquiry updated successfully!');
+          
+          if (this.selectedWorkflow?.id) {
+            this.loadEnquiries(this.selectedWorkflow.id);
+          }
+          
+          this.resetForm();
+          this.clearMessagesAfterDelay();
+        }
+      });
   }
 
   editEnquiry(enquiry: InitialEnquiryDto): void {
-    this.isEditMode = true;
+    this.isEditMode$.next(true);
     this.selectedEnquiryId = enquiry.enquiryId;
-    this.errorMessage = '';
-    this.successMessage = '';
-    this.activeTab = 'comments';
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
+    this.activeTab$.next('comments');
     
     this.enquiryForm.patchValue({
       comments: enquiry.comments,
@@ -381,16 +410,16 @@ Awnings of Ireland`
   resetForm(): void {
     this.enquiryForm.reset();
     this.emailForm.reset();
-    this.isEditMode = false;
+    this.isEditMode$.next(false);
     this.selectedEnquiryId = undefined;
-    this.emailContent = '';
-    this.emailSubject = '';
+    this.emailContent$.next('');
+    this.emailSubject$.next('');
   }
 
   cancelEdit(): void {
     this.resetForm();
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
   }
 
   private markFormGroupTouched(formGroup: FormGroup): void {
@@ -402,11 +431,12 @@ Awnings of Ireland`
 
   private clearMessagesAfterDelay(): void {
     setTimeout(() => {
-      this.successMessage = '';
-      this.errorMessage = '';
+      this.successMessage$.next('');
+      this.errorMessage$.next('');
     }, 3000);
   }
 
+  // Getters for form controls
   get comments() {
     return this.enquiryForm.get('comments');
   }
@@ -417,11 +447,5 @@ Awnings of Ireland`
 
   get images() {
     return this.enquiryForm.get('images');
-  }
-
-  ngOnDestroy(): void {
-    if (this.subscription) {
-      this.subscription.unsubscribe();
-    }
   }
 }

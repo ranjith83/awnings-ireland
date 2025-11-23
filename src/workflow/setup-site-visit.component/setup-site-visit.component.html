@@ -1,4 +1,12 @@
 <div class="workflow-container">
+  <!-- Success/Error Messages -->
+  <div *ngIf="successMessage$ | async as successMsg" class="alert alert-success">
+    {{ successMsg }}
+  </div>
+  <div *ngIf="errorMessage$ | async as errorMsg" class="alert alert-error">
+    {{ errorMsg }}
+  </div>
+
   <form [formGroup]="siteVisitForm" class="site-visit-form">
     <!-- Select Workflow and Product Model Section -->
     <div class="form-section">
@@ -8,8 +16,8 @@
           <label>Workflow</label>
           <select formControlName="workflow" class="form-control">
             <option value="">Select Workflow</option>
-            <option *ngFor="let workflow of workflows" [value]="workflow.id">
-              {{ workflow.name }}
+            <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
+              {{ workflow.workflowName }} - {{ workflow.workflowId}}
             </option>
           </select>
         </div>
@@ -25,6 +33,68 @@
       </div>
     </div>
 
+    <!-- Site Visits Grid -->
+    <div class="form-section" *ngIf="currentWorkflowId">
+      <div class="grid-header">
+        <h2 class="section-title">Existing Site Visits</h2>
+        <button 
+          *ngIf="editMode" 
+          type="button" 
+          class="btn-add-new" 
+          (click)="resetForm()"
+          title="Add New Site Visit">
+          + Add New
+        </button>
+      </div>
+      
+      <div *ngIf="isLoading$ | async" class="loading-message">
+        Loading site visits...
+      </div>
+
+      <div *ngIf="!(isLoading$ | async) && (siteVisits$ | async)?.length === 0" class="no-data-message">
+        No site visits found for this workflow.
+      </div>
+
+      <div *ngIf="!(isLoading$ | async) && (siteVisits$ | async)?.length || 0 > 0" class="site-visits-grid">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Product Model</th>
+              <th>Model</th>
+              <th>Structure</th>
+              <th>Width</th>
+              <th>Projection</th>
+              <th>Date Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let siteVisit of siteVisits$ | async" 
+                [class.editing-row]="editingSiteVisitId === siteVisit.siteVisitId">
+              <td>{{ siteVisit.siteVisitId }}</td>
+              <td>{{ getProductModelName(siteVisit.productModelType) }}</td>
+              <td>{{ siteVisit.model || '-' }}</td>
+              <td>{{ siteVisit.structure || '-' }}</td>
+              <td>{{ siteVisit.width ? siteVisit.width + 'm' : '-' }}</td>
+              <td>{{ siteVisit.projection ? siteVisit.projection + 'm' : '-' }}</td>
+              <td>{{ siteVisit.dateCreated ? (siteVisit.dateCreated | date:'dd/MM/yyyy') : '-' }}</td>
+              <td>
+                <div class="action-buttons">
+                  <button type="button" class="btn-edit" (click)="editSiteVisit(siteVisit)" title="Edit">
+                    ✏️
+                  </button>
+                  <button type="button" class="btn-delete" (click)="deleteSiteVisit(siteVisit.siteVisitId!)" title="Delete">
+                    🗑️
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
     <div class="form-section" *ngIf="selectedProductModel && !showFullTabs">
       <h2 class="section-title">Product Details</h2>
@@ -33,7 +103,7 @@
           <label>Model</label>
           <select formControlName="model" class="form-control">
             <option value="">Select Model</option>
-            <option *ngFor="let value of ['Renson', 'Practic', 'Markilux']" [value]="value">
+            <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
               {{ value }}
             </option>
           </select>
@@ -52,13 +122,15 @@
     <!-- Product Tabs Section (only for Awning and Roof System) -->
     <div class="form-section" *ngIf="selectedProductModel && showFullTabs">
       <!-- Other Specify Section (always shown first outside tabs for Awning/RoofSystem) -->
-      <h2 class="section-title">Product Details</h2>
+      <h2 class="section-title">
+        {{ editMode ? 'Edit Site Visit' : 'Product Details' }}
+      </h2>
       <div class="form-row two-columns other-specify-section">
         <div class="form-group">
           <label>Model</label>
           <select formControlName="model" class="form-control">
             <option value="">Select Model</option>
-            <option *ngFor="let value of ['Renson', 'Practic', 'Markilux']" [value]="value">
+            <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
               {{ value }}
             </option>
           </select>
@@ -92,16 +164,9 @@
         <button 
           type="button"
           class="product-tab"
-          [class.active]="activeTab === 'shadeplus'"
-          (click)="setActiveTab('shadeplus')">
-          ShadePlus
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'lights'"
-          (click)="setActiveTab('lights')">
-          Lights
+          [class.active]="activeTab === 'shadeplus-lights'"
+          (click)="setActiveTab('shadeplus-lights')">
+          ShadePlus & Lights
         </button>
         <button 
           type="button"
@@ -134,7 +199,7 @@
                 [formControlName]="field.name" 
                 class="form-control">
                 <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of field.values" [value]="value">
+                <option *ngFor="let value of getFieldValues(field)" [value]="value">
                   {{ value }}
                 </option>
               </select>
@@ -143,6 +208,15 @@
               <input 
                 *ngIf="field.type === 'text'" 
                 type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+
+              <!-- Number Input -->
+              <input 
+                *ngIf="field.type === 'number'" 
+                type="number" 
+                step="0.01"
                 [formControlName]="field.name" 
                 class="form-control"
                 [placeholder]="'Enter ' + field.label">
@@ -175,7 +249,7 @@
                 [formControlName]="field.name" 
                 class="form-control">
                 <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of field.values" [value]="value">
+                <option *ngFor="let value of getFieldValues(field)" [value]="value">
                   {{ value }}
                 </option>
               </select>
@@ -187,17 +261,26 @@
                 [formControlName]="field.name" 
                 class="form-control"
                 [placeholder]="'Enter ' + field.label">
+
+              <!-- Number Input -->
+              <input 
+                *ngIf="field.type === 'number'" 
+                type="number" 
+                step="0.01"
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
             </div>
           </ng-container>
         </div>
       </div>
 
-      <!-- ShadePlus Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'shadeplus'">
-        <h3 class="subsection-title">ShadePlus Section</h3>
+      <!-- ShadePlus & Lights Tab Content (MERGED) -->
+      <div class="tab-content" *ngIf="activeTab === 'shadeplus-lights'">
+        <h3 class="subsection-title">ShadePlus & Lights Section</h3>
 
         <div class="dynamic-fields">
-          <ng-container *ngFor="let field of shadePlusFields">
+          <ng-container *ngFor="let field of shadePlusLightsFields">
             <div class="form-group" *ngIf="isFieldVisible(field)">
               <label>{{ field.label }}</label>
               
@@ -207,7 +290,7 @@
                 [formControlName]="field.name" 
                 class="form-control">
                 <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of field.values" [value]="value">
+                <option *ngFor="let value of getFieldValues(field)" [value]="value">
                   {{ value }}
                 </option>
               </select>
@@ -219,35 +302,12 @@
                 [formControlName]="field.name" 
                 class="form-control"
                 [placeholder]="'Enter ' + field.label">
-            </div>
-          </ng-container>
-        </div>
-      </div>
 
-      <!-- Lights Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'lights'">
-        <h3 class="subsection-title">Lights Section</h3>
-
-        <div class="dynamic-fields">
-          <ng-container *ngFor="let field of lightsFields">
-            <div class="form-group" *ngIf="isFieldVisible(field)">
-              <label>{{ field.label }}</label>
-              
-              <!-- Dropdown -->
-              <select 
-                *ngIf="field.type === 'dropdown'" 
-                [formControlName]="field.name" 
-                class="form-control">
-                <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of field.values" [value]="value">
-                  {{ value }}
-                </option>
-              </select>
-
-              <!-- Text Input -->
+              <!-- Number Input -->
               <input 
-                *ngIf="field.type === 'text'" 
-                type="text" 
+                *ngIf="field.type === 'number'" 
+                type="number" 
+                step="0.01"
                 [formControlName]="field.name" 
                 class="form-control"
                 [placeholder]="'Enter ' + field.label">
@@ -271,7 +331,7 @@
                 [formControlName]="field.name" 
                 class="form-control">
                 <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of field.values" [value]="value">
+                <option *ngFor="let value of getFieldValues(field)" [value]="value">
                   {{ value }}
                 </option>
               </select>
@@ -280,6 +340,15 @@
               <input 
                 *ngIf="field.type === 'text'" 
                 type="text" 
+                [formControlName]="field.name" 
+                class="form-control"
+                [placeholder]="'Enter ' + field.label">
+
+              <!-- Number Input -->
+              <input 
+                *ngIf="field.type === 'number'" 
+                type="number" 
+                step="0.01"
                 [formControlName]="field.name" 
                 class="form-control"
                 [placeholder]="'Enter ' + field.label">
@@ -305,10 +374,14 @@
     <!-- Submit Button -->
     <div class="form-actions" *ngIf="selectedProductModel">
       <button type="button" class="btn-secondary" (click)="resetForm()">
-        Reset
+        {{ editMode ? 'Cancel' : 'Reset' }}
       </button>
-      <button type="submit" class="btn-primary" (click)="onSubmit()">
-        Submit Site Visit
+      <button 
+        type="submit" 
+        class="btn-primary" 
+        (click)="onSubmit()"
+        [disabled]="isSaving$ | async">
+        {{ (isSaving$ | async) ? 'Saving...' : (editMode ? 'Update Site Visit' : 'Submit Site Visit') }}
       </button>
     </div>
   </form>

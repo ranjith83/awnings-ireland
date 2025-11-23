@@ -1,20 +1,19 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, forkJoin } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of, finalize } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
+import { map } from 'rxjs/operators';
 
 import { 
   InvoiceService,
   CreateInvoiceDto,
-  CreateInvoiceItemDto,
   InvoiceDto
 } from '../../service/invoice.service';
 
 import { 
   CreateQuoteService, 
-  QuoteDto,
-  QuoteItemDto
+  QuoteDto
 } from '../../service/create-quote.service';
 
 import { 
@@ -29,8 +28,14 @@ import {
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { PdfGenerationService, InvoicePdfData } from '../../service/pdf-generation.service';
 
-interface InvoiceItemDisplay extends CreateInvoiceItemDto {
+interface InvoiceItemDisplay {
   id?: number;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  taxRate: number;
+  discountPercentage: number;
+  unit: string;
   totalPrice: number;
 }
 
@@ -42,41 +47,56 @@ interface InvoiceItemDisplay extends CreateInvoiceItemDto {
   styleUrl: './invoice.component.css'
 })
 export class InvoiceComponent implements OnInit, OnDestroy {
-  // Workflow and selection data
+  // Observables for data
+  workflows$!: Observable<WorkflowDto[]>;
+  quotes$!: Observable<QuoteDto[]>;
+  brackets$!: Observable<BracketDto[]>;
+  arms$!: Observable<ArmDto[]>;
+  motors$!: Observable<MotorDto[]>;
+  heaters$!: Observable<HeaterDto[]>;
+  availableWidths$!: Observable<number[]>;
+  availableProjections$!: Observable<number[]>;
+  invoiceItems$!: Observable<InvoiceItemDisplay[]>;
+  
+  // Computed observables for summary
+  subtotal$!: Observable<number>;
+  totalTax$!: Observable<number>;
+  totalAmount$!: Observable<number>;
+  isFormValid$!: Observable<boolean>;
+  
+  // State management with BehaviorSubjects
+  isLoading$ = new BehaviorSubject<boolean>(false);
+  errorMessage$ = new BehaviorSubject<string>('');
+  successMessage$ = new BehaviorSubject<string>('');
+  
+  private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
+  private quotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
+  private bracketsSubject$ = new BehaviorSubject<BracketDto[]>([]);
+  private armsSubject$ = new BehaviorSubject<ArmDto[]>([]);
+  private motorsSubject$ = new BehaviorSubject<MotorDto[]>([]);
+  private heatersSubject$ = new BehaviorSubject<HeaterDto[]>([]);
+  private widthsSubject$ = new BehaviorSubject<number[]>([]);
+  private projectionsSubject$ = new BehaviorSubject<number[]>([]);
+  private invoiceItemsSubject$ = new BehaviorSubject<InvoiceItemDisplay[]>([]);
+  
+  // Customer and workflow info
   workflowId: number | null = null;
   customerId: number | null = null;
   customerName: string = '';
+  customerAddress: string = '';
+  customerCity: string = '';
+  customerPostalCode: string = '';
+  customerEmail: string = '';
+  customerPhone: string = '';
   
-  workflows: WorkflowDto[] = [];
-  quotes: QuoteDto[] = [];
-  
+  // Selection bindings for template
   selectedWorkflowId: number | null = null;
   selectedQuoteId: number | null = null;
   selectedQuote: QuoteDto | null = null;
   selectedModelId: number | null = null;
-  selectedProductName: string = '';
-  
-  // Product addons
-  brackets: BracketDto[] = [];
-  arms: ArmDto[] = [];
-  motors: MotorDto[] = [];
-  heaters: HeaterDto[] = [];
-  
-  // Width and Projection data
-  availableWidths: number[] = [];
-  availableProjections: number[] = [];
   selectedWidthCm: number | null = null;
   selectedAwning: number | null = null;
-  
-  // Selected addons
-  selectedBrackets: string = '';
-  selectedArms: string = '';
-  selectedMotor: string = '';
-  selectedHeater: string = '';
-  includeElectrician: boolean = false;
-  electricianPrice: number = 280.00;
-  
-  calculatedPrice: number = 0;
+  selectedProductName: string = '';
   
   // Invoice data
   invoiceDate: string = new Date().toISOString().split('T')[0];
@@ -85,25 +105,18 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   notes: string = '';
   terms: string = 'Payment due within 30 days.\nLate payments subject to interest charges.';
   
-  // Customer address fields
-  customerAddress: string = '';
-  customerCity: string = '';
-  customerPostalCode: string = '';
-  customerEmail: string = '';
-  customerPhone: string = '';
-  
-  // Invoice items
-  invoiceItems: InvoiceItemDisplay[] = [];
-  
-  // Installation and settings
+  // Addon selections
+  selectedBrackets: string = '';
+  selectedArms: string = '';
+  selectedMotor: string = '';
+  selectedHeater: string = '';
+  includeElectrician: boolean = false;
+  electricianPrice: number = 280.00;
   installationFee: number = 0;
   vatRate: number = 13.5;
   emailToCustomer: boolean = false;
   
-  // UI state
-  isLoading: boolean = false;
-  errorMessage: string = '';
-  successMessage: string = '';
+  calculatedPrice: number = 0;
   
   private destroy$ = new Subject<void>();
 
@@ -118,12 +131,61 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
+    this.initializeObservables();
     this.initializeComponent();
   }
 
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private initializeObservables() {
+    // Setup observables from subjects
+    this.workflows$ = this.workflowsSubject$.asObservable();
+    this.quotes$ = this.quotesSubject$.asObservable();
+    this.brackets$ = this.bracketsSubject$.asObservable();
+    this.arms$ = this.armsSubject$.asObservable();
+    this.motors$ = this.motorsSubject$.asObservable();
+    this.heaters$ = this.heatersSubject$.asObservable();
+    this.availableWidths$ = this.widthsSubject$.asObservable();
+    this.availableProjections$ = this.projectionsSubject$.asObservable();
+    this.invoiceItems$ = this.invoiceItemsSubject$.asObservable();
+    
+    // Setup computed observables
+    this.subtotal$ = this.invoiceItems$.pipe(
+      map(items => items.reduce((sum, item) => 
+        sum + (item.quantity * item.unitPrice), 0
+      ))
+    );
+    
+    this.totalTax$ = this.invoiceItems$.pipe(
+      map(items => items.reduce((sum, item) => {
+        const discountPercentage = item?.discountPercentage || 0;
+        const taxRate = item?.taxRate || 0;
+        const itemSubtotal = item.quantity * item.unitPrice;
+        const itemDiscount = itemSubtotal * (discountPercentage / 100);
+        const taxableAmount = itemSubtotal - itemDiscount;
+        return sum + (taxableAmount * (taxRate / 100));
+      }, 0))
+    );
+    
+    this.totalAmount$ = combineLatest([this.subtotal$, this.totalTax$]).pipe(
+      map(([subtotal, tax]) => subtotal + tax)
+    );
+    
+    this.isFormValid$ = this.invoiceItems$.pipe(
+      map(items => {
+        if (!this.workflowId || !this.customerId) return false;
+        if (items.length === 0) return false;
+        if (!this.invoiceDate || !this.dueDate) return false;
+        return items.every(item => 
+          item.description.trim() !== '' && 
+          item.quantity > 0 && 
+          item.unitPrice >= 0
+        );
+      })
+    );
   }
 
   private initializeComponent() {
@@ -140,11 +202,10 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
         const paramQuoteId = params['quoteId'] ? +params['quoteId'] : null;
-
         let workflowId = 0;
 
         if (!this.customerId) {
-          this.errorMessage = 'No customer selected. Please select a customer first.';
+          this.errorMessage$.next('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -162,38 +223,31 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null, preselectedQuoteId: number | null = null) {
     if (!this.customerId) return;
 
-    this.isLoading = true;
+    this.isLoading$.next(true);
     this.workflowService.getWorkflowsForCustomer(this.customerId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (workflows) => {
-          this.workflows = workflows;
-          this.isLoading = false;
-
-          // Priority 1: Use preselected workflow ID from query params
-          if (preselectedWorkflowId && this.workflows.some(w => w.workflowId === preselectedWorkflowId)) {
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(workflows => {
+          this.workflowsSubject$.next(workflows);
+          
+          if (preselectedWorkflowId && workflows.some(w => w.workflowId === preselectedWorkflowId)) {
             this.selectedWorkflowId = preselectedWorkflowId;
             this.workflowId = preselectedWorkflowId;
             this.onWorkflowChange(preselectedQuoteId);
-          }
-          // Priority 2: Use workflow ID from workflow state service
-          else if (this.selectedWorkflowId && this.workflows.some(w => w.workflowId === this.selectedWorkflowId)) {
-            this.workflowId = this.selectedWorkflowId;
+          } else if (workflows.length === 1) {
+            this.selectedWorkflowId = workflows[0].workflowId;
+            this.workflowId = workflows[0].workflowId;
             this.onWorkflowChange(preselectedQuoteId);
           }
-          // Priority 3: If only one workflow, select it
-          else if (this.workflows.length === 1) {
-            this.selectedWorkflowId = this.workflows[0].workflowId;
-            this.workflowId = this.workflows[0].workflowId;
-            this.onWorkflowChange(preselectedQuoteId);
-          }
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           console.error('Error loading workflows:', error);
-          this.errorMessage = 'Failed to load workflows';
-          this.isLoading = false;
-        }
-      });
+          this.errorMessage$.next('Failed to load workflows');
+          return of([]);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      )
+      .subscribe();
   }
 
   onWorkflowChange(preselectedQuoteId: number | null = null) {
@@ -201,153 +255,135 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
     this.workflowId = this.selectedWorkflowId;
     
-    // Get workflow details to extract product info
-    const selectedWorkflow = this.workflows.find(w => w.workflowId === this.selectedWorkflowId);
+    const workflows = this.workflowsSubject$.value;
+    const selectedWorkflow = workflows.find(w => w.workflowId === this.selectedWorkflowId);
+    
     if (selectedWorkflow) {
       this.selectedModelId = selectedWorkflow.productId;
       this.selectedProductName = selectedWorkflow.productName;
       
-      // Load product data
       this.loadProductWidthsAndProjections();
       this.loadProductAddons();
     }
     
-    this.quotes = [];
+    this.quotesSubject$.next([]);
     this.selectedQuoteId = null;
-    this.invoiceItems = [];
+    this.invoiceItemsSubject$.next([]);
     this.resetSelections();
 
-    // Load quotes for this workflow
-    this.isLoading = true;
+    this.isLoading$.next(true);
     this.quoteService.getQuotesByWorkflowId(this.selectedWorkflowId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (quotes) => {
-          this.quotes = quotes;
-          this.isLoading = false;
-
-          // If there's a preselected quote ID, select it
-          if (preselectedQuoteId && this.quotes.some(q => q.quoteId === preselectedQuoteId)) {
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(quotes => {
+          this.quotesSubject$.next(quotes);
+          
+          if (preselectedQuoteId && quotes.some(q => q.quoteId === preselectedQuoteId)) {
             this.selectedQuoteId = preselectedQuoteId;
             this.onQuoteChange();
-          }
-          // If only one quote, select it automatically
-          else if (this.quotes.length === 1) {
-            this.selectedQuoteId = this.quotes[0].quoteId;
+          } else if (quotes.length === 1) {
+            this.selectedQuoteId = quotes[0].quoteId;
             this.onQuoteChange();
           }
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           console.error('Error loading quotes:', error);
-          this.errorMessage = 'Failed to load quotes for this workflow';
-          this.isLoading = false;
-        }
-      });
+          this.errorMessage$.next('Failed to load quotes for this workflow');
+          return of([]);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      )
+      .subscribe();
   }
 
   private loadProductWidthsAndProjections() {
     if (!this.selectedModelId) return;
 
-    // Load standard widths
     this.workflowService.getStandardWidthsForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (widths) => {
-          this.availableWidths = widths.sort((a, b) => a - b);
-        },
-        error: (error) => {
+      .pipe(
+        takeUntil(this.destroy$),
+        map(widths => widths.sort((a, b) => a - b)),
+        tap(widths => this.widthsSubject$.next(widths)),
+        catchError(error => {
           console.error('Error loading widths:', error);
-        }
-      });
+          return of([]);
+        })
+      )
+      .subscribe();
 
-    // Load projection widths
     this.workflowService.getProjectionWidthsForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (projections) => {
-          this.availableProjections = projections.sort((a, b) => a - b);
-        },
-        error: (error) => {
+      .pipe(
+        takeUntil(this.destroy$),
+        map(projections => projections.sort((a, b) => a - b)),
+        tap(projections => this.projectionsSubject$.next(projections)),
+        catchError(error => {
           console.error('Error loading projections:', error);
-        }
-      });
+          return of([]);
+        })
+      )
+      .subscribe();
   }
 
   private loadProductAddons() {
     if (!this.selectedModelId) return;
 
-    // Load brackets
     this.workflowService.getBracketsForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (brackets) => {
-          this.brackets = brackets;
-        },
-        error: (error) => {
-          console.error('Error loading brackets:', error);
-        }
-      });
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(brackets => this.bracketsSubject$.next(brackets)),
+        catchError(() => of([]))
+      )
+      .subscribe();
 
-    // Load arms
     this.workflowService.getArmsForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (arms) => {
-          this.arms = arms;
-        },
-        error: (error) => {
-          console.error('Error loading arms:', error);
-        }
-      });
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(arms => this.armsSubject$.next(arms)),
+        catchError(() => of([]))
+      )
+      .subscribe();
 
-    // Load motors
     this.workflowService.getMotorsForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (motors) => {
-          this.motors = motors;
-        },
-        error: (error) => {
-          console.error('Error loading motors:', error);
-        }
-      });
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(motors => this.motorsSubject$.next(motors)),
+        catchError(() => of([]))
+      )
+      .subscribe();
 
-    // Load heaters
     this.workflowService.getHeatersForProduct(this.selectedModelId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (heaters) => {
-          this.heaters = heaters;
-        },
-        error: (error) => {
-          console.error('Error loading heaters:', error);
-        }
-      });
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(heaters => this.heatersSubject$.next(heaters)),
+        catchError(() => of([]))
+      )
+      .subscribe();
   }
 
   onQuoteChange() {
     if (!this.selectedQuoteId) return;
 
-    this.isLoading = true;
+    this.isLoading$.next(true);
     this.quoteService.getQuoteById(this.selectedQuoteId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (quote) => {
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(quote => {
           this.selectedQuote = quote;
           this.loadInvoiceItemsFromQuote(quote);
           this.presetSelectionsFromQuote(quote);
-          this.isLoading = false;
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           console.error('Error loading quote details:', error);
-          this.errorMessage = 'Failed to load quote details';
-          this.isLoading = false;
-        }
-      });
+          this.errorMessage$.next('Failed to load quote details');
+          return of(null);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      )
+      .subscribe();
   }
 
   private loadInvoiceItemsFromQuote(quote: QuoteDto) {
-    this.invoiceItems = quote.quoteItems.map(item => ({
+    const items = quote.quoteItems.map(item => ({
       description: item.description,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -356,26 +392,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       unit: 'pcs',
       totalPrice: this.calculateItemTotal(item.quantity, item.unitPrice, item.taxRate, item.discountPercentage || 0)
     }));
-
-    /**
-    // Load terms and notes from quote if available
-    if (quote.notes) {
-      this.notes = quote.notes;
-    }
-    if (quote.terms) {
-      this.terms = quote.terms;
-    }
-       */
+    
+    this.invoiceItemsSubject$.next(items);
   }
 
   private presetSelectionsFromQuote(quote: QuoteDto) {
-    // Parse the first line item to extract width and projection
     if (quote.quoteItems && quote.quoteItems.length > 0) {
       const firstItem = quote.quoteItems[0];
       const description = firstItem.description;
       
-      // Extract width and projection from description
-      // Format: "ProductName closed cassette awning\n3.5m wide x 3m projection"
       const widthMatch = description.match(/(\d+\.?\d*)m wide/);
       const projectionMatch = description.match(/x (\d+)m projection/);
       
@@ -389,53 +414,33 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         this.selectedAwning = Math.round(projectionM * 100);
       }
       
-      // Try to identify and preset addons from other line items
+      const brackets = this.bracketsSubject$.value;
+      const arms = this.armsSubject$.value;
+      const motors = this.motorsSubject$.value;
+      const heaters = this.heatersSubject$.value;
+      
       quote.quoteItems.forEach((item, index) => {
-        if (index === 0) return; // Skip first item (main product)
+        if (index === 0) return;
         
         const desc = item.description.toLowerCase();
         
-        // Check for brackets
-        const bracket = this.brackets.find(b => 
-          desc.includes(b.bracketName.toLowerCase())
-        );
-        if (bracket) {
-          this.selectedBrackets = bracket.bracketId.toString();
-        }
+        const bracket = brackets.find(b => desc.includes(b.bracketName.toLowerCase()));
+        if (bracket) this.selectedBrackets = bracket.bracketId.toString();
         
-        // Check for arms
-        const arm = this.arms.find(a => 
-          desc.includes(a.description.toLowerCase())
-        );
-        if (arm) {
-          this.selectedArms = arm.armId.toString();
-        }
+        const arm = arms.find(a => desc.includes(a.description.toLowerCase()));
+        if (arm) this.selectedArms = arm.armId.toString();
         
-        // Check for motors
-        const motor = this.motors.find(m => 
-          desc.includes(m.description.toLowerCase()) || 
-          desc.includes('motor')
-        );
-        if (motor) {
-          this.selectedMotor = motor.motorId.toString();
-        }
+        const motor = motors.find(m => desc.includes(m.description.toLowerCase()) || desc.includes('motor'));
+        if (motor) this.selectedMotor = motor.motorId.toString();
         
-        // Check for heaters
-        const heater = this.heaters.find(h => 
-          desc.includes(h.description.toLowerCase()) || 
-          desc.includes('heater')
-        );
-        if (heater) {
-          this.selectedHeater = heater.heaterId.toString();
-        }
+        const heater = heaters.find(h => desc.includes(h.description.toLowerCase()) || desc.includes('heater'));
+        if (heater) this.selectedHeater = heater.heaterId.toString();
         
-        // Check for electrician
         if (desc.includes('electric connection') || desc.includes('qualified electrician')) {
           this.includeElectrician = true;
           this.electricianPrice = item.unitPrice;
         }
         
-        // Check for installation fee
         if (desc.includes('installation')) {
           this.installationFee = item.unitPrice;
         }
@@ -467,23 +472,24 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Get price for this width and projection combination
     this.workflowService.getProjectionPriceForProduct(
       this.selectedModelId,
       this.selectedWidthCm,
       this.selectedAwning
     )
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (price) => {
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(price => {
           this.calculatedPrice = price;
           this.generateFirstLineItem();
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           console.error('Error getting price:', error);
-          this.errorMessage = 'Failed to get price for selected dimensions';
-        }
-      });
+          this.errorMessage$.next('Failed to get price for selected dimensions');
+          return of(0);
+        })
+      )
+      .subscribe();
   }
 
   private generateFirstLineItem() {
@@ -491,33 +497,29 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Convert cm to meters for display
     const widthM = (this.selectedWidthCm / 100).toFixed(1);
     const projectionM = (this.selectedAwning / 100).toFixed(0);
-
-    // Create description matching the reference format
     const description = `${this.selectedProductName} closed cassette awning\n${widthM}m wide x ${projectionM}m projection`;
-
-    // Calculate amount
     const unitPrice = this.calculatedPrice;
-    const taxRate = this.vatRate;
-    const totalPrice = this.calculateItemTotal(1, unitPrice, taxRate, 0);
+    const totalPrice = this.calculateItemTotal(1, unitPrice, this.vatRate, 0);
 
     const firstLineItem: InvoiceItemDisplay = {
       description: description,
       quantity: 1,
       unitPrice: unitPrice,
-      taxRate: taxRate,
+      taxRate: this.vatRate,
       discountPercentage: 0,
       unit: 'pcs',
       totalPrice: totalPrice
     };
 
-    // Check if first item is already auto-generated (main product)
-    if (this.invoiceItems.length > 0 && this.invoiceItems[0].description.includes('wide x')) {
-      this.invoiceItems[0] = firstLineItem;
+    const currentItems = this.invoiceItemsSubject$.value;
+    
+    if (currentItems.length > 0 && currentItems[0].description.includes('wide x')) {
+      currentItems[0] = firstLineItem;
+      this.invoiceItemsSubject$.next([...currentItems]);
     } else {
-      this.invoiceItems.unshift(firstLineItem);
+      this.invoiceItemsSubject$.next([firstLineItem, ...currentItems]);
     }
   }
 
@@ -527,7 +529,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const bracket = this.brackets.find(b => b.bracketId.toString() === this.selectedBrackets);
+    const brackets = this.bracketsSubject$.value;
+    const bracket = brackets.find(b => b.bracketId.toString() === this.selectedBrackets);
     if (bracket) {
       const totalPrice = this.calculateItemTotal(1, bracket.price, this.vatRate, 0);
       
@@ -552,7 +555,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const arm = this.arms.find(a => a.armId.toString() === this.selectedArms);
+    const arms = this.armsSubject$.value;
+    const arm = arms.find(a => a.armId.toString() === this.selectedArms);
     if (arm) {
       const totalPrice = this.calculateItemTotal(1, arm.price, this.vatRate, 0);
       
@@ -577,7 +581,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const motor = this.motors.find(m => m.motorId.toString() === this.selectedMotor);
+    const motors = this.motorsSubject$.value;
+    const motor = motors.find(m => m.motorId.toString() === this.selectedMotor);
     if (motor) {
       const totalPrice = this.calculateItemTotal(1, motor.price, this.vatRate, 0);
       
@@ -602,7 +607,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const heater = this.heaters.find(h => h.heaterId.toString() === this.selectedHeater);
+    const heaters = this.heatersSubject$.value;
+    const heater = heaters.find(h => h.heaterId.toString() === this.selectedHeater);
     if (heater) {
       const totalPrice = this.calculateItemTotal(1, heater.price, this.vatRate, 0);
       
@@ -669,25 +675,30 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     const subtotal = quantity * unitPrice;
     const discount = subtotal * (discountPercentage / 100);
     const taxableAmount = subtotal - discount;
-    return taxableAmount; // Amount before tax
+    return taxableAmount;
   }
 
   private addOrUpdateAddonLineItem(type: string, lineItem: InvoiceItemDisplay) {
-    const existingIndex = this.invoiceItems.findIndex(item => item.id === lineItem.id);
+    const currentItems = this.invoiceItemsSubject$.value;
+    const existingIndex = currentItems.findIndex(item => item.id === lineItem.id);
     
     if (existingIndex !== -1) {
-      this.invoiceItems[existingIndex] = lineItem;
+      currentItems[existingIndex] = lineItem;
+      this.invoiceItemsSubject$.next([...currentItems]);
     } else {
       const insertIndex = this.getAddonInsertIndex(type);
-      this.invoiceItems.splice(insertIndex, 0, lineItem);
+      currentItems.splice(insertIndex, 0, lineItem);
+      this.invoiceItemsSubject$.next([...currentItems]);
     }
   }
 
   private removeAddonLineItem(type: string) {
     const itemId = this.getAddonItemId(type);
-    const index = this.invoiceItems.findIndex(item => item.id === itemId);
+    const currentItems = this.invoiceItemsSubject$.value;
+    const index = currentItems.findIndex(item => item.id === itemId);
     if (index !== -1) {
-      this.invoiceItems.splice(index, 1);
+      currentItems.splice(index, 1);
+      this.invoiceItemsSubject$.next([...currentItems]);
     }
   }
 
@@ -706,12 +717,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   private getAddonInsertIndex(type: string): number {
     const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation'];
     const currentTypeIndex = typeOrder.indexOf(type);
+    const currentItems = this.invoiceItemsSubject$.value;
     
     let insertIndex = 1;
     
     for (let i = 0; i < currentTypeIndex; i++) {
       const existingType = typeOrder[i];
-      const exists = this.invoiceItems.some(item => item.id === this.getAddonItemId(existingType));
+      const exists = currentItems.some(item => item.id === this.getAddonItemId(existingType));
       if (exists) {
         insertIndex++;
       }
@@ -722,12 +734,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   private getDefaultDueDate(): string {
     const date = new Date();
-    date.setDate(date.getDate() + 30); // 30 days payment terms
+    date.setDate(date.getDate() + 30);
     return date.toISOString().split('T')[0];
   }
 
   addInvoiceItem() {
-    this.invoiceItems.push({
+    const currentItems = this.invoiceItemsSubject$.value;
+    currentItems.push({
       description: '',
       quantity: 1,
       unitPrice: 0,
@@ -736,78 +749,34 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       unit: 'pcs',
       totalPrice: 0
     });
+    this.invoiceItemsSubject$.next([...currentItems]);
   }
 
   removeInvoiceItem(index: number) {
-    if (this.invoiceItems.length > 1) {
-      this.invoiceItems.splice(index, 1);
+    const currentItems = this.invoiceItemsSubject$.value;
+    if (currentItems.length > 1) {
+      currentItems.splice(index, 1);
+      this.invoiceItemsSubject$.next([...currentItems]);
     }
   }
 
   onQuantityChange(item: InvoiceItemDisplay) {
     const taxRate = item?.taxRate || 0;
-    item.totalPrice = this.calculateItemTotal(
-      item.quantity, 
-      item.unitPrice, 
-      taxRate, 
-      item.discountPercentage || 0
-    );
+    item.totalPrice = this.calculateItemTotal(item.quantity, item.unitPrice, taxRate, item.discountPercentage || 0);
+    this.invoiceItemsSubject$.next([...this.invoiceItemsSubject$.value]);
   }
 
   onItemChange(item: InvoiceItemDisplay) {
     const taxRate = item?.taxRate || 0;
-    item.totalPrice = this.calculateItemTotal(
-      item.quantity, 
-      item.unitPrice, 
-      taxRate, 
-      item.discountPercentage || 0
-    );
-  }
-
-  get subtotal(): number {
-    return this.invoiceItems.reduce((sum, item) => 
-      sum + (item.quantity * item.unitPrice), 0
-    );
-  }
-
-  get totalDiscount(): number {
-    return this.invoiceItems.reduce((sum, item) => {
-      const discountPercentage = item.discountPercentage || 0;
-      const itemSubtotal = item.quantity * item.unitPrice;
-      return sum + (itemSubtotal * (discountPercentage / 100));
-    }, 0);
-  }
-
-  get totalTax(): number {
-    return this.invoiceItems.reduce((sum, item) => {
-      const discountPercentage = item.discountPercentage || 0;
-      const taxRate = item.taxRate || 0;
-      const itemSubtotal = item.quantity * item.unitPrice;
-      const itemDiscount = itemSubtotal * (discountPercentage / 100);
-      const taxableAmount = itemSubtotal - itemDiscount;
-      return sum + (taxableAmount * (taxRate / 100));
-    }, 0);
-  }
-
-  get totalAmount(): number {
-    return this.subtotal + this.totalTax;
-  }
-
-  isFormValid(): boolean {
-    if (!this.workflowId || !this.customerId) return false;
-    if (this.invoiceItems.length === 0) return false;
-    if (!this.invoiceDate || !this.dueDate) return false;
-    
-    return this.invoiceItems.every(item => 
-      item.description.trim() !== '' && 
-      item.quantity > 0 && 
-      item.unitPrice >= 0
-    );
+    item.totalPrice = this.calculateItemTotal(item.quantity, item.unitPrice, taxRate, item.discountPercentage || 0);
+    this.invoiceItemsSubject$.next([...this.invoiceItemsSubject$.value]);
   }
 
   generateInvoice() {
-    if (!this.isFormValid()) {
-      this.errorMessage = 'Please fill in all required fields and ensure at least one invoice item exists';
+    const items = this.invoiceItemsSubject$.value;
+    
+    if (!this.workflowId || !this.customerId || items.length === 0 || !this.invoiceDate || !this.dueDate) {
+      this.errorMessage$.next('Please fill in all required fields and ensure at least one invoice item exists');
       return;
     }
 
@@ -818,7 +787,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       dueDate: new Date(this.dueDate),
       notes: this.notes,
       terms: this.terms,
-      invoiceItems: this.invoiceItems.map(item => ({
+      invoiceItems: items.map(item => ({
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
@@ -828,40 +797,49 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       }))
     };
 
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
 
     this.invoiceService.createInvoice(createDto)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (createdInvoice) => {
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(createdInvoice => {
           console.log('Invoice created successfully:', createdInvoice);
-          this.successMessage = `Invoice ${createdInvoice.invoiceNumber} created successfully!`;
+          this.successMessage$.next(`Invoice ${createdInvoice.invoiceNumber} created successfully!`);
           
-          // Generate PDF
           this.generatePdf(createdInvoice);
           
-          // Send email if checkbox is checked
           if (this.emailToCustomer) {
             this.sendInvoiceEmail(createdInvoice.id);
           }
           
-          this.isLoading = false;
-          
           setTimeout(() => {
             this.resetFormPartial();
           }, 2000);
-        },
-        error: (error) => {
+        }),
+        catchError(error => {
           console.error('Error creating invoice:', error);
-          this.errorMessage = error.message || 'Error generating invoice. Please try again.';
-          this.isLoading = false;
-        }
-      });
+          this.errorMessage$.next(error.message || 'Error generating invoice. Please try again.');
+          return of(null);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      )
+      .subscribe();
   }
 
   private generatePdf(invoice: InvoiceDto) {
+    const items = this.invoiceItemsSubject$.value;
+    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const totalTax = items.reduce((sum, item) => {
+      const discountPercentage = item?.discountPercentage || 0;
+      const taxRate = item?.taxRate || 0;
+      const itemSubtotal = item.quantity * item.unitPrice;
+      const itemDiscount = itemSubtotal * (discountPercentage / 100);
+      const taxableAmount = itemSubtotal - itemDiscount;
+      return sum + (taxableAmount * (taxRate / 100));
+    }, 0);
+
     const pdfData: InvoicePdfData = {
       invoiceNumber: invoice.invoiceNumber,
       invoiceDate: (invoice.invoiceDate instanceof Date) ? 
@@ -874,22 +852,22 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       customerAddress: this.customerAddress || invoice.customerAddress || '12 OSWALD ROAD',
       customerCity: this.customerCity || 'DUBLIN 4',
       customerPostalCode: this.customerPostalCode || 'D04 X470',
-      items: this.invoiceItems.map(item => ({
+      items: items.map(item => ({
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         tax: item.taxRate || this.vatRate,
         amount: item.totalPrice
       })),
-      subtotal: this.subtotal,
-      totalTax: this.totalTax,
+      subtotal: subtotal,
+      totalTax: totalTax,
       taxRate: this.vatRate,
-      total: this.totalAmount,
+      total: subtotal + totalTax,
       terms: this.terms,
       notes: this.notes,
       status: invoice.status,
       amountPaid: invoice.amountPaid || 0,
-      amountDue: invoice.amountDue || this.totalAmount
+      amountDue: invoice.amountDue || (subtotal + totalTax)
     };
 
     this.pdfService.generateInvoicePdf(pdfData);
@@ -904,7 +882,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Error sending invoice email:', error);
-          // Don't show error to user as the invoice was created successfully
         }
       });
   }
@@ -917,16 +894,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.invoiceStatus = 'Draft';
     this.emailToCustomer = false;
     
-    // Keep the items from the selected quote if available
     if (this.selectedQuote) {
       this.loadInvoiceItemsFromQuote(this.selectedQuote);
       this.presetSelectionsFromQuote(this.selectedQuote);
     } else {
-      this.invoiceItems = [];
+      this.invoiceItemsSubject$.next([]);
       this.resetSelections();
     }
     
-    this.successMessage = '';
+    this.successMessage$.next('');
   }
 
   close() {

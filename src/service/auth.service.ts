@@ -166,6 +166,37 @@ export class AuthService {
     return this.getFromStorage('refreshToken');
   }
 
+ // Get all users (Admin only)
+getAllUsers(): Observable<User[]> {
+  return this.http.get<User[]>(`${this.apiUrl}/users`)
+    .pipe(catchError(this.handleError));
+}
+
+// Update user (Admin only)
+updateUser(userId: number, updateData: any): Observable<User> {
+  return this.http.put<User>(`${this.apiUrl}/${userId}`, updateData)
+    .pipe(catchError(this.handleError));
+}
+
+// Deactivate user (Admin only)
+deactivateUser(userId: number): Observable<any> {
+  return this.http.patch(`${this.apiUrl}/${userId}/deactivate`, {})
+    .pipe(catchError(this.handleError));
+}
+
+// Activate user (Admin only)
+activateUser(userId: number): Observable<any> {
+  return this.http.patch(`${this.apiUrl}/${userId}/activate`, {})
+    .pipe(catchError(this.handleError));
+}
+
+// Delete user (Admin only)
+deleteUser(userId: number): Observable<any> {
+  return this.http.delete(`${this.apiUrl}/${userId}`)
+    .pipe(catchError(this.handleError));
+}
+
+
   private setAuthData(response: AuthResponse): void {
     // Store tokens
     this.setInStorage('token', response.token);

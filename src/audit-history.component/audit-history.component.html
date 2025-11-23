@@ -1,0 +1,385 @@
+<!-- audit-history.component.html -->
+<div class="audit-history-container">
+  <!-- Header Section -->
+  <div class="audit-header">
+    <h3 class="audit-title">
+      <span class="audit-icon">📜</span>
+      Audit Trail
+    </h3>
+    <button class="btn-export" (click)="exportAuditLogs()" [disabled]="isLoading() || !isBrowser">
+      <span>📥 Export</span>
+    </button>
+  </div>
+
+  <!-- SSR Placeholder -->
+  <div *ngIf="!isBrowser" class="ssr-placeholder">
+    <p>Loading audit trail...</p>
+  </div>
+
+  <div *ngIf="isBrowser">
+    <!-- Filter Section -->
+    <div class="filter-section">
+      <div class="filter-header">
+        <h4>
+          <span class="filter-icon">🔍</span>
+          Filters
+        </h4>
+        <button class="btn-toggle-filters" (click)="toggleFilters()">
+          {{ showFilters() ? 'Hide Filters' : 'Show Filters' }}
+        </button>
+      </div>
+
+      <div class="filter-content" [class.expanded]="showFilters()">
+        <div class="filter-grid">
+          <!-- Entity Type Filter -->
+          <div class="filter-group">
+            <label for="entityType">Entity Type</label>
+            <select id="entityType" [(ngModel)]="filterModel.entityType" (change)="onFilterChange()">
+              <option [ngValue]="null">All Types</option>
+              <option [value]="entityTypes.CUSTOMER">Customer</option>
+              <option [value]="entityTypes.CONTACT">Contact</option>
+              <option [value]="entityTypes.WORKFLOW">Workflow</option>
+              <option [value]="entityTypes.QUOTE">Quote</option>
+              <option [value]="entityTypes.INVOICE">Invoice</option>
+              <option [value]="entityTypes.SITE_VISIT">Site Visit</option>
+            </select>
+          </div>
+
+          <!-- Customer Filter -->
+          <div class="filter-group">
+            <label for="customer">Customer</label>
+            <select id="customer" [(ngModel)]="selectedCustomerId" (change)="onCustomerChange()">
+              <option [ngValue]="null">All Customers</option>
+              <option *ngFor="let customer of customers$ | async" [value]="customer.companyId">
+                {{ customer.companyName }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Action Filter -->
+          <div class="filter-group">
+            <label for="action">Action</label>
+            <select id="action" [(ngModel)]="filterModel.action" (change)="onFilterChange()">
+              <option [ngValue]="null">All Actions</option>
+              <option [value]="auditActions.CREATE">Create</option>
+              <option [value]="auditActions.UPDATE">Update</option>
+              <option [value]="auditActions.DELETE">Delete</option>
+              <option [value]="auditActions.VIEW">View</option>
+            </select>
+          </div>
+
+          <!-- User Filter -->
+          <div class="filter-group">
+            <label for="user">User</label>
+            <select id="user" [(ngModel)]="filterModel.performedBy" (change)="onFilterChange()">
+              <option [ngValue]="null">All Users</option>
+              <option *ngFor="let user of users$ | async" [value]="user.userId">
+                {{ user.firstName }} {{ user.lastName }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Start Date Filter -->
+          <div class="filter-group">
+            <label for="startDate">Start Date</label>
+            <input 
+              type="date" 
+              id="startDate" 
+              [(ngModel)]="startDateString"
+              (change)="onDateChange()"
+              [max]="endDateString || todayString"
+            />
+          </div>
+
+          <!-- End Date Filter -->
+          <div class="filter-group">
+            <label for="endDate">End Date</label>
+            <input 
+              type="date" 
+              id="endDate" 
+              [(ngModel)]="endDateString"
+              (change)="onDateChange()"
+              [min]="startDateString"
+              [max]="todayString"
+            />
+          </div>
+
+          <!-- Search Term -->
+          <div class="filter-group filter-group-full">
+            <label for="searchTerm">Search</label>
+            <input 
+              type="text" 
+              id="searchTerm" 
+              [(ngModel)]="filterModel.searchTerm"
+              (input)="onSearchChange()"
+              placeholder="Search in entity names, notes, changes..."
+            />
+          </div>
+        </div>
+
+        <!-- Filter Actions -->
+        <div class="filter-actions">
+          <button class="btn-primary" (click)="applyFilters()" [disabled]="isLoading()">
+            <span>🔍 Apply Filters</span>
+          </button>
+          <button class="btn-secondary" (click)="clearFilters()" [disabled]="isLoading()">
+            <span>🔄 Clear All</span>
+          </button>
+        </div>
+
+        <!-- Active Filters Display -->
+        <div class="active-filters" *ngIf="hasActiveFilters()">
+          <span class="active-filters-label">Active Filters:</span>
+          <span class="filter-tag" *ngIf="filterModel.entityType">
+            Type: {{ filterModel.entityType }}
+            <button (click)="removeFilter('entityType')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="selectedCustomerId">
+            Customer: {{ getCustomerName(selectedCustomerId) }}
+            <button (click)="removeFilter('customer')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="filterModel.action">
+            Action: {{ filterModel.action }}
+            <button (click)="removeFilter('action')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="filterModel.performedBy">
+            User: {{ getUserName(filterModel.performedBy) }}
+            <button (click)="removeFilter('user')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="startDateString">
+            From: {{ startDateString }}
+            <button (click)="removeFilter('startDate')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="endDateString">
+            To: {{ endDateString }}
+            <button (click)="removeFilter('endDate')">×</button>
+          </span>
+          <span class="filter-tag" *ngIf="filterModel.searchTerm">
+            Search: "{{ filterModel.searchTerm }}"
+            <button (click)="removeFilter('searchTerm')">×</button>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-summary" *ngIf="!isLoading()">
+      <div class="summary-item">
+        <span class="summary-label">Total Results:</span>
+        <span class="summary-value">{{ totalCount() }}</span>
+      </div>
+      <div class="summary-item">
+        <span class="summary-label">Page:</span>
+        <span class="summary-value">{{ currentPage() }} of {{ totalPages() }}</span>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading audit logs...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="errorMessage() && !isLoading()" class="error-state">
+      <p>{{ errorMessage() }}</p>
+      <button class="btn-retry" (click)="loadAuditLogs()">Retry</button>
+    </div>
+
+    <!-- Audit Table (Simplified List) -->
+    <div class="audit-table" *ngIf="!isLoading() && !errorMessage()">
+      <div *ngIf="auditLogs().length === 0" class="no-audits">
+        <p>No audit logs found matching your criteria</p>
+      </div>
+
+      <!-- Audit Table Header -->
+      <div class="table-header" *ngIf="auditLogs().length > 0">
+        <div class="col-action">Action</div>
+        <div class="col-entity">Entity</div>
+        <div class="col-user">User</div>
+        <div class="col-date">Date & Time</div>
+        <div class="col-details">Details</div>
+      </div>
+
+      <!-- Audit Table Rows -->
+      <div class="table-row" 
+           *ngFor="let audit of auditLogs(); trackBy: trackByAuditId"
+           [class]="getActionClass(audit.action)"
+           (click)="selectAuditRow(audit)">
+        
+        <div class="col-action">
+          <span class="action-icon">{{ getActionIcon(audit.action) }}</span>
+          <span class="action-text">{{ audit.action }}</span>
+        </div>
+
+        <div class="col-entity">
+          <span class="entity-badge">{{ audit.entityType }}</span>
+          <span class="entity-name">{{ audit.entityName || 'N/A' }}</span>
+        </div>
+
+        <div class="col-user">
+          <strong>{{ audit.performedByName }}</strong>
+        </div>
+
+        <div class="col-date">
+          {{ formatDate(audit.performedAt) }}
+        </div>
+
+        <div class="col-details">
+          <button class="btn-view-details">View Details →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="!isLoading() && !errorMessage() && totalPages() > 1">
+      <button 
+        class="btn-page" 
+        (click)="goToPage(1)" 
+        [disabled]="currentPage() === 1">
+        ⏮️ First
+      </button>
+      <button 
+        class="btn-page" 
+        (click)="goToPage(currentPage() - 1)" 
+        [disabled]="currentPage() === 1">
+        ◀️ Previous
+      </button>
+      
+      <div class="page-numbers">
+        <button 
+          *ngFor="let page of getPageNumbers()" 
+          class="btn-page-number"
+          [class.active]="page === currentPage()"
+          (click)="goToPage(page)"
+          [disabled]="page === currentPage()">
+          {{ page }}
+        </button>
+      </div>
+      
+      <button 
+        class="btn-page" 
+        (click)="goToPage(currentPage() + 1)" 
+        [disabled]="currentPage() === totalPages()">
+        Next ▶️
+      </button>
+      <button 
+        class="btn-page" 
+        (click)="goToPage(totalPages())" 
+        [disabled]="currentPage() === totalPages()">
+        Last ⏭️
+      </button>
+    </div>
+
+    <!-- Page Size Selector -->
+    <div class="page-size-selector" *ngIf="!isLoading() && totalCount() > 0">
+      <label>Items per page:</label>
+      <select [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+        <option [value]="10">10</option>
+        <option [value]="20">20</option>
+        <option [value]="50">50</option>
+        <option [value]="100">100</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Details Popup Modal -->
+<div class="modal-overlay" *ngIf="showDetailsPopup()" (click)="closeDetailsPopup()">
+  <div class="modal-content" (click)="$event.stopPropagation()" *ngIf="selectedAudit()">
+    <div class="modal-header">
+      <h3>
+        <span class="action-icon">{{ getActionIcon(selectedAudit()!.action) }}</span>
+        Audit Details
+      </h3>
+      <button class="btn-close" (click)="closeDetailsPopup()">×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Audit Summary -->
+      <div class="detail-section">
+        <h4>Summary</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Action:</span>
+            <span class="detail-value" [class]="getActionClass(selectedAudit()!.action)">
+              {{ selectedAudit()!.action }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Entity Type:</span>
+            <span class="detail-value">{{ selectedAudit()!.entityType }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Entity Name:</span>
+            <span class="detail-value">{{ selectedAudit()!.entityName || 'N/A' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Entity ID:</span>
+            <span class="detail-value">#{{ selectedAudit()!.entityId }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Performed By:</span>
+            <span class="detail-value">{{ selectedAudit()!.performedByName }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Date & Time:</span>
+            <span class="detail-value">{{ formatDate(selectedAudit()!.performedAt) }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedAudit()!.ipAddress">
+            <span class="detail-label">IP Address:</span>
+            <span class="detail-value">{{ selectedAudit()!.ipAddress }}</span>
+          </div>
+          <div class="detail-item detail-item-full" *ngIf="selectedAudit()!.userAgent">
+            <span class="detail-label">User Agent:</span>
+            <span class="detail-value">{{ selectedAudit()!.userAgent }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes Section -->
+      <div class="detail-section" *ngIf="selectedAudit()!.notes">
+        <h4>Notes</h4>
+        <div class="notes-content">
+          <p>{{ selectedAudit()!.notes }}</p>
+        </div>
+      </div>
+
+      <!-- Changes Section -->
+      <div class="detail-section" *ngIf="hasChanges(selectedAudit()!)">
+        <h4>Changes Made ({{ selectedAudit()!.changes.length }})</h4>
+        <div class="changes-list-detail">
+          <div class="change-item-detail" *ngFor="let change of selectedAudit()!.changes; trackBy: trackByFieldName">
+            <div class="change-header">
+              <strong>{{ change.fieldLabel }}</strong>
+              <span class="field-name">({{ change.fieldName }})</span>
+            </div>
+            <div class="change-comparison">
+              <div class="change-before">
+                <label>Before:</label>
+                <div class="value-box old" [class.empty]="!change.oldValue">
+                  {{ formatValue(change.oldValue, change.dataType) }}
+                </div>
+              </div>
+              <div class="change-arrow">→</div>
+              <div class="change-after">
+                <label>After:</label>
+                <div class="value-box new">
+                  {{ formatValue(change.newValue, change.dataType) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section" *ngIf="!hasChanges(selectedAudit()!)">
+        <p class="no-changes">No field changes recorded for this action.</p>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeDetailsPopup()">Close</button>
+    </div>
+  </div>
+</div>

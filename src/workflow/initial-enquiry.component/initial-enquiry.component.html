@@ -1,43 +1,43 @@
 <div class="initial-enquiry-container">
   <!-- Success/Error Messages -->
-  <div class="alert alert-success" *ngIf="successMessage">
+  <div class="alert alert-success" *ngIf="successMessage$ | async as successMessage">
     {{ successMessage }}
   </div>
-  <div class="alert alert-error" *ngIf="errorMessage">
+  <div class="alert alert-error" *ngIf="errorMessage$ | async as errorMessage">
     {{ errorMessage }}
   </div>
 
   <!-- Form Section with Tabs -->
   <div class="enquiry-form-section">
-    <h2>{{ isEditMode ? 'Edit Initial Enquiry' : 'Add Initial Enquiry' }}</h2>
+    <h2>{{ (isEditMode$ | async) ? 'Edit Initial Enquiry' : 'Add Initial Enquiry' }}</h2>
     
     <!-- Tab Navigation -->
     <div class="tab-navigation">
       <button 
         type="button"
         class="tab-button" 
-        [class.active]="activeTab === 'comments'"
+        [class.active]="(activeTab$ | async) === 'comments'"
         (click)="switchTab('comments')">
         Comments
       </button>
       <button 
         type="button"
         class="tab-button" 
-        [class.active]="activeTab === 'email'"
+        [class.active]="(activeTab$ | async) === 'email'"
         (click)="switchTab('email')">
         Email
       </button>
       <button 
         type="button"
         class="tab-button" 
-        [class.active]="activeTab === 'images'"
+        [class.active]="(activeTab$ | async) === 'images'"
         (click)="switchTab('images')">
         Images
       </button>
     </div>
 
     <!-- Comments Tab -->
-    <div class="tab-content" *ngIf="activeTab === 'comments'">
+    <div class="tab-content" *ngIf="(activeTab$ | async) === 'comments'">
       <form [formGroup]="enquiryForm" (ngSubmit)="onSubmit()">
         <div class="form-group">
           <label for="email">Email Address <span class="required">*</span></label>
@@ -75,17 +75,17 @@
           <button 
             type="submit" 
             class="btn btn-primary" 
-            [disabled]="isLoading"
+            [disabled]="(isLoading$ | async) === true"
           >
-            <span *ngIf="!isLoading">{{ isEditMode ? 'Update Enquiry' : 'Add Enquiry' }}</span>
-            <span *ngIf="isLoading">Processing...</span>
+            <span *ngIf="!(isLoading$ | async)">{{ (isEditMode$ | async) ? 'Update Enquiry' : 'Add Enquiry' }}</span>
+            <span *ngIf="isLoading$ | async">Processing...</span>
           </button>
           <button 
             type="button" 
             class="btn btn-secondary" 
             (click)="cancelEdit()"
-            *ngIf="isEditMode"
-            [disabled]="isLoading"
+            *ngIf="isEditMode$ | async"
+            [disabled]="(isLoading$ | async) === true"
           >
             Cancel
           </button>
@@ -94,7 +94,7 @@
     </div>
 
     <!-- Email Tab -->
-    <div class="tab-content" *ngIf="activeTab === 'email'">
+    <div class="tab-content" *ngIf="(activeTab$ | async) === 'email'">
       <form [formGroup]="emailForm">
         <div class="form-group">
           <label for="emailTemplate">Choose Email Template</label>
@@ -104,13 +104,13 @@
             formControlName="template"
             (change)="onTemplateSelect($event)">
             <option value="">Select a template...</option>
-            <option *ngFor="let template of emailTemplates" [value]="template.id">
+            <option *ngFor="let template of emailTemplates$ | async" [value]="template.id">
               {{ template.name }}
             </option>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="emailSubject">
+        <div class="form-group" *ngIf="emailSubject$ | async as emailSubject">
           <label for="emailSubject">Subject</label>
           <input 
             type="text" 
@@ -122,7 +122,7 @@
           />
         </div>
 
-        <div class="form-group" *ngIf="emailContent">
+        <div class="form-group" *ngIf="emailContent$ | async as emailContent">
           <label for="emailBody">Email Content</label>
           <textarea 
             id="emailBody" 
@@ -134,12 +134,12 @@
           ></textarea>
         </div>
 
-        <div class="form-actions" *ngIf="emailContent">
+        <div class="form-actions" *ngIf="emailContent$ | async">
           <button 
             type="button" 
             class="btn btn-primary" 
             (click)="sendEmail()"
-            [disabled]="isLoading">
+            [disabled]="(isLoading$ | async) === true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
               <polyline points="22,6 12,13 2,6"></polyline>
@@ -151,7 +151,7 @@
     </div>
 
     <!-- Images Tab -->
-    <div class="tab-content" *ngIf="activeTab === 'images'">
+    <div class="tab-content" *ngIf="(activeTab$ | async) === 'images'">
       <form [formGroup]="enquiryForm">
         <div class="form-group">
           <label for="images">Images (URLs or file references)</label>
@@ -170,7 +170,7 @@
             type="button" 
             class="btn btn-primary" 
             (click)="onSubmit()"
-            [disabled]="isLoading">
+            [disabled]="(isLoading$ | async) === true">
             Save Images
           </button>
         </div>
@@ -182,51 +182,56 @@
   <div class="enquiries-list-section">
     <h2>Enquiry History</h2>
     
-    <div *ngIf="isLoading && enquiries.length === 0" class="loading-state">
-      <div class="spinner"></div>
-      <p>Loading enquiries...</p>
-    </div>
+    <ng-container *ngIf="enquiries$ | async as enquiries">
+      <div *ngIf="(isLoading$ | async) && enquiries.length === 0" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading enquiries...</p>
+      </div>
 
-    <div *ngIf="!isLoading && enquiries.length === 0" class="empty-state">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-      </svg>
-      <h3>No Enquiries Yet</h3>
-      <p>Start by adding your first enquiry using the form above.</p>
-    </div>
+      <div *ngIf="!(isLoading$ | async) && enquiries.length === 0" class="empty-state">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <h3>No Enquiries Yet</h3>
+        <p>Start by adding your first enquiry using the form above.</p>
+      </div>
 
-    <div class="enquiries-list" *ngIf="!isLoading && enquiries.length > 0">
-      <div class="enquiry-card" *ngFor="let enquiry of enquiries">
-        <div class="enquiry-header">
-          <div class="enquiry-email">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            <strong>{{ enquiry.email }}</strong>
-          </div>
-          <button class="btn-edit" (click)="editEnquiry(enquiry)" [disabled]="isLoading">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-            </svg>
-            Edit
-          </button>
-        </div>
-        <div class="enquiry-body">
-          <p class="enquiry-comments">{{ enquiry.comments }}</p>
-          <div class="enquiry-meta" *ngIf="enquiry.images">
-            <div class="meta-item">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                <polyline points="21 15 16 10 5 21"></polyline>
+      <div class="enquiries-list" *ngIf="!(isLoading$ | async) && enquiries.length > 0">
+        <div class="enquiry-card" *ngFor="let enquiry of enquiries">
+          <div class="enquiry-header">
+            <div class="enquiry-email">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
               </svg>
-              <span>{{ enquiry.images }}</span>
+              <strong>{{ enquiry.email }}</strong>
+            </div>
+            <button 
+              class="btn-edit" 
+              (click)="editEnquiry(enquiry)" 
+              [disabled]="(isLoading$ | async) === true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Edit
+            </button>
+          </div>
+          <div class="enquiry-body">
+            <p class="enquiry-comments">{{ enquiry.comments }}</p>
+            <div class="enquiry-meta" *ngIf="enquiry.images">
+              <div class="meta-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                  <polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+                <span>{{ enquiry.images }}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ng-container>
   </div>
 </div>

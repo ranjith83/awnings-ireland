@@ -1,15 +1,15 @@
 <div class="create-invoice-container">
   <!-- Loading & Messages -->
-  <div *ngIf="isLoading" class="loading-overlay">
+  <div *ngIf="isLoading$ | async" class="loading-overlay">
     <div class="spinner"></div>
     <p>Loading...</p>
   </div>
 
-  <div *ngIf="errorMessage" class="alert alert-error">
+  <div *ngIf="errorMessage$ | async as errorMessage" class="alert alert-error">
     {{ errorMessage }}
   </div>
 
-  <div *ngIf="successMessage" class="alert alert-success">
+  <div *ngIf="successMessage$ | async as successMessage" class="alert alert-success">
     {{ successMessage }}
   </div>
 
@@ -22,8 +22,8 @@
           <label class="form-label">Select Workflow</label>
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
-            <option *ngFor="let workflow of workflows" [value]="workflow.workflowId">
-                 {{ workflow.description }}
+            <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
+              {{ workflow.description }}
             </option>
           </select>
         </div>
@@ -42,7 +42,7 @@
           <label class="form-label">Select Quote</label>
           <select class="form-select" [(ngModel)]="selectedQuoteId" (change)="onQuoteChange()">
             <option [value]="null" disabled>Select Quote</option>
-            <option *ngFor="let quote of quotes" [value]="quote.quoteId">
+            <option *ngFor="let quote of quotes$ | async" [value]="quote.quoteId">
               {{ quote.quoteNumber }} - €{{ quote.totalAmount | number:'1.2-2' }}
             </option>
           </select>
@@ -58,7 +58,7 @@
           <label class="form-label">Widths in cm</label>
           <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let width of availableWidths" [value]="width">
+            <option *ngFor="let width of availableWidths$ | async" [value]="width">
               {{ width }}
             </option>
           </select>
@@ -68,7 +68,7 @@
           <label class="form-label">Select Awning (Projection)</label>
           <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let projection of availableProjections" [value]="projection">
+            <option *ngFor="let projection of availableProjections$ | async" [value]="projection">
               {{ projection }}
             </option>
           </select>
@@ -84,7 +84,7 @@
           <label class="form-label">Brackets</label>
           <select class="form-select" [(ngModel)]="selectedBrackets" (change)="onBracketChange()">
             <option value="" disabled selected>Select</option>
-            <option *ngFor="let bracket of brackets" [value]="bracket.bracketId">
+            <option *ngFor="let bracket of brackets$ | async" [value]="bracket.bracketId">
               {{ bracket.bracketName }} - €{{ bracket.price | number:'1.2-2' }}
             </option>
           </select>
@@ -94,7 +94,7 @@
           <label class="form-label">Arms</label>
           <select class="form-select" [(ngModel)]="selectedArms" (change)="onArmChange()">
             <option value="" disabled selected>Select</option>
-            <option *ngFor="let arm of arms" [value]="arm.armId">
+            <option *ngFor="let arm of arms$ | async" [value]="arm.armId">
               {{ arm.description }} - €{{ arm.price | number:'1.2-2' }}
             </option>
           </select>
@@ -104,7 +104,7 @@
           <label class="form-label">Motor</label>
           <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
             <option value="" disabled selected>Select</option>
-            <option *ngFor="let motor of motors" [value]="motor.motorId">
+            <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
               {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
             </option>
           </select>
@@ -114,7 +114,7 @@
           <label class="form-label">Heater</label>
           <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
             <option value="" disabled selected>Select</option>
-            <option *ngFor="let heater of heaters" [value]="heater.heaterId">
+            <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
             </option>
           </select>
@@ -200,7 +200,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of invoiceItems; let i = index; let even = even" [class.even-row]="even">
+          <tr *ngFor="let item of invoiceItems$ | async; let i = index; let even = even" [class.even-row]="even">
             <td>{{ item.description }}</td>
             <td>
               <input 
@@ -231,12 +231,12 @@
             </td>
             <td>€{{ item.totalPrice | number:'1.2-2' }}</td>
             <td>
-              <button class="btn-remove" (click)="removeInvoiceItem(i)" *ngIf="invoiceItems.length > 1">
+              <button class="btn-remove" (click)="removeInvoiceItem(i)" *ngIf="(invoiceItems$ | async)?.length || 0 > 1">
                 Remove
               </button>
             </td>
           </tr>
-          <tr *ngIf="invoiceItems.length === 0">
+          <tr *ngIf="(invoiceItems$ | async)?.length === 0">
             <td colspan="6" class="text-center">
               Select width and awning to generate first line item
             </td>
@@ -273,15 +273,15 @@
       <div class="summary-right">
         <div class="summary-row">
           <span class="summary-label">Sub Total</span>
-          <span class="summary-value">€{{ subtotal | number:'1.2-2' }}</span>
+          <span class="summary-value">€{{ subtotal$ | async | number:'1.2-2' }}</span>
         </div>
         <div class="summary-row">
           <span class="summary-label">Total Sales TAX {{ vatRate }}%</span>
-          <span class="summary-value">€{{ totalTax | number:'1.2-2' }}</span>
+          <span class="summary-value">€{{ totalTax$ | async | number:'1.2-2' }}</span>
         </div>
         <div class="summary-row total">
           <span class="summary-label">Total EUR</span>
-          <span class="summary-value">€{{ totalAmount | number:'1.2-2' }}</span>
+          <span class="summary-value">€{{ totalAmount$ | async | number:'1.2-2' }}</span>
         </div>
       </div>
     </div>
@@ -292,8 +292,8 @@
         <span class="close-icon">✕</span>
         Close
       </button>
-      <button class="btn-generate" (click)="generateInvoice()" [disabled]="!isFormValid()">
-        <span class="generate-icon">🔄</span>
+      <button class="btn-generate" (click)="generateInvoice()" [disabled]="(isFormValid$ | async) === false">
+        <span class="generate-icon">📄</span>
         Generate Invoice
       </button>
     </div>
