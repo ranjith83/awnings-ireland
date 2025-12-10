@@ -255,6 +255,9 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
     this.workflowId = this.selectedWorkflowId;
     
+
+
+    
     const workflows = this.workflowsSubject$.value;
     const selectedWorkflow = workflows.find(w => w.workflowId === this.selectedWorkflowId);
     

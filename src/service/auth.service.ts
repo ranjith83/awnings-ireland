@@ -153,9 +153,35 @@ export class AuthService {
     }).pipe(catchError(this.handleError));
   }
 
-  getCurrentUser(): Observable<User> {
+  // Get current user from API (async)
+  getCurrentUserFromApi(): Observable<User> {
     return this.http.get<User>(`${this.apiUrl}/me`)
       .pipe(catchError(this.handleError));
+  }
+
+  // Get current user from local storage (sync) - NEW METHOD
+  getCurrentUser(): User | null {
+    // First try to get from BehaviorSubject
+    const user = this.currentUserValue;
+    if (user) {
+      return user;
+    }
+
+    // Fallback to localStorage
+    if (!this.isBrowser) {
+      return null;
+    }
+
+    try {
+      const userStr = this.getFromStorage('currentUser');
+      if (userStr) {
+        return JSON.parse(userStr) as User;
+      }
+    } catch (error) {
+      console.error('Error parsing user data from storage:', error);
+    }
+
+    return null;
   }
 
   getToken(): string | null {
@@ -166,36 +192,35 @@ export class AuthService {
     return this.getFromStorage('refreshToken');
   }
 
- // Get all users (Admin only)
-getAllUsers(): Observable<User[]> {
-  return this.http.get<User[]>(`${this.apiUrl}/users`)
-    .pipe(catchError(this.handleError));
-}
+  // Get all users (Admin only)
+  getAllUsers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/users`)
+      .pipe(catchError(this.handleError));
+  }
 
-// Update user (Admin only)
-updateUser(userId: number, updateData: any): Observable<User> {
-  return this.http.put<User>(`${this.apiUrl}/${userId}`, updateData)
-    .pipe(catchError(this.handleError));
-}
+  // Update user (Admin only)
+  updateUser(userId: number, updateData: any): Observable<User> {
+    return this.http.put<User>(`${this.apiUrl}/${userId}`, updateData)
+      .pipe(catchError(this.handleError));
+  }
 
-// Deactivate user (Admin only)
-deactivateUser(userId: number): Observable<any> {
-  return this.http.patch(`${this.apiUrl}/${userId}/deactivate`, {})
-    .pipe(catchError(this.handleError));
-}
+  // Deactivate user (Admin only)
+  deactivateUser(userId: number): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${userId}/deactivate`, {})
+      .pipe(catchError(this.handleError));
+  }
 
-// Activate user (Admin only)
-activateUser(userId: number): Observable<any> {
-  return this.http.patch(`${this.apiUrl}/${userId}/activate`, {})
-    .pipe(catchError(this.handleError));
-}
+  // Activate user (Admin only)
+  activateUser(userId: number): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${userId}/activate`, {})
+      .pipe(catchError(this.handleError));
+  }
 
-// Delete user (Admin only)
-deleteUser(userId: number): Observable<any> {
-  return this.http.delete(`${this.apiUrl}/${userId}`)
-    .pipe(catchError(this.handleError));
-}
-
+  // Delete user (Admin only)
+  deleteUser(userId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${userId}`)
+      .pipe(catchError(this.handleError));
+  }
 
   private setAuthData(response: AuthResponse): void {
     // Store tokens

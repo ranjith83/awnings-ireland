@@ -28,7 +28,8 @@ export class WorkflowComponent implements OnInit {
     { label: 'Create Quote', route: '/workflow/create-quote', path: 'create-quote' },
     { label: 'Invite showroom', route: '/workflow/invite-showroom', path: 'invite-showroom' },
     { label: 'Setup site visit', route: '/workflow/setup-site-visit', path: 'setup-site-visit' },
-    { label: 'Invoice', route: '/workflow/invoice', path: 'invoice' }
+    { label: 'Invoice', route: '/workflow/invoice', path: 'invoice' },
+    { label: 'Payment', route: '/workflow/payment', path: 'payment' }
   ];
 
   constructor(

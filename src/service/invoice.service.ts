@@ -207,6 +207,16 @@ export class InvoiceService {
   }
 
   /**
+   * Get invoices by customer ID
+   * Maps to: GET /api/Invoice/customer/{customerId}
+   */
+  getInvoicesByCustomerId(customerId: number): Observable<InvoiceDto[]> {
+    return this.http.get<InvoiceDto[]>(`${this.apiUrl}/customer/${customerId}`)
+      .pipe(catchError(this.handleError));
+  }
+
+
+  /**
    * Handle HTTP errors
    */
   private handleError(error: HttpErrorResponse): Observable<never> {

@@ -13,7 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { AuthService } from '../../service/auth.service';
+import { AuthService, User } from '../../service/auth.service';
 
 interface MenuItem {
   icon: any; // Changed from string to any for FontAwesome icons
@@ -32,6 +32,7 @@ interface MenuItem {
 export class AppLayoutComponent {
   isSidebarCollapsed = false;
   activeRoute = '';
+  currentUser: User | null = null;
 
   menuItems: MenuItem[] = [
     { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
@@ -52,6 +53,51 @@ export class AppLayoutComponent {
   ) {
     this.activeRoute = this.router.url;
   }
+
+  ngOnInit(): void {
+    this.loadCurrentUser();
+    //this.subscribeToRouteChanges();
+  } 
+
+  loadCurrentUser(): void {
+    // Get user data from AuthService (already handles platform checks)
+    this.currentUser = this.authService.getCurrentUser();
+    
+    // Optional: Subscribe to user changes
+    this.authService.currentUser.subscribe(user => {
+      this.currentUser = user;
+    });
+  }
+
+ getUserDisplayName(): string {
+    if (!this.currentUser) return 'User';
+    
+    // Priority: firstName + lastName > username
+    if (this.currentUser.firstName && this.currentUser.lastName) {
+      return `${this.currentUser.firstName} ${this.currentUser.lastName}`;
+    } else if (this.currentUser.firstName) {
+      return this.currentUser.firstName;
+    }
+    
+    return this.currentUser.username;
+  }
+
+  getUserInitials(): string {
+    if (!this.currentUser) return 'U';
+    
+    if (this.currentUser.firstName && this.currentUser.lastName) {
+      return `${this.currentUser.firstName.charAt(0)}${this.currentUser.lastName.charAt(0)}`.toUpperCase();
+    } else if (this.currentUser.firstName) {
+      return this.currentUser.firstName.charAt(0).toUpperCase();
+    }
+    
+    return this.currentUser.username.charAt(0).toUpperCase();
+  }
+
+  getUserRole(): string {
+    return this.currentUser?.role || 'User';
+  }
+
 
   toggleSidebar() {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;

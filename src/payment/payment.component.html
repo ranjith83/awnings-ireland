@@ -1,0 +1,239 @@
+<div class="payment-container">
+  <!-- Loading Overlay -->
+  <div *ngIf="isLoading$ | async" class="loading-overlay">
+    <div class="spinner"></div>
+    <p>Processing...</p>
+  </div>
+
+  <!-- Messages -->
+  <div *ngIf="errorMessage$ | async as errorMessage" class="alert alert-error">
+    {{ errorMessage }}
+  </div>
+
+  <div *ngIf="successMessage$ | async as successMessage" class="alert alert-success">
+    {{ successMessage }}
+  </div>
+
+  <div class="payment-content">
+    <!-- Invoice Selection -->
+    <div class="form-section">
+      <h3 class="section-title">Select Invoice</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Customer</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [value]="customerName" 
+            readonly>
+        </div>
+        
+        <div class="form-group">
+          <label class="form-label">Select Invoice</label>
+          <select class="form-select" [(ngModel)]="selectedInvoiceId" (change)="onInvoiceChange()">
+            <option [value]="null" disabled>Select an invoice</option>
+            <option *ngFor="let invoice of invoices$ | async" [value]="invoice.id">
+              {{ invoice.invoiceNumber }} - €{{ invoice.totalAmount | number:'1.2-2' }} ({{ invoice.status }})
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invoice Information -->
+    <div class="form-section" *ngIf="invoiceNumber">
+      <h3 class="section-title">Invoice Information</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <label class="info-label">Invoice Number</label>
+          <div class="info-value">{{ invoiceNumber || 'N/A' }}</div>
+        </div>
+        <div class="info-item">
+          <label class="info-label">Invoice Date</label>
+          <div class="info-value">{{ invoiceDate | date:'dd MMM yyyy' }}</div>
+        </div>
+        <div class="info-item">
+          <label class="info-label">Workflow ID</label>
+          <div class="info-value">{{ workflowId || 'N/A' }}</div>
+        </div>
+        <div class="info-item">
+          <label class="info-label">Total Amount</label>
+          <div class="info-value total-amount">€{{ totalInvoiceAmount | number:'1.2-2' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Category Selection -->
+    <div class="form-section" *ngIf="invoiceNumber">
+      <h3 class="section-title">Payment Schedule Type</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Select Product Category</label>
+          <select class="form-select" [(ngModel)]="selectedCategory" (change)="onCategoryChange()">
+            <option *ngFor="let category of productCategories" [value]="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        <button class="btn-generate" (click)="generatePaymentSchedule()">
+          <span class="icon">🔄</span>
+          Generate Schedule
+        </button>
+      </div>
+      
+      <!-- Category Info -->
+      <div class="category-info">
+        <div class="info-card" *ngIf="selectedCategory === 'Renson'">
+          <span class="info-icon">ℹ️</span>
+          <div class="info-text">
+            <strong>Renson Products:</strong> 25% deposit, 50% prior to completion, 25% upon completion
+          </div>
+        </div>
+        <div class="info-card" *ngIf="selectedCategory === 'Awnings'">
+          <span class="info-icon">ℹ️</span>
+          <div class="info-text">
+            <strong>Awnings & Parasols:</strong> 50% deposit, 50% upon completion
+          </div>
+        </div>
+        <div class="info-card" *ngIf="selectedCategory === 'Stock Items'">
+          <span class="info-icon">ℹ️</span>
+          <div class="info-text">
+            <strong>Stock Items:</strong> 100% payment upfront (speakers, heaters, etc.)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Schedule Table -->
+    <div class="table-section" *ngIf="invoiceNumber">
+      <div class="table-header">
+        <h3>Payment Schedule</h3>
+        <div class="header-actions">
+          <button class="btn-export" (click)="exportToXero()" [disabled]="(paymentSchedule$ | async)?.length === 0">
+            <span class="icon">📤</span>
+            Export to Xero
+          </button>
+        </div>
+      </div>
+
+      <table class="payment-table">
+        <thead>
+          <tr>
+            <th>DESCRIPTION</th>
+            <th>PERCENTAGE</th>
+            <th>AMOUNT</th>
+            <th>DUE DATE</th>
+            <th>STATUS</th>
+            <th>AMOUNT PAID</th>
+            <th>AMOUNT DUE</th>
+            <th>REFERENCE</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of paymentSchedule$ | async; let i = index; let even = even" [class.even-row]="even">
+            <td>{{ item.description }}</td>
+            <td class="text-center">{{ item.percentage }}%</td>
+            <td class="text-right">€{{ item.amount | number:'1.2-2' }}</td>
+            <td>{{ item.dueDate | date:'dd MMM yyyy' }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="getStatusClass(item.status)">
+                {{ item.status }}
+              </span>
+            </td>
+            <td class="text-right">€{{ item.amountPaid | number:'1.2-2' }}</td>
+            <td class="text-right">€{{ item.amountDue | number:'1.2-2' }}</td>
+            <td>{{ item.reference }}</td>
+            <td>
+              <button 
+                class="btn-record-payment" 
+                (click)="openPaymentModal(i)"
+                [disabled]="item.amountDue === 0">
+                Record Payment
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="(paymentSchedule$ | async)?.length === 0">
+            <td colspan="9" class="text-center empty-state">
+              Select an invoice and generate payment schedule
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Payment Summary -->
+    <div class="summary-section" *ngIf="invoiceNumber && (paymentSchedule$ | async)?.length">
+      <div class="summary-card">
+        <div class="summary-row">
+          <span class="summary-label">Total Invoice Amount</span>
+          <span class="summary-value">€{{ getTotalAmount() | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Total Paid</span>
+          <span class="summary-value paid">€{{ getTotalPaid() | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row total">
+          <span class="summary-label">Total Outstanding</span>
+          <span class="summary-value due">€{{ getTotalDue() | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button class="btn-close" (click)="close()">
+        <span class="icon">✕</span>
+        Close
+      </button>
+      <button class="btn-save" (click)="savePaymentSchedule()" [disabled]="(paymentSchedule$ | async)?.length === 0">
+        <span class="icon">💾</span>
+        Save Schedule
+      </button>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div class="modal-overlay" *ngIf="showPaymentModal" (click)="closePaymentModal()">
+    <div class="modal-container" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Record Payment</h3>
+        <button class="modal-close" (click)="closePaymentModal()">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Payment Amount (€)</label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [(ngModel)]="paymentAmount"
+            min="0"
+            step="0.01">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Payment Date</label>
+          <input 
+            type="date" 
+            class="form-input" 
+            [(ngModel)]="paymentDate">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Reference</label>
+          <input 
+            type="text" 
+            class="form-input" 
+            [(ngModel)]="paymentReference"
+            readonly>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closePaymentModal()">Cancel</button>
+        <button class="btn-confirm" (click)="recordPayment()">Confirm Payment</button>
+      </div>
+    </div>
+  </div>
+</div>

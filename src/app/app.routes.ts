@@ -17,6 +17,7 @@ import { LoginComponent } from '../login.component/login.component';
 import { RegisterComponent } from '../register.component/register.component';
 import { UserManagementComponent } from '../user-management.component/user-management.component';
 import { AuditHistoryComponent } from '../audit-history.component/audit-history.component';
+import { PaymentComponent } from '../payment/payment.component';
 
 export const routes: Routes = [
   // Public routes (NO AppLayoutComponent - no sidebar/header)
@@ -46,7 +47,8 @@ export const routes: Routes = [
           { path: 'create-quote', component: CreateQuoteComponent },
           { path: 'invite-showroom', component: InviteShowroomComponent },
           { path: 'setup-site-visit', component: SetupSiteVisitComponent },
-          { path: 'invoice', component: InvoiceComponent }
+          { path: 'invoice', component: InvoiceComponent },
+          { path: 'payment', component: PaymentComponent }
         ]
       },
       
@@ -60,7 +62,8 @@ export const routes: Routes = [
       { path: 'taskdetail', component: TaskDetailComponent },
       {  path: 'register', component: RegisterComponent },
       {  path: 'user-management',  component: UserManagementComponent },
-      {  path: 'audit',  component: AuditHistoryComponent }
+      {  path: 'audit',  component: AuditHistoryComponent },
+      
     ]
   },
 

@@ -31,10 +31,10 @@
     <!-- User Profile -->
     <div class="sidebar-footer">
       <div class="user-profile">
-        <div class="user-avatar">M</div>
+        <div class="user-avatar">{{ getUserInitials() }}</div>
         <div class="user-info" *ngIf="!isSidebarCollapsed">
-          <div class="user-name">Micheal</div>
-          <div class="user-role">Admin</div>
+          <div class="user-name">{{ getUserDisplayName() }}</div>
+          <div class="user-role">{{ getUserRole() }}</div>
         </div>
       </div>
       <button class="logout-btn" (click)="logout()" *ngIf="!isSidebarCollapsed">
