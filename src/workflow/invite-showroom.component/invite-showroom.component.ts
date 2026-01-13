@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
-import { catchError, finalize, takeUntil, tap } from 'rxjs/operators';
-import { of, Subject } from 'rxjs';
+import { catchError, finalize, takeUntil, tap, take } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, Subject } from 'rxjs';
 import { WorkflowDto, WorkflowService } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 
@@ -41,9 +41,29 @@ interface CalendarEvent {
   templateUrl: './invite-showroom.component.html',
   styleUrl: './invite-showroom.component.scss'
 })
-export class InviteShowroomComponent {
+export class InviteShowroomComponent implements OnInit, OnDestroy {
   bookingForm: FormGroup;
-  workflows: Workflow[] = [];
+  
+  // ✅ Convert to BehaviorSubjects for reactive state management
+  private workflowsSubject$ = new BehaviorSubject<Workflow[]>([]);
+  private calendarEventsSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
+  private eventsForSelectedDateSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
+  private popupEventsSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
+  private isLoadingSubject$ = new BehaviorSubject<boolean>(false);
+  private errorMessageSubject$ = new BehaviorSubject<string>('');
+  private successMessageSubject$ = new BehaviorSubject<string>('');
+  private deletingEventIdSubject$ = new BehaviorSubject<string | null>(null);
+  
+  // ✅ Public observables for template
+  workflows$: Observable<Workflow[]> = this.workflowsSubject$.asObservable();
+  calendarEvents$: Observable<CalendarEvent[]> = this.calendarEventsSubject$.asObservable();
+  eventsForSelectedDate$: Observable<CalendarEvent[]> = this.eventsForSelectedDateSubject$.asObservable();
+  popupEvents$: Observable<CalendarEvent[]> = this.popupEventsSubject$.asObservable();
+  isLoading$: Observable<boolean> = this.isLoadingSubject$.asObservable();
+  errorMessage$: Observable<string> = this.errorMessageSubject$.asObservable();
+  successMessage$: Observable<string> = this.successMessageSubject$.asObservable();
+  deletingEventId$: Observable<string | null> = this.deletingEventIdSubject$.asObservable();
+  
   private destroy$ = new Subject<void>();
   
   currentMonth: Date = new Date();
@@ -51,16 +71,14 @@ export class InviteShowroomComponent {
   selectedStartTime: string = '';
   selectedEndTime: string = '';
   calendarDays: (number | null)[] = [];
-  calendarEvents: CalendarEvent[] = [];
-  eventsForSelectedDate: CalendarEvent[] = [];
-  showEventsPopup: boolean = false;
-  popupEvents: CalendarEvent[] = [];
-  popupDate: Date | null = null;
   availableStartTimeSlots: string[] = [];
   availableEndTimeSlots: string[] = [];
+  showEventsPopup: boolean = false;
+  popupDate: Date | null = null;
   showDeleteConfirmation: boolean = false;
   eventToDelete: string | null = null;
   deletingEventName: string = '';
+  showEventsList: boolean = false;
   
   // Customer data from route params
   customerId: number = 1;
@@ -76,11 +94,6 @@ export class InviteShowroomComponent {
   ];
 
   weekDays: string[] = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  
-  isLoading: boolean = false;
-  errorMessage: string = '';
-  successMessage: string = '';
-  showEventsList: boolean = false;
 
   constructor(
     private fb: FormBuilder,
@@ -101,126 +114,322 @@ export class InviteShowroomComponent {
   }
 
   ngOnInit(): void {
-  this.route.queryParams
-    .pipe(takeUntil(this.destroy$))
-    .subscribe(params => {
-      // Extract parameters
-      this.customerId = params['customerId'] ? parseInt(params['customerId']) : 1;
-      this.customerName = params['customerName'] || 'Customer';
-      this.customerEmail = params['customerEmail'] || 'customer@example.com';
-      
-      const paramWorkflowId = params['workflowId'] ? parseInt(params['workflowId']) : 0;
-      let workflowId = paramWorkflowId;
+    // ✅ Subscribe to calendar events changes to log when they update
+    this.calendarEvents$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(events => {
+        console.log('📊 Calendar events updated in component:', events.length, 'events');
+        // The template will automatically update via async pipe
+      });
+    
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        this.customerId = params['customerId'] ? parseInt(params['customerId']) : 1;
+        this.customerName = params['customerName'] || 'Customer';
+        this.customerEmail = params['customerEmail'] || 'customer@example.com';
+        
+        const paramWorkflowId = params['workflowId'] ? parseInt(params['workflowId']) : 0;
+        let workflowId = paramWorkflowId;
 
-      // Check workflow state service
-      if (this.customerId) {
-        const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-        if (selectedWorkflow) {
-          this.customerId = selectedWorkflow.customerId || this.customerId;
-          this.customerName = selectedWorkflow.customerName || this.customerName;
-          workflowId = selectedWorkflow.id || workflowId;
+        if (this.customerId) {
+          const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
+          if (selectedWorkflow) {
+            this.customerId = selectedWorkflow.customerId || this.customerId;
+            this.customerName = selectedWorkflow.customerName || this.customerName;
+            workflowId = selectedWorkflow.id || workflowId;
+          }
         }
-      }
 
-      if (!this.customerId) {
-        this.errorMessage = 'No customer selected. Please select a customer first.';
-        return;
-      }
+        if (!this.customerId) {
+          this.errorMessageSubject$.next('No customer selected. Please select a customer first.');
+          return;
+        }
 
-      // ✅ LOAD WORKFLOWS FROM API
-      this.loadWorkflowsForCustomer(workflowId);
-    });
+        this.loadWorkflowsForCustomer(workflowId);
+      });
 
-  this.generateCalendar();
-  this.loadCalendarEvents();
-}
-
-  onWorkflowSelectionChange(): void {
-  const selectedWorkflowId = parseInt(this.bookingForm.get('workflow')?.value);
-  if (!selectedWorkflowId) return;
-
-  this.workflowId = selectedWorkflowId;
-  
-  // ✅ FIND WORKFLOW AND UPDATE FORM
-  const selectedWorkflow = this.workflows.find(w => parseInt(w.id) === selectedWorkflowId);
-  if (selectedWorkflow) {
-    this.bookingForm.patchValue({ 
-      eventName: `${selectedWorkflow.name} - ${this.customerName}`,
-      description: `Showroom visit for ${selectedWorkflow.name}`
-    });
+    // ✅ Generate calendar first
+    this.generateCalendar();
+    
+    // ✅ Then load events with a slight delay to ensure calendar is rendered
+    setTimeout(() => {
+      this.loadCalendarEvents();
+    }, 100);
   }
-  
-  console.log('User selected workflow:', selectedWorkflow);
-}
 
-ngOnDestroy(): void {
-  this.destroy$.next();
-  this.destroy$.complete();
-}
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
-  private onWorkflowChange(workflow: WorkflowDto): void {
-  if (!workflow) return;
+  private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): void {
+    if (!this.customerId) return;
 
-  const workflowName = workflow.productName || workflow.description || 'Showroom Visit';
-  
-  // ✅ AUTO-FILL FORM FIELDS
-  this.bookingForm.patchValue({ 
-    eventName: `${workflowName} - ${this.customerName}`,
-    description: `Showroom visit for ${workflowName}`
-  });
-  
-  console.log('Auto-selected Workflow:', {
-    id: workflow.workflowId,
-    name: workflowName,
-    productName: workflow.productName
-  });
-}
+    this.isLoadingSubject$.next(true);
+    
+    this.workflowService.getWorkflowsForCustomer(this.customerId)
+      .pipe(
+        take(1), // ✅ Complete after first emission
+        takeUntil(this.destroy$),
+        tap(workflows => {
+          const mappedWorkflows = workflows.map(w => ({
+            id: w.workflowId.toString(),
+            name: w.productName || w.description || `Workflow ${w.workflowId}`
+          }));
+          
+          this.workflowsSubject$.next(mappedWorkflows);
+          
+          if (preselectedWorkflowId && workflows.some(w => w.workflowId === preselectedWorkflowId)) {
+            this.workflowId = preselectedWorkflowId;
+            this.bookingForm.patchValue({ workflow: this.workflowId.toString() });
+            this.onWorkflowChange(workflows.find(w => w.workflowId === preselectedWorkflowId)!);
+          } else if (workflows.length === 1) {
+            this.workflowId = workflows[0].workflowId;
+            this.bookingForm.patchValue({ workflow: this.workflowId.toString() });
+            this.onWorkflowChange(workflows[0]);
+          }
+        }),
+        catchError(error => {
+          console.error('Error loading workflows:', error);
+          this.errorMessageSubject$.next('Failed to load workflows');
+          return of([]);
+        }),
+        finalize(() => this.isLoadingSubject$.next(false))
+      )
+      .subscribe();
+  }
 
-private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): void {
-  if (!this.customerId) return;
+  loadCalendarEvents(): void {
+    const startDate = new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth(),
+      1
+    );
+    const endDate = new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth() + 1,
+      0
+    );
 
-  // Show loading spinner
-  this.isLoading = true;
-  
-  // Call API to get workflows
-  this.workflowService.getWorkflowsForCustomer(this.customerId)
+    console.log('🔄 Loading calendar events from', startDate.toLocaleDateString(), 'to', endDate.toLocaleDateString());
+
+    this.outlookService.getCalendarEvents(
+      startDate.toISOString(),
+      endDate.toISOString()
+    )
     .pipe(
-      takeUntil(this.destroy$),  // Auto-unsubscribe on destroy
-      tap(workflows => {
-        console.log('Loaded workflows:', workflows);
+      take(1), // ✅ Complete after first emission
+      takeUntil(this.destroy$),
+      tap((response: any) => {
+        const events = response.value || [];
+        console.log('✅ Loaded calendar events:', events.length, 'events');
+        console.log('Events:', events);
         
-        // ✅ MAP API DATA TO DROPDOWN FORMAT 
-        this.workflows = workflows.map(w => ({
-          id: w.workflowId.toString(),
-          name: w.productName || w.description || `Workflow ${w.workflowId}`
-        }));
+        // ✅ Update the BehaviorSubject with new events
+        this.calendarEventsSubject$.next(events);
         
-        console.log('Mapped workflows for dropdown:', this.workflows);
-        
-        // ✅ PRIORITY 1: Auto-select preselected workflow
-        if (preselectedWorkflowId && workflows.some(w => w.workflowId === preselectedWorkflowId)) {
-          this.workflowId = preselectedWorkflowId;
-          this.bookingForm.patchValue({ workflow: this.workflowId.toString() });
-          this.onWorkflowChange(workflows.find(w => w.workflowId === preselectedWorkflowId)!);
-        }
-        // ✅ PRIORITY 2: Auto-select if only one workflow
-        else if (workflows.length === 1) {
-          this.workflowId = workflows[0].workflowId;
-          this.bookingForm.patchValue({ workflow: this.workflowId.toString() });
-          this.onWorkflowChange(workflows[0]);
+        // ✅ If a date is selected, refresh its events too
+        if (this.selectedDate) {
+          this.loadEventsForSelectedDate();
         }
       }),
       catchError(error => {
-        console.error('Error loading workflows:', error);
-        this.errorMessage = 'Failed to load workflows';
-        this.workflows = []; // Reset on error
-        return of([]);
-      }),
-      finalize(() => this.isLoading = false)  // ✅ ALWAYS HIDE LOADING
+        console.error('❌ Error loading calendar events:', error);
+        this.errorMessageSubject$.next('Failed to load calendar events');
+        return of({ value: [] });
+      })
     )
     .subscribe();
-}
+  }
 
+  // ✅ ASYNC DELETE METHOD - Guaranteed cleanup
+  async deleteEventAsync(): Promise<void> {
+    if (!this.eventToDelete) return;
+
+    const idToDelete = this.eventToDelete;
+    const nameToDelete = this.deletingEventName;
+    
+    // Close confirmation dialog
+    this.showDeleteConfirmation = false;
+    this.eventToDelete = null;
+    this.deletingEventName = '';
+    
+    // Set loading states
+    this.deletingEventIdSubject$.next(idToDelete);
+    this.isLoadingSubject$.next(true);
+    this.errorMessageSubject$.next('');
+    this.successMessageSubject$.next('');
+
+    try {
+      console.log('🗑️ Starting delete operation for:', idToDelete);
+      
+      await this.outlookService.deleteCalendarEvent(idToDelete)
+        .pipe(
+          take(1),
+          takeUntil(this.destroy$)
+        )
+        .toPromise();
+      
+      console.log('✅ Delete successful');
+      
+      // Close popup immediately
+      this.closeEventsPopup();
+      
+      // Show success message
+      this.successMessageSubject$.next(`Event "${nameToDelete}" has been successfully deleted!`);
+      
+      // Refresh calendar from server
+      this.loadCalendarEvents();
+      
+      // Update selected date
+      if (this.selectedDate) {
+        this.loadEventsForSelectedDate();
+        this.calculateAvailableStartTimeSlots();
+        if (this.selectedStartTime) {
+          this.onStartTimeChange();
+        }
+      }
+      
+      // Auto-clear success message
+      setTimeout(() => {
+        this.successMessageSubject$.next('');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('❌ Error deleting event:', error);
+      this.errorMessageSubject$.next('Failed to delete event. Please try again.');
+      
+      setTimeout(() => {
+        this.errorMessageSubject$.next('');
+      }, 5000);
+      
+    } finally {
+      // ✅ ALWAYS executes - guaranteed cleanup
+      this.isLoadingSubject$.next(false);
+      this.deletingEventIdSubject$.next(null);
+      console.log('✅ finally() executed - all loading states cleared');
+    }
+  }
+
+  confirmDeleteEvent(eventId: string, eventName: string): void {
+    this.eventToDelete = eventId;
+    this.deletingEventName = eventName;
+    this.showDeleteConfirmation = true;
+  }
+
+  cancelDelete(): void {
+    this.showDeleteConfirmation = false;
+    this.eventToDelete = null;
+    this.deletingEventName = '';
+  }
+
+  isDeletingEvent(eventId: string): boolean {
+    return this.deletingEventIdSubject$.value === eventId;
+  }
+
+  closeEventsPopup(): void {
+    this.showEventsPopup = false;
+    this.popupEventsSubject$.next([]);
+    this.popupDate = null;
+  }
+
+  onWorkflowSelectionChange(): void {
+    const selectedWorkflowId = parseInt(this.bookingForm.get('workflow')?.value);
+    if (!selectedWorkflowId) return;
+
+    this.workflowId = selectedWorkflowId;
+    
+    const selectedWorkflow = this.workflowsSubject$.value.find(w => parseInt(w.id) === selectedWorkflowId);
+    if (selectedWorkflow) {
+      this.bookingForm.patchValue({ 
+        eventName: `${selectedWorkflow.name} - ${this.customerName}`,
+        description: `Showroom visit for ${selectedWorkflow.name}`
+      });
+    }
+  }
+
+  private onWorkflowChange(workflow: WorkflowDto): void {
+    if (!workflow) return;
+
+    const workflowName = workflow.productName || workflow.description || 'Showroom Visit';
+    
+    this.bookingForm.patchValue({ 
+      eventName: `${workflowName} - ${this.customerName}`,
+      description: `Showroom visit for ${workflowName}`
+    });
+  }
+
+  // ✅ These methods need to access the current value synchronously for template
+  getEventsForDay(day: number | null): CalendarEvent[] {
+    if (!day) return [];
+    
+    const dateToCheck = new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth(),
+      day
+    );
+    
+    // ✅ Use .value to get current state synchronously
+    const allEvents = this.calendarEventsSubject$.value;
+    
+    return allEvents.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      return (
+        eventDate.getDate() === dateToCheck.getDate() &&
+        eventDate.getMonth() === dateToCheck.getMonth() &&
+        eventDate.getFullYear() === dateToCheck.getFullYear()
+      );
+    });
+  }
+
+  hasEvents(day: number | null): boolean {
+    if (!day) return false;
+    return this.getEventsForDay(day).length > 0;
+  }
+
+  getEventCountForDay(day: number | null): number {
+    if (!day) return 0;
+    return this.getEventsForDay(day).length;
+  }
+
+  getFirstEventForDay(day: number | null): CalendarEvent | null {
+    if (!day) return null;
+    const events = this.getEventsForDay(day);
+    return events.length > 0 ? events[0] : null;
+  }
+
+  loadEventsForSelectedDate(): void {
+    if (!this.selectedDate) {
+      this.eventsForSelectedDateSubject$.next([]);
+      this.showEventsList = false;
+      return;
+    }
+
+    console.log('📅 Loading events for selected date:', this.selectedDate.toLocaleDateString());
+    
+    // ✅ Filter from current calendar events
+    const allEvents = this.calendarEventsSubject$.value;
+    
+    const events = allEvents.filter(event => {
+      const eventDate = new Date(event.start.dateTime);
+      const matches = (
+        eventDate.getDate() === this.selectedDate!.getDate() &&
+        eventDate.getMonth() === this.selectedDate!.getMonth() &&
+        eventDate.getFullYear() === this.selectedDate!.getFullYear()
+      );
+      return matches;
+    });
+
+    console.log('✅ Found', events.length, 'events for selected date');
+    
+    this.eventsForSelectedDateSubject$.next(events);
+    this.showEventsList = events.length > 0;
+  }
+
+  // ... Rest of your existing methods (generateCalendar, selectDate, etc.)
+  // Keep all the calendar navigation and time slot logic as-is
+  
   generateCalendar(): void {
     const year = this.currentMonth.getFullYear();
     const month = this.currentMonth.getMonth();
@@ -239,91 +448,13 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
     }
   }
 
-  loadCalendarEvents(): void {
-    const startDate = new Date(
-      this.currentMonth.getFullYear(),
-      this.currentMonth.getMonth(),
-      1
-    );
-    const endDate = new Date(
-      this.currentMonth.getFullYear(),
-      this.currentMonth.getMonth() + 1,
-      0
-    );
-
-    this.outlookService.getCalendarEvents(
-      startDate.toISOString(),
-      endDate.toISOString()
-    ).subscribe({
-      next: (response: any) => {
-        this.calendarEvents = response.value || [];
-        console.log('Loaded calendar events:', this.calendarEvents);
-      },
-      error: (error) => {
-        console.error('Error loading calendar events:', error);
-      }
-    });
-  }
-
-  getEventsForDay(day: number | null): CalendarEvent[] {
-    if (!day) return [];
-    
-    const dateToCheck = new Date(
-      this.currentMonth.getFullYear(),
-      this.currentMonth.getMonth(),
-      day
-    );
-    
-    return this.calendarEvents.filter(event => {
-      const eventDate = new Date(event.start.dateTime);
-      return (
-        eventDate.getDate() === dateToCheck.getDate() &&
-        eventDate.getMonth() === dateToCheck.getMonth() &&
-        eventDate.getFullYear() === dateToCheck.getFullYear()
-      );
-    });
-  }
-
-  hasEvents(day: number | null): boolean {
-    return this.getEventsForDay(day).length > 0;
-  }
-
-  getEventCountForDay(day: number | null): number {
-    return this.getEventsForDay(day).length;
-  }
-
-  getFirstEventForDay(day: number | null): CalendarEvent | null {
-    const events = this.getEventsForDay(day);
-    return events.length > 0 ? events[0] : null;
-  }
-
-  showMoreEvents(day: number | null, event: Event): void {
-    event.stopPropagation();
-    
-    if (!day) return;
-    
-    this.popupDate = new Date(
-      this.currentMonth.getFullYear(),
-      this.currentMonth.getMonth(),
-      day
-    );
-    
-    this.popupEvents = this.getEventsForDay(day);
-    this.showEventsPopup = true;
-  }
-
-  closeEventsPopup(): void {
-    this.showEventsPopup = false;
-    this.popupEvents = [];
-    this.popupDate = null;
-  }
-
   previousMonth(): void {
     this.currentMonth = new Date(
       this.currentMonth.getFullYear(),
       this.currentMonth.getMonth() - 1,
       1
     );
+    console.log('⬅️ Navigate to previous month:', this.currentMonth.toLocaleDateString());
     this.generateCalendar();
     this.loadCalendarEvents();
   }
@@ -334,6 +465,7 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
       this.currentMonth.getMonth() + 1,
       1
     );
+    console.log('➡️ Navigate to next month:', this.currentMonth.toLocaleDateString());
     this.generateCalendar();
     this.loadCalendarEvents();
   }
@@ -361,7 +493,10 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
       return;
     }
 
+    console.log('⏰ Calculating available time slots for:', this.selectedDate.toLocaleDateString());
+    
     const eventsForDay = this.getEventsForDay(this.selectedDate.getDate());
+    console.log('Events on this day:', eventsForDay.length);
 
     this.availableStartTimeSlots = this.timeSlots.filter(timeSlot => {
       const slotTime = this.parseTimeSlot(this.selectedDate!, timeSlot);
@@ -375,6 +510,8 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
 
       return !isDuringEvent;
     });
+    
+    console.log('Available start time slots:', this.availableStartTimeSlots.length);
   }
 
   onStartTimeChange(): void {
@@ -423,28 +560,6 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
     return this.availableStartTimeSlots.includes(timeSlot);
   }
 
-  isEndTimeAvailable(timeSlot: string): boolean {
-    return this.availableEndTimeSlots.includes(timeSlot);
-  }
-
-  loadEventsForSelectedDate(): void {
-    if (!this.selectedDate) {
-      this.eventsForSelectedDate = [];
-      return;
-    }
-
-    this.eventsForSelectedDate = this.calendarEvents.filter(event => {
-      const eventDate = new Date(event.start.dateTime);
-      return (
-        eventDate.getDate() === this.selectedDate!.getDate() &&
-        eventDate.getMonth() === this.selectedDate!.getMonth() &&
-        eventDate.getFullYear() === this.selectedDate!.getFullYear()
-      );
-    });
-
-    this.showEventsList = this.eventsForSelectedDate.length > 0;
-  }
-
   isSelectedDate(day: number | null): boolean {
     if (!day || !this.selectedDate) return false;
     
@@ -485,6 +600,34 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
     );
   }
 
+  showMoreEvents(day: number | null, event: Event): void {
+    event.stopPropagation();
+    
+    if (!day) return;
+    
+    this.popupDate = new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth(),
+      day
+    );
+    
+    this.popupEventsSubject$.next(this.getEventsForDay(day));
+    this.showEventsPopup = true;
+  }
+
+  formatEventTime(dateTime: string): string {
+    const date = new Date(dateTime);
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  }
+
+  toggleEventsList(): void {
+    this.showEventsList = !this.showEventsList;
+  }
+
   onClose(): void {
     this.bookingForm.reset({
       workflow: this.workflowId ? this.workflowId.toString() : '',
@@ -498,10 +641,10 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
     this.bookingForm.get('startTime')?.disable();
     this.bookingForm.get('endTime')?.disable();
     this.selectedDate = null;
-    this.errorMessage = '';
-    this.successMessage = '';
+    this.errorMessageSubject$.next('');
+    this.successMessageSubject$.next('');
     this.showEventsList = false;
-    this.eventsForSelectedDate = [];
+    this.eventsForSelectedDateSubject$.next([]);
     this.availableStartTimeSlots = [];
     this.availableEndTimeSlots = [];
     this.selectedStartTime = '';
@@ -510,9 +653,9 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
 
   onSave(): void {
     if (this.bookingForm.valid) {
-      this.isLoading = true;
-      this.errorMessage = '';
-      this.successMessage = '';
+      this.isLoadingSubject$.next(true);
+      this.errorMessageSubject$.next('');
+      this.successMessageSubject$.next('');
 
       const formData = this.bookingForm.value;
       
@@ -532,111 +675,32 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
         emailClient: formData.emailClient
       };
 
-      console.log('Creating showroom invite:', invite);
-
-      this.outlookService.createShowroomInvite(invite).subscribe({
-        next: (response) => {
-          console.log('Showroom invite created:', response);
-          const eventName = formData.eventName || 'Showroom Visit';
-          this.successMessage = `Event "${eventName}" has been successfully created!`;
-          this.isLoading = false;
-          
-          this.loadCalendarEvents();
-          
-          setTimeout(() => {
-            this.onClose();
-          }, 3000);
-        },
-        error: (error) => {
-          console.error('Error creating showroom invite:', error);
-          this.errorMessage = 'Failed to create showroom invitation. Please try again.';
-          this.isLoading = false;
-        }
-      });
+      this.outlookService.createShowroomInvite(invite)
+        .pipe(
+          take(1),
+          takeUntil(this.destroy$),
+          tap(response => {
+            const eventName = formData.eventName || 'Showroom Visit';
+            this.successMessageSubject$.next(`Event "${eventName}" has been successfully created!`);
+            
+            this.loadCalendarEvents();
+            
+            setTimeout(() => {
+              this.onClose();
+            }, 3000);
+          }),
+          catchError(error => {
+            console.error('Error creating showroom invite:', error);
+            this.errorMessageSubject$.next('Failed to create showroom invitation. Please try again.');
+            return of(null);
+          }),
+          finalize(() => this.isLoadingSubject$.next(false))
+        )
+        .subscribe();
     } else {
       this.markFormGroupTouched(this.bookingForm);
-      this.errorMessage = 'Please fill in all required fields.';
+      this.errorMessageSubject$.next('Please fill in all required fields.');
     }
-  }
-
-  confirmDeleteEvent(eventId: string, eventName: string): void {
-    this.eventToDelete = eventId;
-    this.deletingEventName = eventName;
-    this.showDeleteConfirmation = true;
-  }
-
-  cancelDelete(): void {
-    this.showDeleteConfirmation = false;
-    this.eventToDelete = null;
-    this.deletingEventName = '';
-  }
-
-  deleteEvent(): void {
-    if (!this.eventToDelete) return;
-
-    const idToDelete = this.eventToDelete;
-    const nameToDelete = this.deletingEventName;
-    
-    // Close confirmation dialog immediately
-    this.showDeleteConfirmation = false;
-    this.eventToDelete = null;
-    this.deletingEventName = '';
-    
-    // Show loading
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.successMessage = '';
-
-    this.outlookService.deleteCalendarEvent(idToDelete)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(() => {
-          this.successMessage = `Event "${nameToDelete}" has been successfully deleted!`;
-          
-          // Remove the event from all local arrays
-          this.calendarEvents = this.calendarEvents.filter(e => e.id !== idToDelete);
-          this.eventsForSelectedDate = this.eventsForSelectedDate.filter(e => e.id !== idToDelete);
-          this.popupEvents = this.popupEvents.filter(e => e.id !== idToDelete);
-          
-          // Close popup if no more events
-          if (this.popupEvents.length === 0) {
-            this.closeEventsPopup();
-          }
-          
-          this.showEventsList = this.eventsForSelectedDate.length > 0;
-          
-          if (this.selectedDate) {
-            this.calculateAvailableStartTimeSlots();
-            if (this.selectedStartTime) {
-              this.onStartTimeChange();
-            }
-          }
-          this.isLoading = false;
-          setTimeout(() => {
-            this.successMessage = '';
-          }, 3000);
-        }),
-        catchError(error => {
-          console.error('Error deleting event:', error);
-          this.errorMessage = 'Failed to delete event. Please try again.';
-          return of(null);
-        }),
-        finalize(() => this.isLoading = false)
-      )
-      .subscribe();
-  }
-
-  formatEventTime(dateTime: string): string {
-    const date = new Date(dateTime);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  }
-
-  toggleEventsList(): void {
-    this.showEventsList = !this.showEventsList;
   }
 
   private markFormGroupTouched(formGroup: FormGroup): void {
@@ -644,5 +708,10 @@ private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null): v
       const control = formGroup.get(key);
       control?.markAsTouched();
     });
+  }
+
+  // ✅ TrackBy function to help Angular track changes
+  trackByIndex(index: number, item: any): number {
+    return index;
   }
 }

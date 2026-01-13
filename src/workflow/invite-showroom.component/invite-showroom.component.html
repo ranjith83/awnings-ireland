@@ -1,25 +1,25 @@
 <div class="workflow-container">
   <form [formGroup]="this.bookingForm" class="booking-form">
     <div class="quote-content">
-      <!-- Loading Overlay -->
-      <div *ngIf="isLoading" class="loading-overlay">
+      <!-- ✅ Loading Overlay - Using async pipe -->
+      <div *ngIf="isLoading$ | async" class="loading-overlay">
         <div class="spinner"></div>
         <p>Processing...</p>
       </div>
       
-      <!-- Success/Error Messages -->
-      <div *ngIf="successMessage" class="alert alert-success">
+      <!-- ✅ Success/Error Messages - Using async pipe -->
+      <div *ngIf="successMessage$ | async as successMsg" class="alert alert-success">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
         </svg>
-        {{ successMessage }}
+        {{ successMsg }}
       </div>
       
-      <div *ngIf="errorMessage" class="alert alert-error">
+      <div *ngIf="errorMessage$ | async as errorMsg" class="alert alert-error">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
         </svg>
-        {{ errorMessage }}
+        {{ errorMsg }}
       </div>
 
       <!-- Select Workflow Section -->
@@ -30,7 +30,8 @@
             <label for="workflow">Select Workflow</label>
             <select id="workflow" formControlName="workflow" class="form-control" (change)="onWorkflowSelectionChange()">
               <option value="">Select a workflow</option>
-              <option *ngFor="let workflow of workflows" [value]="workflow.id">
+              <!-- ✅ Using async pipe -->
+              <option *ngFor="let workflow of workflows$ | async" [value]="workflow.id">
                 {{ workflow.name }}
               </option>
             </select>
@@ -60,15 +61,18 @@
         </div>
       </div>
 
-      <!-- Booking Form Section -->
+      <!-- Booking Form Section - Calendar stays the same -->
       <div class="form-section">
         <h2 class="section-title">Appointment Details</h2>
 
-        <!-- Event Date -->
+        <!-- Calendar -->
         <div class="form-group">
           <label>Event Date:</label>
           
           <div class="calendar-container">
+            <!-- ✅ Hidden div that subscribes to events to trigger change detection -->
+            <div style="display: none;">{{ (calendarEvents$ | async)?.length }}</div>
+            
             <div class="calendar-header">
               <button type="button" class="nav-btn" (click)="previousMonth()">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
@@ -87,8 +91,9 @@
               <div *ngFor="let day of weekDays" class="calendar-weekday">
                 {{ day }}
               </div>
+              <!-- ✅ Add trackBy to force re-render when events change -->
               <button
-                *ngFor="let day of calendarDays"
+                *ngFor="let day of calendarDays; trackBy: trackByIndex"
                 type="button"
                 class="calendar-day"
                 [class.selected]="isSelectedDate(day)"
@@ -98,13 +103,12 @@
                 (click)="selectDate(day)">
                 <span class="day-number">{{ day }}</span>
                 
-                <!-- Show first event if exists -->
-                <div *ngIf="hasEvents(day)" class="day-events">
+                <!-- ✅ Use *ngIf with method call to ensure evaluation -->
+                <div *ngIf="day && hasEvents(day)" class="day-events">
                   <div class="event-preview" [title]="getFirstEventForDay(day)?.subject">
                     {{ getFirstEventForDay(day)?.subject }}
                   </div>
                   
-                  <!-- Show "X more" if more than 1 event -->
                   <button 
                     *ngIf="getEventCountForDay(day) > 1" 
                     type="button"
@@ -118,8 +122,8 @@
           </div>
         </div>
 
-        <!-- Events List for Selected Date -->
-        <div *ngIf="eventsForSelectedDate.length > 0" class="events-section">
+        <!-- ✅ Events List for Selected Date - Using async pipe -->
+        <div *ngIf="(eventsForSelectedDate$ | async)?.length || 0 > 0" class="events-section">
           <div class="events-header">
             <h3>Events on {{ selectedDate | date:'MMM d, yyyy' }}</h3>
             <button type="button" class="btn-toggle" (click)="toggleEventsList()">
@@ -133,7 +137,8 @@
           </div>
           
           <div *ngIf="showEventsList" class="events-list">
-            <div *ngFor="let event of eventsForSelectedDate" class="event-item">
+            <!-- ✅ Using async pipe for events -->
+            <div *ngFor="let event of eventsForSelectedDate$ | async" class="event-item">
               <div class="event-info">
                 <h4>{{ event.subject }}</h4>
                 <p class="event-time">
@@ -157,14 +162,20 @@
                   {{ event.attendees[0].emailAddress.name || event.attendees[0].emailAddress.address }}
                 </p>
               </div>
+              <!-- ✅ Show spinner on specific button being deleted -->
               <button 
                 type="button" 
                 class="btn-delete"
                 (click)="confirmDeleteEvent(event.id, event.subject)"
+                [disabled]="isDeletingEvent(event.id) || (isLoading$ | async)"
                 title="Delete event">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <svg *ngIf="!isDeletingEvent(event.id)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
                   <path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                </svg>
+                <svg *ngIf="isDeletingEvent(event.id)" class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>
+                  <path d="M8 2a6 6 0 016 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
                 </svg>
               </button>
             </div>
@@ -175,7 +186,6 @@
         <div class="form-section">
           <h3 class="section-title">Select Time</h3>
           <div class="form-row">
-            <!-- Start Time -->
             <div class="form-group">
               <label for="startTime">Start Time <span class="required">*</span></label>
               <select 
@@ -194,7 +204,6 @@
               <small *ngIf="!selectedDate" class="form-hint">Please select a date first</small>
             </div>
 
-            <!-- End Time -->
             <div class="form-group">
               <label for="endTime">End Time <span class="required">*</span></label>
               <select 
@@ -233,7 +242,7 @@
 
       <!-- Action Buttons -->
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" (click)="onClose()" [disabled]="isLoading">
+        <button type="button" class="btn btn-secondary" (click)="onClose()" [disabled]="isLoading$ | async">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
           </svg>
@@ -243,14 +252,14 @@
           type="button" 
           class="btn btn-primary" 
           (click)="onSave()"
-          [disabled]="!bookingForm.valid || isLoading">
-          <svg *ngIf="!isLoading" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          [disabled]="!bookingForm.valid || (isLoading$ | async)">
+          <svg *ngIf="!(isLoading$ | async)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M13.854 3.646a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L6.5 10.293l6.646-6.647a.5.5 0 01.708 0z"/>
           </svg>
-          <svg *ngIf="isLoading" class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <svg *ngIf="isLoading$ | async" class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 0a8 8 0 100 16A8 8 0 008 0zM7 12.5v-9a.5.5 0 011 0v9a.5.5 0 01-1 0z"/>
           </svg>
-          {{ isLoading ? 'Saving...' : 'Save' }}
+          {{ (isLoading$ | async) ? 'Saving...' : 'Save' }}
         </button>
       </div>
     </div>
@@ -277,7 +286,8 @@
         <button type="button" class="btn btn-secondary" (click)="cancelDelete()">
           Cancel
         </button>
-        <button type="button" class="btn btn-danger" (click)="deleteEvent()">
+        <!-- ✅ Using async method -->
+        <button type="button" class="btn btn-danger" (click)="deleteEventAsync()">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
             <path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
@@ -288,7 +298,7 @@
     </div>
   </div>
   
-  <!-- Events Popup Modal -->
+  <!-- Events Popup Modal - Using async pipe -->
   <div *ngIf="showEventsPopup" class="popup-overlay" (click)="closeEventsPopup()">
     <div class="popup-modal" (click)="$event.stopPropagation()">
       <div class="popup-header">
@@ -301,7 +311,8 @@
       </div>
       
       <div class="popup-content">
-        <div *ngFor="let event of popupEvents" class="popup-event-item">
+        <!-- ✅ Using async pipe for popup events -->
+        <div *ngFor="let event of popupEvents$ | async" class="popup-event-item">
           <div class="event-info">
             <h4>{{ event.subject }}</h4>
             <p class="event-time">
@@ -329,10 +340,15 @@
             type="button" 
             class="btn-delete"
             (click)="confirmDeleteEvent(event.id, event.subject)"
+            [disabled]="isDeletingEvent(event.id) || (isLoading$ | async)"
             title="Delete event">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <svg *ngIf="!isDeletingEvent(event.id)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
               <path fill-rule="evenodd" d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+            </svg>
+            <svg *ngIf="isDeletingEvent(event.id)" class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" opacity="0.25"/>
+              <path d="M8 2a6 6 0 016 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/>
             </svg>
           </button>
         </div>
