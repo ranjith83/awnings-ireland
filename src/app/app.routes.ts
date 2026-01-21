@@ -18,6 +18,7 @@ import { RegisterComponent } from '../register.component/register.component';
 import { UserManagementComponent } from '../user-management.component/user-management.component';
 import { AuditHistoryComponent } from '../audit-history.component/audit-history.component';
 import { PaymentComponent } from '../payment/payment.component';
+import { QuickCalculatorComponent } from './quick-calculator.component/quick-calculator.component';
 
 export const routes: Routes = [
   // Public routes (NO AppLayoutComponent - no sidebar/header)
@@ -35,7 +36,7 @@ export const routes: Routes = [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
       { path: 'dashboard', component: DashboardComponent },
       { path: 'customers', component: CustomerDetails },
-      
+      {  path: 'quick-calculator',  component: QuickCalculatorComponent },
       // Workflow routes with nested children
       { 
         path: 'workflow',

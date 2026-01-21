@@ -11,11 +11,12 @@ import {
   TopCustomer, 
   ActivityItem 
 } from '../../service/dashboard.service';
+import { QuickCalculatorComponent } from '../../app/quick-calculator.component/quick-calculator.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, QuickCalculatorComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
@@ -32,6 +33,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   recentActivity$!: Observable<ActivityItem[]>;
   statusDistribution$!: Observable<{ status: string; count: number; percentage: number }[]>;
   
+  
   // State management with BehaviorSubjects
   private statsSubject$ = new BehaviorSubject<DashboardStats>({
     ordersToDate: { value: 0, change: '0%', positive: true },
@@ -45,6 +47,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   private recentActivitySubject$ = new BehaviorSubject<ActivityItem[]>([]);
   private statusDistributionSubject$ = new BehaviorSubject<{ status: string; count: number; percentage: number }[]>([]);
   
+  showCalculator = false;
   isLoading$ = new BehaviorSubject<boolean>(false);
   errorMessage$ = new BehaviorSubject<string>('');
   
@@ -53,17 +56,15 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(private dashboardService: DashboardService) {}
 
   ngOnInit(): void {
-   // this.initializeObservables();
-   // this.loadDashboardData();
+    this.initializeObservables();
+    this.loadDashboardData();
   }
 
   ngAfterViewInit(): void {
-    this.initChart();
-    this.loadChartData(this.activeTab);
     // Small delay to ensure canvas is ready
     setTimeout(() => {
-      //this.initChart();
-      //this.loadChartData(this.activeTab);
+      this.initChart();
+      this.loadChartData(this.activeTab);
     }, 100);
   }
 
@@ -84,45 +85,44 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private readonly EMPTY_STATS: DashboardStats = {
-  ordersToDate: { value: 0, change: '0%', positive: true },
-  ordersInProgress: { value: 0, change: '0%', positive: true },
-  ordersNearCompletion: { value: 0, change: '0%', positive: true },
-  totalRevenue: { value: 0, change: '0%', positive: true }
-};
+    ordersToDate: { value: 0, change: '0%', positive: true },
+    ordersInProgress: { value: 0, change: '0%', positive: true },
+    ordersNearCompletion: { value: 0, change: '0%', positive: true },
+    totalRevenue: { value: 0, change: '0%', positive: true }
+  };
 
- loadDashboardData(): void {
-  this.isLoading$.next(true);
-  this.errorMessage$.next('');
+  loadDashboardData(): void {
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
 
-  forkJoin({
-  stats: this.dashboardService.getDashboardStats()
-    .pipe(catchError(() => of(this.EMPTY_STATS))),
+    forkJoin({
+      stats: this.dashboardService.getDashboardStats()
+        .pipe(catchError(() => of(this.EMPTY_STATS))),
 
-  orders: this.dashboardService.getRecentOrders(5)
-    .pipe(catchError(() => of([]))),
+      orders: this.dashboardService.getRecentOrders(5)
+        .pipe(catchError(() => of([]))),
 
-  customers: this.dashboardService.getTopCustomers(5)
-    .pipe(catchError(() => of([]))),
+      customers: this.dashboardService.getTopCustomers(5)
+        .pipe(catchError(() => of([]))),
 
-  activity: [], //this.dashboardService.getRecentActivity(10)
-    //.pipe(catchError(() => of([]))),
+      activity: of([]), // Placeholder for activity data
 
-  distribution: this.dashboardService.getStatusDistribution()
-    .pipe(catchError(() => of([])))
-})
-  .pipe(
-    takeUntil(this.destroy$),
-    tap(result => {
-      this.statsSubject$.next(result.stats);
-      this.recentOrdersSubject$.next(result.orders);
-      this.topCustomersSubject$.next(result.customers);
-      this.recentActivitySubject$.next(result.activity);
-      this.statusDistributionSubject$.next(result.distribution);
-    }),
-    finalize(() => this.isLoading$.next(false))
-  )
-  .subscribe();
-}
+      distribution: this.dashboardService.getStatusDistribution()
+        .pipe(catchError(() => of([])))
+    })
+    .pipe(
+      takeUntil(this.destroy$),
+      tap(result => {
+        this.statsSubject$.next(result.stats);
+        this.recentOrdersSubject$.next(result.orders);
+        this.topCustomersSubject$.next(result.customers);
+        this.recentActivitySubject$.next(result.activity);
+        this.statusDistributionSubject$.next(result.distribution);
+      }),
+      finalize(() => this.isLoading$.next(false))
+    )
+    .subscribe();
+  }
 
   private initChart(): void {
     if (!this.salesChartRef) {
@@ -153,7 +153,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }]
       },
       options: {
-        
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
@@ -210,7 +209,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading chart data:', error);
-          return [];
+          return of(null);
         })
       )
       .subscribe();
@@ -227,6 +226,14 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.salesChart) {
       this.loadChartData(this.activeTab);
     }
+  }
+
+  openCalculator(): void {
+    this.showCalculator = true;
+  }
+
+  closeCalculator(): void {
+    this.showCalculator = false;
   }
 
   getStatusBadgeClass(status: string): string {

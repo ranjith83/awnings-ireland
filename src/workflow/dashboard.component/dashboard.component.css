@@ -15,6 +15,50 @@ body {
   display: flex;
   min-height: 100vh;
   background-color: #f8f9fa;
+  position: relative;
+}
+
+/* Floating Calculator Button */
+.floating-calculator-btn {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  z-index: 999;
+  animation: pulse 2s infinite;
+}
+
+.floating-calculator-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
+}
+
+.floating-calculator-btn:active {
+  transform: scale(0.95);
+}
+
+.floating-calculator-btn svg {
+  stroke-width: 2;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.6);
+  }
 }
 
 /* Main Content */
@@ -30,6 +74,12 @@ body {
   margin-bottom: 30px;
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
 .breadcrumb {
   font-size: 12px;
   color: #9ca3af;
@@ -43,6 +93,30 @@ body {
   font-weight: 600;
   color: #1f2937;
   margin: 0;
+}
+
+.calculator-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calculator-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.calculator-btn svg {
+  stroke-width: 2;
 }
 
 .create-report-btn {
@@ -290,6 +364,100 @@ body {
   margin: 0 0 20px 0;
 }
 
+/* Quick Actions Card */
+.quick-actions-card {
+  grid-column: span 1;
+}
+
+.quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-action-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.quick-action-item:hover {
+  border-color: #667eea;
+  background: #f9fafb;
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+}
+
+.quick-action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.calculator-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.create-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.report-icon {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.quick-action-item:hover .quick-action-icon {
+  transform: scale(1.1);
+}
+
+.quick-action-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-action-title {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 4px 0;
+  font-size: 15px;
+}
+
+.quick-action-description {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-action-arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.quick-action-item:hover .quick-action-arrow {
+  color: #667eea;
+  transform: translateX(4px);
+}
+
 /* Recent Orders */
 .order-list {
   display: flex;
@@ -531,6 +699,10 @@ body {
   .dashboard-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
+  
+  .quick-actions-card {
+    grid-column: span 1;
+  }
 }
 
 @media (max-width: 768px) {
@@ -544,12 +716,31 @@ body {
     gap: 15px;
   }
 
+  .header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .calculator-btn,
+  .create-report-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
 
   .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .quick-actions-card {
+    grid-column: span 1;
+  }
+
+  .quick-action-description {
+    white-space: normal;
   }
 
   .chart-header {
@@ -565,5 +756,17 @@ body {
 
   .stat-value {
     font-size: 28px;
+  }
+
+  .floating-calculator-btn {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .floating-calculator-btn svg {
+    width: 24px;
+    height: 24px;
   }
 }

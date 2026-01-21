@@ -1,26 +1,22 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  // Get token from localStorage
-  const token = localStorage.getItem('token');
-  
-  // Log for debugging (remove in production)
-  //console.log('🔐 Auth Interceptor triggered:', { url: req.url,  method: req.method,  hasToken: !!token  });
-  
-  // If token exists, clone the request and add Authorization header
-  if (token) {
-    const clonedRequest = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-    
-    //console.log('✅ Authorization header added:', clonedRequest.headers.get('Authorization')?.substring(0, 30) + '...');
-    
-    return next(clonedRequest);
+  const platformId = inject(PLATFORM_ID);
+  let token: string | null = null;
+
+  if (isPlatformBrowser(platformId)) {
+    token = localStorage.getItem('token');
   }
-  
-  // If no token, send original request
-  console.log('⚠️ No token found - sending request without Authorization header');
+
+  if (token) {
+    req = req.clone({
+      setHeaders: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
   return next(req);
 };

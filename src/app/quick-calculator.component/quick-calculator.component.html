@@ -1,0 +1,245 @@
+<div class="calculator-container">
+  <div class="calculator-overlay" (click)="close()"></div>
+  
+  <div class="calculator-modal">
+    <button class="close-btn" (click)="close()">
+      <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      </svg>
+    </button>
+    
+    <div class="calculator-header">
+      <h2 class="calculator-title">Quick Price Calculator</h2>
+      <p class="calculator-subtitle">Generate instant estimates for phone enquiries</p>
+    </div>
+
+  <div class="calculator-content">
+      <!-- Select Supplier, Product Type and Product -->
+    <div class="form-section">
+      <h3 class="section-title">Select Product</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Select Supplier</label>
+          <select class="form-select" [(ngModel)]="selectedSupplierId" (change)="onSupplierChange()">
+            <option [value]="null" disabled>Choose a supplier</option>
+            <option *ngFor="let supplier of suppliers$ | async" [value]="supplier.supplierId">
+              {{ supplier.supplierName }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select Product Type</label>
+          <select class="form-select" [(ngModel)]="selectedProductTypeId" (change)="onProductTypeChange()"
+                  [disabled]="!selectedSupplierId">
+            <option [value]="null" disabled>Choose a product type</option>
+            <option *ngFor="let type of productTypes$ | async" [value]="type.productTypeId">
+              {{ type.description }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Select Product</label>
+          <select class="form-select" [(ngModel)]="selectedProductId" (change)="onProductChange()" 
+                  [disabled]="!selectedProductTypeId">
+            <option [value]="null" disabled>Choose a product</option>
+            <option *ngFor="let product of products$ | async" [value]="product.productId">
+              {{ product.productName }}
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Select Dimensions -->
+    <div class="form-section" *ngIf="selectedProductId">
+      <h3 class="section-title">Select Dimensions</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Width (cm)</label>
+          <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
+            <option [value]="null" disabled>Select Width</option>
+            <option *ngFor="let width of availableWidths$ | async" [value]="width">
+              {{ width }} cm
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Projection (cm)</label>
+          <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
+            <option [value]="null" disabled>Select Projection</option>
+            <option *ngFor="let projection of availableProjections$ | async" [value]="projection">
+              {{ projection }} cm
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Additional Addons -->
+    <div class="form-section" *ngIf="selectedProductId">
+      <h3 class="section-title">Add-ons (Optional)</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Brackets</label>
+          <select class="form-select" [(ngModel)]="selectedBrackets" (change)="onBracketChange()">
+            <option value="">None</option>
+            <option *ngFor="let bracket of brackets$ | async" [value]="bracket.bracketId">
+              {{ bracket.bracketName }} - €{{ bracket.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Arms</label>
+          <select class="form-select" [(ngModel)]="selectedArms" (change)="onArmChange()">
+            <option value="">None</option>
+            <option *ngFor="let arm of arms$ | async" [value]="arm.armId">
+              {{ arm.description }} - €{{ arm.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Motor</label>
+          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
+            <option value="">None</option>
+            <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
+              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Heater</label>
+          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
+            <option value="">None</option>
+            <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
+              {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Additional Options -->
+      <div class="form-row" style="margin-top: 15px;">
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              class="checkbox-input" 
+              [(ngModel)]="includeElectrician"
+              (change)="onElectricianChange()">
+            <span>Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
+        </div>
+
+        <div class="form-group small">
+          <label class="form-label">Installation Fee</label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [(ngModel)]="installationFee" 
+            (ngModelChange)="onInstallationFeeChange()"
+            placeholder="0.00">
+        </div>
+      </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="table-section" *ngIf="(calculatorItems$ | async)?.length || 0 > 0">
+      <div class="table-header">
+        <h3>Estimate Items</h3>
+        <button class="btn-add" (click)="addCustomItem()">+ Add Custom Item</button>
+      </div>
+      <table class="calculator-table">
+        <thead>
+          <tr>
+            <th>DESCRIPTION</th>
+            <th>QTY</th>
+            <th>UNIT PRICE</th>
+            <th>TAX %</th>
+            <th>AMOUNT</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of calculatorItems$ | async; let i = index; let even = even" 
+              [class.even-row]="even">
+            <td>
+              <input 
+                type="text" 
+                class="description-input" 
+                [(ngModel)]="item.description"
+                (ngModelChange)="onItemChange(item)"
+                placeholder="Item description">
+            </td>
+            <td>
+              <input 
+                type="number" 
+                class="qty-input" 
+                [(ngModel)]="item.quantity"
+                (ngModelChange)="onQuantityChange(item)"
+                min="1">
+            </td>
+            <td>
+              <input 
+                type="number" 
+                class="price-input" 
+                [(ngModel)]="item.unitPrice"
+                (ngModelChange)="onItemChange(item)"
+                min="0"
+                step="0.01">
+            </td>
+            <td>
+              <input 
+                type="number" 
+                class="tax-input" 
+                [(ngModel)]="item.taxRate"
+                (ngModelChange)="onItemChange(item)"
+                min="0"
+                max="100"
+                step="0.5">
+            </td>
+            <td class="amount-cell">€{{ item.amount | number:'1.2-2' }}</td>
+            <td>
+              <button class="btn-remove" (click)="removeItem(i)">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-section" *ngIf="(calculatorItems$ | async)?.length || 0 > 0">
+      <div class="summary-card">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-value">€{{ subtotal$ | async | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Total Tax ({{ vatRate }}%)</span>
+          <span class="summary-value">€{{ totalTax$ | async | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row total">
+          <span class="summary-label">Total</span>
+          <span class="summary-value">€{{ totalAmount$ | async | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button class="btn-clear" (click)="clearAll()">
+        Clear All
+      </button>
+      <button class="btn-generate" (click)="generateEstimatePdf()" 
+              [disabled]="(calculatorItems$ | async)?.length === 0">
+        📄 Generate PDF Estimate
+      </button>
+    </div>
+  </div>
+</div>
+</div>
