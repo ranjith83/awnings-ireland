@@ -210,12 +210,12 @@ export class ReportsService {
     }).pipe(
       map(({ customers, invoices }) => {
         const customerData = customers.map(customer => {
-          const customerInvoices = invoices.filter(inv => inv.customerId === customer.companyId);
+          const customerInvoices = invoices.filter(inv => inv.customerId === customer.customerId);
           const totalRevenue = customerInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
           const outstandingAmount = customerInvoices.reduce((sum, inv) => sum + (inv.amountDue || 0), 0);
 
           return {
-            id: customer.companyId,
+            id: customer.customerId,
             companyName: customer.companyName,
             contactName: customer.contactName,
             email: customer.contactEmail,

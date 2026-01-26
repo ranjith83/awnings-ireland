@@ -54,6 +54,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   
   // Computed observables for summary
   subtotal$!: Observable<number>;
+  quoteDiscount$!: Observable<number>;
   totalTax$!: Observable<number>;
   totalAmount$!: Observable<number>;
   isFormValid$!: Observable<boolean>;
@@ -94,6 +95,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   followUpDate: string = this.getDefaultFollowUpDate();
   notes: string = '';
   terms: string = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
+  
+  // Discount fields
+  discountType: string = ''; // 'Percentage' or 'Fixed'
+  discountValue: number = 0;
   
   // Addon selections
   installationFee: number = 0;
@@ -149,19 +154,54 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       ))
     );
     
-    this.totalTax$ = this.quoteItems$.pipe(
-      map(items => items.reduce((sum, item) => {
-        const discountPercentage = item?.discountPercentage || 0;
-        const taxRate = item?.taxRate || 0;
-        const itemSubtotal = item.quantity * item.unitPrice;
-        const itemDiscount = itemSubtotal * (discountPercentage / 100);
-        const taxableAmount = itemSubtotal - itemDiscount;
-        return sum + (taxableAmount * (taxRate / 100));
-      }, 0))
+    // Calculate quote-level discount
+    this.quoteDiscount$ = this.subtotal$.pipe(
+      map(subtotal => {
+        if (!this.discountType || this.discountValue <= 0) return 0;
+        
+        if (this.discountType === 'Percentage') {
+          return subtotal * (this.discountValue / 100);
+        } else if (this.discountType === 'Fixed') {
+          return this.discountValue;
+        }
+        return 0;
+      })
     );
     
-    this.totalAmount$ = combineLatest([this.subtotal$, this.totalTax$]).pipe(
-      map(([subtotal, tax]) => subtotal + tax)
+    this.totalTax$ = combineLatest([this.quoteItems$, this.quoteDiscount$, this.subtotal$]).pipe(
+      map(([items, quoteDiscount, subtotal]) => {
+        // Calculate item-level discounts and taxes
+        const itemLevelTax = items.reduce((sum, item) => {
+          const discountPercentage = item?.discountPercentage || 0;
+          const taxRate = item?.taxRate || 0;
+          const itemSubtotal = item.quantity * item.unitPrice;
+          const itemDiscount = itemSubtotal * (discountPercentage / 100);
+          const taxableAmount = itemSubtotal - itemDiscount;
+          return sum + (taxableAmount * (taxRate / 100));
+        }, 0);
+        
+        // Apply quote-level discount proportion to tax
+        const itemLevelDiscount = items.reduce((sum, item) => 
+          sum + ((item.quantity * item.unitPrice) * (item.discountPercentage / 100)), 0
+        );
+        const subtotalAfterItemDiscount = subtotal - itemLevelDiscount;
+        
+        if (quoteDiscount > 0 && subtotalAfterItemDiscount > 0) {
+          const discountRatio = quoteDiscount / subtotalAfterItemDiscount;
+          return itemLevelTax * (1 - discountRatio);
+        }
+        
+        return itemLevelTax;
+      })
+    );
+    
+    this.totalAmount$ = combineLatest([this.subtotal$, this.quoteDiscount$, this.totalTax$, this.quoteItems$]).pipe(
+      map(([subtotal, quoteDiscount, tax, items]) => {
+        const itemLevelDiscount = items.reduce((sum, item) => 
+          sum + ((item.quantity * item.unitPrice) * (item.discountPercentage / 100)), 0
+        );
+        return subtotal - itemLevelDiscount - quoteDiscount + tax;
+      })
     );
     
     this.isFormValid$ = this.quoteItems$.pipe(
@@ -271,7 +311,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  private loadProductAddons() {
+   private loadProductAddons() {
     if (!this.selectedModelId) return;
 
     // Load brackets
@@ -353,6 +393,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe();
+  }
+
+  onDiscountChange() {
+    // Trigger recalculation
+    this.quoteItemsSubject$.next([...this.quoteItemsSubject$.value]);
   }
 
   onInstallationFeeChange() {
@@ -679,6 +724,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       followUpDate: this.followUpDate,
       notes: this.notes,
       terms: this.terms,
+      discountType: this.discountType || undefined,
+      discountValue: this.discountValue || undefined,
       quoteItems: items.map(item => ({
         description: item.description,
         quantity: item.quantity,
@@ -717,6 +764,21 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   private generatePdf(quote: QuoteDto) {
     const items = this.quoteItemsSubject$.value;
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    const itemLevelDiscount = items.reduce((sum, item) => 
+      sum + ((item.quantity * item.unitPrice) * (item.discountPercentage / 100)), 0
+    );
+    
+    let quoteLevelDiscount = 0;
+    if (this.discountType && this.discountValue > 0) {
+      if (this.discountType === 'Percentage') {
+        quoteLevelDiscount = subtotal * (this.discountValue / 100);
+      } else if (this.discountType === 'Fixed') {
+        quoteLevelDiscount = this.discountValue;
+      }
+    }
+    
+    const totalDiscount = itemLevelDiscount + quoteLevelDiscount;
+    
     const totalTax = items.reduce((sum, item) => {
       const discountPercentage = item?.discountPercentage || 0;
       const taxRate = item?.taxRate || 0;
@@ -725,6 +787,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       const taxableAmount = itemSubtotal - itemDiscount;
       return sum + (taxableAmount * (taxRate / 100));
     }, 0);
+
+    const adjustedTax = quoteLevelDiscount > 0 && (subtotal - itemLevelDiscount) > 0 
+      ? totalTax * (1 - (quoteLevelDiscount / (subtotal - itemLevelDiscount)))
+      : totalTax;
 
     const pdfData: QuotePdfData = {
       quoteNumber: quote.quoteNumber,
@@ -744,6 +810,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         amount: item.amount
       })),
       subtotal: subtotal,
+      discount: totalDiscount > 0 ? totalDiscount : undefined,
       totalTax: totalTax,
       taxRate: this.vatRate,
       total: subtotal + totalTax,

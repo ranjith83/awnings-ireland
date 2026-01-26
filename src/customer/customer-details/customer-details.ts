@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService } from '../../service/customer-service';
+import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService, SalespersonDto } from '../../service/customer-service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
@@ -25,7 +25,8 @@ export class CustomerDetails implements OnInit {
     contact: '',
     mobile: '',
     email: '',
-    siteAddress: ''
+    siteAddress: '',
+    salesperson: ''
   });
   searchFilters$ = this.searchFiltersSubject.asObservable();
   
@@ -41,7 +42,8 @@ export class CustomerDetails implements OnInit {
           customer.contactName.toLowerCase().includes(filters.contact.toLowerCase()) &&
           (customer.mobilePhone || '').includes(filters.mobile) &&
           customer.contactEmail.toLowerCase().includes(filters.email.toLowerCase()) &&
-          customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase())
+          customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase()) &&
+          (customer.assignedSalesperson || '').toLowerCase().includes(filters.salesperson.toLowerCase())
         );
       });
     }),
@@ -68,14 +70,21 @@ export class CustomerDetails implements OnInit {
   
   customerForm: FormGroup;
   
+  // Salesperson list - loaded from API
+  salespeople: SalespersonDto[] = [];
+  
   // Keep these for template two-way binding with ngModel
   searchFilters = {
     companyName: '',
     contact: '',
     mobile: '',
     email: '',
-    siteAddress: ''
+    siteAddress: '',
+    salesperson: ''
   };
+
+  // Store the current customer ID separately (not in the form)
+  private currentCustomerId: number | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -83,7 +92,6 @@ export class CustomerDetails implements OnInit {
     private router: Router
   ) {
     this.customerForm = this.fb.group({
-      companyId: [null],
       name: ['', [Validators.required, Validators.minLength(2)]],
       companyNumber: [''],
       residential: [false],
@@ -97,6 +105,8 @@ export class CustomerDetails implements OnInit {
       mobile: ['', [Validators.required, Validators.pattern(/^\d{9,10}$/)]],
       email: ['', [Validators.required, Validators.email]],
       eircode: [''],
+      assignedSalespersonId: [null],
+      assignedSalespersonName: [''],
       contactFirstName: ['', Validators.required],
       contactLastName: ['', Validators.required],
       contactPhone: ['', Validators.required],
@@ -106,6 +116,7 @@ export class CustomerDetails implements OnInit {
 
   ngOnInit(): void {
     this.loadCustomers();
+    this.loadSalespeople();
   }
 
   loadCustomers(): void {
@@ -126,10 +137,27 @@ export class CustomerDetails implements OnInit {
     });
   }
 
+  loadSalespeople(): void {
+    this.customerService.getSalespeople().pipe(
+      tap(data => {
+        this.salespeople = data;
+      })
+    ).subscribe({
+      error: (error: Error) => {
+        console.error('Error loading salespeople:', error);
+        // Don't show error to user, just log it
+        this.salespeople = [];
+      }
+    });
+  }
+
   openAddModal(): void {
     this.modalModeSubject.next('add');
+    this.currentCustomerId = null;
     this.customerForm.reset({
-      residential: false
+      residential: false,
+      assignedSalespersonId: null,
+      assignedSalespersonName: ''
     });
     this.showModalSubject.next(true);
   }
@@ -138,25 +166,33 @@ export class CustomerDetails implements OnInit {
     this.modalModeSubject.next('edit');
     this.isLoadingSubject.next(true);
     
-    this.customerService.getCustomerById(customer.companyId).pipe(
+    this.customerService.getCustomerById(customer.customerId).pipe(
       tap(fullCustomer => {
         const contact = fullCustomer.customerContacts?.[0];
         
+        // Store the customer ID separately
+        this.currentCustomerId = fullCustomer.customerId;
+        
+        // Reset form first to clear any previous values
+        this.customerForm.reset();
+        
+        // Patch values with proper defaults for all required fields
         this.customerForm.patchValue({
-          companyId: fullCustomer.companyId,
-          name: fullCustomer.name,
-          companyNumber: fullCustomer.companyNumber,
-          residential: fullCustomer.residential,
+          name: fullCustomer.name || '',
+          companyNumber: fullCustomer.companyNumber || '',
+          residential: fullCustomer.residential || false,
           taxNumber: fullCustomer.taxNumber || '',
           vatNumber: fullCustomer.vatNumber || '',
-          address1: fullCustomer.address1,
-          address2: fullCustomer.address2,
-          address3: fullCustomer.address3,
-          county: fullCustomer.county,
-          phone: fullCustomer.phone,
-          mobile: fullCustomer.mobile,
-          email: fullCustomer.email,
-          eircode: fullCustomer.eircode,
+          address1: fullCustomer.address1 || '',
+          address2: fullCustomer.address2 || '',
+          address3: fullCustomer.address3 || '',
+          county: fullCustomer.county || '',
+          phone: fullCustomer.phone || '',
+          mobile: fullCustomer.mobile || '',
+          email: fullCustomer.email || '',
+          eircode: fullCustomer.eircode || '',
+          assignedSalespersonId: fullCustomer.assignedSalespersonId || null,
+          assignedSalespersonName: fullCustomer.assignedSalespersonName || '',
           contactFirstName: contact?.firstName || '',
           contactLastName: contact?.lastName || '',
           contactPhone: contact?.phone || '',
@@ -182,6 +218,7 @@ export class CustomerDetails implements OnInit {
 
   closeModal(): void {
     this.showModalSubject.next(false);
+    this.currentCustomerId = null;
     this.customerForm.reset();
     this.errorMessageSubject.next('');
   }
@@ -198,7 +235,7 @@ export class CustomerDetails implements OnInit {
     this.isLoadingSubject.next(true);
     this.errorMessageSubject.next('');
 
-    this.customerService.deleteCompany(customer.companyId).pipe(
+    this.customerService.deleteCompany(customer.customerId).pipe(
       tap(() => {
         console.log('Customer deleted successfully');
         alert('Customer deleted successfully');
@@ -221,6 +258,22 @@ export class CustomerDetails implements OnInit {
       this.customerForm.patchValue({
         taxNumber: '',
         vatNumber: ''
+      });
+    }
+  }
+
+  onSalespersonChange(): void {
+    const salespersonId = this.customerForm.get('assignedSalespersonId')?.value;
+    const salesperson = this.salespeople.find(s => s.userId === Number(salespersonId));
+    
+    if (salesperson) {
+      this.customerForm.patchValue({
+        assignedSalespersonName: salesperson.name
+      });
+    } else if (salespersonId === null) {
+      // When "-- Select Salesperson --" is chosen
+      this.customerForm.patchValue({
+        assignedSalespersonName: ''
       });
     }
   }
@@ -260,6 +313,8 @@ export class CustomerDetails implements OnInit {
       mobile: formValue.mobile,
       email: formValue.email,
       eircode: formValue.eircode,
+      assignedSalespersonId: formValue.assignedSalespersonId,
+      assignedSalespersonName: formValue.assignedSalespersonName,
       contacts: [{
         firstName: formValue.contactFirstName,
         lastName: formValue.contactLastName,
@@ -286,10 +341,17 @@ export class CustomerDetails implements OnInit {
 
   private updateCustomer(): void {
     const formValue = this.customerForm.value;
-    const companyId = formValue.companyId;
+
+    // Use the stored customer ID
+    if (!this.currentCustomerId) {
+      console.error('No customer ID found for update');
+      this.errorMessageSubject.next('Failed to update customer. Customer ID not found.');
+      this.isLoadingSubject.next(false);
+      return;
+    }
 
     const updateData: CompanyDto = {
-      companyId: companyId,
+      customerId: this.currentCustomerId,
       name: formValue.name,
       companyNumber: formValue.companyNumber,
       residential: formValue.residential,
@@ -303,10 +365,12 @@ export class CustomerDetails implements OnInit {
       mobile: formValue.mobile,
       email: formValue.email,
       eircode: formValue.eircode,
+      assignedSalespersonId: formValue.assignedSalespersonId,
+      assignedSalespersonName: formValue.assignedSalespersonName,
       updatedBy: 1
     };
 
-    this.customerService.updateCompany(companyId, updateData).pipe(
+    this.customerService.updateCompany(this.currentCustomerId, updateData).pipe(
       tap(response => {
         console.log('Customer updated:', response);
         alert('Customer updated successfully');
@@ -323,14 +387,13 @@ export class CustomerDetails implements OnInit {
   }
 
   onSearchChange(): void {
-    // Update the BehaviorSubject with current filter values
     this.searchFiltersSubject.next({ ...this.searchFilters });
   }
 
   navigateToWorkflow(customer: CustomerMainViewDto): void {
     this.router.navigate(['/workflow'], { 
       queryParams: { 
-        customerId: customer.companyId,
+        customerId: customer.customerId,
         customerName: customer.companyName 
       } 
     });

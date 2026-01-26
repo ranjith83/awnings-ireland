@@ -500,6 +500,14 @@
   text-align: center;
 }
 
+.discount-value {
+  color: #dc3545 !important;
+}
+
+.form-section .form-row .form-group {
+  flex: 1;
+}
+
 .mt-1 { margin-top: 0.5rem; }
 .mt-2 { margin-top: 1rem; }
 .mt-3 { margin-top: 1.5rem; }

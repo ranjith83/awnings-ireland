@@ -206,6 +206,36 @@
       </table>
     </div>
 
+    <!-- Discount Section -->
+    <div class="form-section">
+      <h3 class="section-title">Quote Discount (Optional)</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Discount Type</label>
+          <select class="form-select" [(ngModel)]="discountType" (change)="onDiscountChange()">
+            <option value="">No Discount</option>
+            <option value="Percentage">Percentage (%)</option>
+            <option value="Fixed">Fixed Amount (€)</option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="discountType">
+          <label class="form-label">
+            {{ discountType === 'Percentage' ? 'Discount Percentage' : 'Discount Amount' }}
+          </label>
+          <input 
+            type="number" 
+            class="form-input" 
+            [(ngModel)]="discountValue" 
+            (ngModelChange)="onDiscountChange()"
+            [placeholder]="discountType === 'Percentage' ? '0.00%' : '€0.00'"
+            min="0"
+            [max]="discountType === 'Percentage' ? 100 : 999999"
+            step="0.01">
+        </div>
+      </div>
+    </div>
+
     <!-- Summary Section -->
     <div class="summary-section">
       <div class="summary-left">
@@ -220,6 +250,12 @@
         <div class="summary-row">
           <span class="summary-label">Sub Total</span>
           <span class="summary-value">€{{ subtotal$ | async | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row" *ngIf="(quoteDiscount$ | async) && (quoteDiscount$ | async)! > 0">
+          <span class="summary-label">
+            Discount {{ discountType === 'Percentage' ? '(' + discountValue + '%)' : '' }}
+          </span>
+          <span class="summary-value discount-value">-€{{ quoteDiscount$ | async | number:'1.2-2' }}</span>
         </div>
         <div class="summary-row">
           <span class="summary-label">Total Sales TAX {{ vatRate }}%</span>

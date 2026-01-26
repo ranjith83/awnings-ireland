@@ -17,6 +17,7 @@ export interface QuotePdfData {
   taxRate: number;
   total: number;
   terms: string;
+  discount?: number;
 }
 
 export interface QuotePdfItem {

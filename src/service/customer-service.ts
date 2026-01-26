@@ -4,18 +4,20 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../app/environments/environment';
+
 // Interfaces matching your C# DTOs exactly
 export interface CustomerMainViewDto {
-  companyId: number;
+  customerId: number;
   companyName: string;
   contactName: string;
   contactEmail: string;
   mobilePhone: string;
   siteAddress: string;
+  assignedSalesperson: string;
 }
 
 export interface Customer {
-  companyId: number;
+  customerId: number;
   name: string;
   companyNumber?: string;
   residential?: boolean;
@@ -37,6 +39,8 @@ export interface Customer {
   updatedDate?: Date;
   updatedBy?: number;
   customerContacts?: CustomerContact[];
+  assignedSalespersonId?: number;
+  assignedSalespersonName?: string;
 }
 
 export interface CustomerContact {
@@ -47,11 +51,11 @@ export interface CustomerContact {
   mobile?: string;
   phone?: string;
   email: string;
-  companyId?: number;
+  customerId?: number;
 }
 
 export interface CompanyWithContactDto {
-  companyId?: number;
+  customerId?: number;
   name: string;
   companyNumber?: string;
   residential?: boolean;
@@ -73,6 +77,8 @@ export interface CompanyWithContactDto {
   updatedDate?: Date;
   updatedBy?: number;
   contacts: CustomerContactDto[];
+  assignedSalespersonId?: number;
+  assignedSalespersonName?: string;
 }
 
 export interface CustomerContactDto {
@@ -83,7 +89,7 @@ export interface CustomerContactDto {
 }
 
 export interface CompanyDto {
-  companyId: number;
+  customerId: number;
   name: string;
   companyNumber?: string;
   residential?: boolean;
@@ -102,10 +108,12 @@ export interface CompanyDto {
   eircode?: string;
   updatedDate?: Date;
   updatedBy?: number;
+  assignedSalespersonId?: number;
+  assignedSalespersonName?: string;
 }
 
 export interface ContactDto {
-  companyId: number;
+  customerID: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -115,11 +123,17 @@ export interface ContactDto {
   updatedBy?: number;
 }
 
+export interface SalespersonDto {
+  userId: number;
+  name: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class CustomerService {
   private apiUrl = `${environment.apiUrl}/api/customers`;
+  private authUrl = `${environment.apiUrl}/api/auth`;
 
   constructor(private http: HttpClient) {}
 
@@ -146,6 +160,17 @@ export class CustomerService {
   }
 
   /**
+   * Get all salespeople (users with department "Sales")
+   * Maps to: GET /api/auth/salespeople
+   */
+  getSalespeople(): Observable<SalespersonDto[]> {
+    return this.http.get<SalespersonDto[]>(`${this.authUrl}/salespeople`)
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  /**
    * Add a new company with contact
    * Maps to: POST /api/customers/add-company-with-contact
    */
@@ -157,8 +182,8 @@ export class CustomerService {
   }
 
   /**
-   * Add a new company with contact
-   * Maps to: POST /api/customers/add-company-with-contact
+   * Delete a company
+   * Maps to: POST /api/customers/delete-customer
    */
   deleteCompany(customerId: Number): Observable<Boolean> {
     return this.http.post<Boolean>(`${this.apiUrl}/delete-customer`, customerId)
@@ -166,7 +191,6 @@ export class CustomerService {
         catchError(this.handleError)
       );
   }
-
 
   /**
    * Add a contact to an existing company
@@ -183,8 +207,8 @@ export class CustomerService {
    * Update company details
    * Maps to: PUT /api/customers/update-company/{companyId}
    */
-  updateCompany(companyId: number, data: CompanyDto): Observable<Customer> {
-    return this.http.put<Customer>(`${this.apiUrl}/update-company/${companyId}`, data)
+  updateCompany(customerId: number, data: CompanyDto): Observable<Customer> {
+    return this.http.put<Customer>(`${this.apiUrl}/update-company/${customerId}`, data)
       .pipe(
         catchError(this.handleError)
       );
@@ -244,6 +268,5 @@ export class CustomerService {
 
     console.error('HTTP Error:', errorMessage, error);
     return throwError(() => new Error(errorMessage));
-}
-
+  }
 }

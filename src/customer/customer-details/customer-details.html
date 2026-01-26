@@ -45,6 +45,13 @@
         (ngModelChange)="onSearchChange()"
         class="search-input"
       />
+      <input 
+        type="text" 
+        placeholder="Salesperson" 
+        [(ngModel)]="searchFilters.salesperson"
+        (ngModelChange)="onSearchChange()"
+        class="search-input"
+      />
     </div>
   </div>
 
@@ -69,6 +76,7 @@
           <th>MOBILE</th>
           <th>EMAIL</th>
           <th>SITE ADDRESS</th>
+          <th>SALESPERSON</th>
           <th class="actions-column"></th>
         </tr>
       </thead>
@@ -79,6 +87,7 @@
           <td>{{ customer.mobilePhone }}</td>
           <td>{{ customer.contactEmail }}</td>
           <td>{{ customer.siteAddress }}</td>
+          <td>{{ customer.assignedSalesperson || '-' }}</td>
           <td class="actions-cell" (click)="$event.stopPropagation()">
             <div class="action-buttons">
               <button 
@@ -107,7 +116,7 @@
           </td>
         </tr>
         <tr *ngIf="(filteredCustomers$ | async)?.length === 0">
-          <td colspan="6" class="no-data">No customers found</td>
+          <td colspan="7" class="no-data">No customers found</td>
         </tr>
       </tbody>
     </table>
@@ -188,6 +197,21 @@
                   placeholder="Enter VAT number"
                 />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label for="assignedSalespersonId">Assigned Salesperson</label>
+              <select 
+                id="assignedSalespersonId"
+                formControlName="assignedSalespersonId"
+                class="form-control"
+                (change)="onSalespersonChange()"
+              >
+                <option [ngValue]="null">-- Select Salesperson --</option>
+                <option *ngFor="let sp of salespeople" [ngValue]="sp.userId">
+                  {{ sp.name }}
+                </option>
+              </select>
             </div>
 
             <div class="form-group">

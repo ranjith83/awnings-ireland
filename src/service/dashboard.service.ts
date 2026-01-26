@@ -165,9 +165,9 @@ export class DashboardService {
     }).pipe(
       map(({ customers, invoices }) => {
         const stats = customers.map(cust => {
-          const custInvoices = invoices.filter(inv => inv.customerId === cust.companyId);
+          const custInvoices = invoices.filter(inv => inv.customerId === cust.customerId);
           return {
-            id: cust.companyId,
+            id: cust.customerId,
             name: cust.companyName,
             orders: custInvoices.length,
             revenue: custInvoices.reduce((sum, inv) => sum + inv.totalAmount, 0)
