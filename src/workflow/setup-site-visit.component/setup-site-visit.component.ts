@@ -11,6 +11,7 @@ import {
   SiteVisitDropdownValues
 } from '../../service/setup-site-visit.service';
 import { WorkflowService, WorkflowDto } from '../../service/workflow.service';
+import { WorkflowStateService } from '../../service/workflow-state.service';
 
 interface ProductModel {
   id: string;
@@ -39,7 +40,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   activeTab: string = 'product-model';
   selectedProductModel: string = '';
   showFullTabs: boolean = false;
-  
+  selectedWorkflowId: number | null = null;
+
   // Observables for async data
   workflows$!: Observable<WorkflowDto[]>;
   siteVisits$!: Observable<SiteVisitDto[]>;
@@ -68,145 +70,145 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     { id: '3', name: 'Blind', key: 'blind' },
     { id: '4', name: 'Parasol', key: 'parasol' },
     { id: '5', name: 'Glass Screen', key: 'glassScreen' },
-    { id: '6', name: 'Fabric wind breaker', key: 'fabricWindBreaker' },
-    { id: '7', name: 'Polycarbonate Roof', key: 'polycarbonateRoof' },
-    { id: '8', name: 'Pergola', key: 'pergola' },
-    { id: '9', name: 'Other', key: 'other' }
+    { id: '6', name: 'Fabric Wind Breaker', key: 'fabricWindBreaker' },
+    { id: '7', name: 'Pergola', key: 'pergola' },
+    { id: '8', name: 'Other', key: 'other' }
   ];
 
-  // Product Model Section Fields
+  // Product Model Section Fields - Updated based on Excel
   productModelFields: FieldConfig[] = [
     {
       name: 'siteLayout',
       label: 'Site Survey layout',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'structure',
       label: 'Structure',
       type: 'dropdown',
       category: 'Structure',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'passageHeight',
       label: 'Passage Height (m)',
-      type: 'number',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      type: 'text',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'width',
       label: 'Width (m)',
-      type: 'number',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      type: 'text',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'projection',
       label: 'Projection (m)',
-      type: 'number',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol', 'glassScreen']
+      type: 'text',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'heightAvailable',
       label: 'Height Available',
-      type: 'number',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      type: 'text',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'wallType',
       label: 'Wall Type',
       type: 'dropdown',
       category: 'WallType',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'externalInsulation',
       label: 'External Insulation',
       type: 'dropdown',
       category: 'ExternalInsulation',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'wallFinish',
       label: 'Wall Finish',
       type: 'dropdown',
       category: 'WallFinish',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'wallThickness',
       label: 'Wall Thickness',
-      type: 'number',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      type: 'text',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'specialBrackets',
       label: 'Special Brackets',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'sideInfills',
       label: 'Side Infills',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      type: 'dropdown',
+      category: 'SideInfills',
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'flashingRequired',
       label: 'Flashing Required',
       type: 'dropdown',
       category: 'FlashingRequired',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'flashingDimensions',
       label: 'Flashing Dimensions',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'standOfBrackets',
       label: 'Stand of Brackets',
       type: 'dropdown',
       category: 'StandOfBrackets',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'standOfBracketDimension',
       label: 'Stand of Bracket Dimension',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'electrician',
       label: 'Electrician',
       type: 'dropdown',
       category: 'Electrician',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'electricalConnection',
       label: 'Electrical Connection',
       type: 'dropdown',
       category: 'ElectricalConnection',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'location',
       label: 'Location',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     },
     {
       name: 'otherSiteSurveyNotes',
       label: 'Other Site Survey Notes',
       type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'parasol']
+      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
     }
   ];
 
-  // Model Details Section Fields
+  // Model Details Section Fields - Updated based on Excel
   modelDetailsFields: FieldConfig[] = [
     {
       name: 'fixtureType',
@@ -269,7 +271,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     }
   ];
 
-  // ShadePlus & Lights Combined Section Fields
+  // ShadePlus & Lights Combined Section Fields - Updated based on Excel
   shadePlusLightsFields: FieldConfig[] = [
     // ShadePlus
     {
@@ -294,7 +296,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     },
     {
       name: 'shadePlusAnyOtherDetail',
-      label: 'ShadePlus - Any other detail',
+      label: 'ShadePlus - Any other details',
       type: 'text',
       visibleFor: ['awning', 'roofSystem']
     },
@@ -321,7 +323,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     }
   ];
 
-  // Heater Section Fields
+  // Heater Section Fields - Updated based on Excel
   heaterFields: FieldConfig[] = [
     {
       name: 'heater',
@@ -340,7 +342,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     {
       name: 'numberRequired',
       label: 'Number Required',
-      type: 'number',
+      type: 'text',
       visibleFor: ['awning', 'roofSystem']
     },
     {
@@ -383,7 +385,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private siteVisitService: SetupSiteVisitService,
     private workflowService: WorkflowService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private workflowStateService: WorkflowStateService,
   ) {
     this.siteVisitForm = this.fb.group({
       workflow: ['', Validators.required],
@@ -440,56 +443,43 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       controllerBox: [''],
       heaterAnyOtherDetails: ['']
     });
-  }
 
-  ngOnInit(): void {
-    console.log('📄 Setup Site Visit Component Initialized');
-    
-    // Initialize observables
     this.workflows$ = this.workflowsSubject$.asObservable();
     this.siteVisits$ = this.siteVisitsSubject$.asObservable();
     this.dropdownValues$ = this.dropdownValuesSubject$.asObservable();
-    
-    // Load dropdown values
-    this.loadDropdownValues();
-    
-    // Get customer ID and workflow ID from route
+  }
+
+  ngOnInit(): void {
+    // Get customerId from route params
+ /**this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      if (params['customerId']) {
+        this.customerId = +params['customerId'];
+        this.loadWorkflows();
+      }
+    });
+ */   
     this.route.queryParams
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        this.customerId = params['customerId'] ? +params['customerId'] : null;
-        const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
-        
-        if (this.customerId) {
-          this.loadWorkflows(this.customerId, paramWorkflowId);
-        }
-      });
-
-    // Subscribe to product model changes
-    this.siteVisitForm.get('productModel')?.valueChanges
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(value => {
-        const selectedModel = this.productModels.find(e => e.id === value);
-        this.selectedProductModel = selectedModel?.key || '';
-        
-        // Show full tabs only for Awning and Roof System
-        this.showFullTabs = this.selectedProductModel === 'awning' || this.selectedProductModel === 'roofSystem';
-        
-        // Set default tab to product-model when product model changes
-        this.activeTab = 'product-model';
-      });
-
-    // Subscribe to workflow changes
-    this.siteVisitForm.get('workflow')?.valueChanges
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(workflowId => {
-        if (workflowId) {
-          this.currentWorkflowId = +workflowId;
-          this.loadSiteVisitsGrid(this.currentWorkflowId);
-        } else {
-          this.siteVisitsSubject$.next([]);
-        }
-      });
+          .pipe(takeUntil(this.destroy$))
+          .subscribe(params => {
+            this.customerId = params['customerId'] ? +params['customerId'] : null;
+            this.loadWorkflows();
+            const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
+            let workflowId = 0;
+    
+            if (!this.customerId) {
+              this.errorMessage$.next('No customer selected. Please select a customer first.');
+              return;
+            }
+    
+            if (this.customerId) {
+              const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
+              this.customerId = selectedWorkflow?.customerId || null;
+             // this.customerName = selectedWorkflow?.customerName || '';
+              this.selectedWorkflowId = selectedWorkflow?.id || 0;
+            }
+          });
+    this.loadDropdownValues();
+    this.setupFormSubscriptions();
   }
 
   ngOnDestroy(): void {
@@ -497,85 +487,95 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadDropdownValues(): void {
-    console.log('📥 Loading dropdown values...');
-    
-    this.siteVisitService.getAllDropdownValues()
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(values => {
-          console.log('✅ Dropdown values loaded:', Object.keys(values).length);
-          this.dropdownValuesSubject$.next(values);
-        }),
-        catchError(error => {
-          console.error('❌ Error loading dropdown values:', error);
-          this.errorMessage$.next('Failed to load dropdown values');
-          this.clearMessagesAfterDelay();
-          return [];
-        })
-      )
-      .subscribe();
-  }
+  private setupFormSubscriptions(): void {
+    // Watch for workflow selection changes
+    this.siteVisitForm.get('workflow')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((workflowId: string) => {
+        if (workflowId) {
+          this.currentWorkflowId = parseInt(workflowId);
+          this.loadSiteVisits(this.currentWorkflowId);
+          this.resetForm(); // Reset form when workflow changes
+        }
+      });
 
-  loadWorkflows(customerId: number, preselectedWorkflowId: number | null = null): void {
-    console.log('📄 Loading workflows for customer:', customerId);
-    this.isLoading$.next(true);
-    
-    this.workflowService.getWorkflowsForCustomer(customerId)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(workflows => {
-          console.log('✅ Workflows loaded:', workflows?.length);
-          this.workflowsSubject$.next(workflows || []);
+    // Watch for product model changes
+    this.siteVisitForm.get('productModel')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((productModelId: string) => {
+        const model = this.productModels.find(m => m.id === productModelId);
+        if (model) {
+          this.selectedProductModel = model.key;
+          this.showFullTabs = model.key === 'awning' || model.key === 'roofSystem';
           
-          // Auto-select workflow if provided in query params
-          if (preselectedWorkflowId && workflows.some(w => w.workflowId === preselectedWorkflowId)) {
-            this.siteVisitForm.patchValue({
-              workflow: preselectedWorkflowId.toString()
-            }, { emitEvent: false });
-            this.currentWorkflowId = preselectedWorkflowId;
-            this.loadSiteVisitsGrid(preselectedWorkflowId);
-          } else if (workflows.length === 1) {
-            // Auto-select if only one workflow
-            this.siteVisitForm.patchValue({
-              workflow: workflows[0].workflowId.toString()
-            }, { emitEvent: false });
-            this.currentWorkflowId = workflows[0].workflowId;
-            this.loadSiteVisitsGrid(workflows[0].workflowId);
+          if (this.showFullTabs) {
+            this.activeTab = 'product-model';
           }
-        }),
-        catchError(error => {
-          console.error('❌ Error loading workflows:', error);
-          this.errorMessage$.next('Failed to load workflows. Please try again.');
-          this.clearMessagesAfterDelay();
-          return [];
-        }),
-        finalize(() => this.isLoading$.next(false))
-      )
-      .subscribe();
+        } else {
+          this.selectedProductModel = '';
+          this.showFullTabs = false;
+        }
+      });
   }
 
-  loadSiteVisitsGrid(workflowId: number): void {
-    console.log('📄 Loading site visits for workflow:', workflowId);
+ private loadWorkflows(): void {
+  if (!this.customerId) {
+    console.warn('No customerId provided');
+    return;
+  }
+  
+  this.isLoading$.next(true);
+  this.workflowService.getWorkflowsForCustomer(this.customerId) // ✅ Correct method
+    .pipe(
+      takeUntil(this.destroy$),
+      finalize(() => this.isLoading$.next(false))
+    )
+    .subscribe({
+      next: (workflows) => {
+        this.workflowsSubject$.next(workflows);
+      },
+      error: (error) => {
+        this.showError('Failed to load workflows: ' + error.message);
+      }
+    });
+}
+
+  private loadSiteVisits(workflowId: number): void {
     this.isLoading$.next(true);
-    
     this.siteVisitService.getSiteVisitsByWorkflowId(workflowId)
       .pipe(
         takeUntil(this.destroy$),
-        tap(siteVisits => {
-          console.log('✅ Site visits loaded:', siteVisits?.length);
-          this.siteVisitsSubject$.next(siteVisits || []);
-        }),
-        catchError(error => {
-          console.error('❌ Error loading site visits:', error);
-          this.errorMessage$.next('Failed to load site visits.');
-          this.clearMessagesAfterDelay();
-          this.siteVisitsSubject$.next([]);
-          return [];
-        }),
         finalize(() => this.isLoading$.next(false))
       )
-      .subscribe();
+      .subscribe({
+        next: (siteVisits) => {
+          this.siteVisitsSubject$.next(siteVisits);
+        },
+        error: (error) => {
+          this.showError('Failed to load site visits: ' + error.message);
+        }
+      });
+  }
+
+  private loadDropdownValues(): void {
+    this.siteVisitService.getAllDropdownValues()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (values) => {
+          this.dropdownValuesSubject$.next(values);
+        },
+        error: (error) => {
+          console.error('Failed to load dropdown values:', error);
+        }
+      });
+  }
+
+  setActiveTab(tab: string): void {
+    this.activeTab = tab;
+  }
+
+  isFieldVisible(field: FieldConfig): boolean {
+    return field.visibleFor.includes(this.selectedProductModel);
   }
 
   getFieldValues(field: FieldConfig): string[] {
@@ -584,24 +584,32 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     }
     
     if (field.category) {
-      const dropdownValues = this.dropdownValuesSubject$.value;
+      const dropdownValues = this.dropdownValuesSubject$.getValue();
       return dropdownValues[field.category] || [];
     }
     
     return [];
   }
 
+  getProductModelName(productModelType: string): string {
+    const model = this.productModels.find(m => m.key === productModelType);
+    return model ? model.name : productModelType;
+  }
+
   editSiteVisit(siteVisit: SiteVisitDto): void {
-    console.log('📝 Loading site visit for edit:', siteVisit.siteVisitId);
     this.editMode = true;
-    this.editingSiteVisitId = siteVisit.siteVisitId || 0;
+    this.editingSiteVisitId = siteVisit.siteVisitId!;
     
-    // Find product model by key
-    const productModel = this.productModels.find(pm => pm.key === siteVisit.productModelType);
+    // Find and set the product model
+    const model = this.productModels.find(m => m.name === siteVisit.productModelType);
+    if (model) {
+      this.siteVisitForm.patchValue({
+        productModel: model.id
+      });
+    }
     
+    // Patch all form values
     this.siteVisitForm.patchValue({
-      workflow: siteVisit.workflowId?.toString(),
-      productModel: productModel?.id,
       model: siteVisit.model,
       otherPleaseSpecify: siteVisit.otherPleaseSpecify,
       siteLayout: siteVisit.siteLayout,
@@ -649,282 +657,165 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       controllerBox: siteVisit.controllerBox,
       heaterAnyOtherDetails: siteVisit.heaterAnyOtherDetails
     });
-    
-    // Scroll to form section
-    const formElement = document.querySelector('.site-visit-form');
-    if (formElement) {
-      formElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
   deleteSiteVisit(siteVisitId: number): void {
-    if (!confirm('Are you sure you want to delete this site visit?')) {
+    if (confirm('Are you sure you want to delete this site visit?')) {
+      this.siteVisitService.deleteSiteVisit(siteVisitId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            this.showSuccess('Site visit deleted successfully');
+            if (this.currentWorkflowId) {
+              this.loadSiteVisits(this.currentWorkflowId);
+            }
+          },
+          error: (error) => {
+            this.showError('Failed to delete site visit: ' + error.message);
+          }
+        });
+    }
+  }
+
+  onSubmit(): void {
+    if (!this.currentWorkflowId) {
+      this.showError('Please select a workflow');
       return;
     }
 
-    console.log('🗑️ Deleting site visit:', siteVisitId);
-    this.isLoading$.next(true);
-    
-    this.siteVisitService.deleteSiteVisit(siteVisitId)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(() => {
-          console.log('✅ Site visit deleted successfully');
-          this.successMessage$.next('Site visit deleted successfully!');
-          this.clearMessagesAfterDelay();
-          
-          // Reload the grid
-          if (this.currentWorkflowId) {
-            this.loadSiteVisitsGrid(this.currentWorkflowId);
-          }
-        }),
-        catchError(error => {
-          console.error('❌ Error deleting site visit:', error);
-          this.errorMessage$.next(error.message || 'Failed to delete site visit. Please try again.');
-          this.clearMessagesAfterDelay();
-          return [];
-        }),
-        finalize(() => this.isLoading$.next(false))
-      )
-      .subscribe();
-  }
-
-  getProductModelName(productModelType: string): string {
-    const model = this.productModels.find(pm => pm.key === productModelType);
-    return model ? model.name : productModelType;
-  }
-
-  setActiveTab(tab: string): void {
-    this.activeTab = tab;
-  }
-
-  isFieldVisible(field: FieldConfig): boolean {
-    if (!this.selectedProductModel) {
-      return false;
+    if (!this.siteVisitForm.get('productModel')?.value) {
+      this.showError('Please select a product model');
+      return;
     }
-    return field.visibleFor.includes(this.selectedProductModel);
+
+    this.isSaving$.next(true);
+    const formValue = this.siteVisitForm.value;
+    
+    // Get product model name
+    const model = this.productModels.find(m => m.id === formValue.productModel);
+    const productModelType = model ? model.name : '';
+
+    if (this.editMode && this.editingSiteVisitId) {
+      // Update existing site visit
+      const updateDto: SiteVisitDto = {
+        siteVisitId: this.editingSiteVisitId,
+        workflowId: this.currentWorkflowId,
+        productModelType: productModelType,
+        ...formValue
+      };
+
+      this.siteVisitService.updateSiteVisit(this.editingSiteVisitId, updateDto)
+        .pipe(
+          takeUntil(this.destroy$),
+          finalize(() => this.isSaving$.next(false))
+        )
+        .subscribe({
+          next: () => {
+            this.showSuccess('Site visit updated successfully');
+            this.resetForm();
+            if (this.currentWorkflowId) {
+              this.loadSiteVisits(this.currentWorkflowId);
+            }
+          },
+          error: (error) => {
+            this.showError('Failed to update site visit: ' + error.message);
+          }
+        });
+    } else {
+      // Create new site visit
+      const createDto: CreateSiteVisitDto = {
+        workflowId: this.currentWorkflowId,
+        productModelType: productModelType,
+        model: formValue.model,
+        otherPleaseSpecify: formValue.otherPleaseSpecify,
+        siteLayout: formValue.siteLayout,
+        structure: formValue.structure,
+        passageHeight: formValue.passageHeight,
+        width: formValue.width,
+        projection: formValue.projection,
+        heightAvailable: formValue.heightAvailable,
+        wallType: formValue.wallType,
+        externalInsulation: formValue.externalInsulation,
+        wallFinish: formValue.wallFinish,
+        wallThickness: formValue.wallThickness,
+        specialBrackets: formValue.specialBrackets,
+        sideInfills: formValue.sideInfills,
+        flashingRequired: formValue.flashingRequired,
+        flashingDimensions: formValue.flashingDimensions,
+        standOfBrackets: formValue.standOfBrackets,
+        standOfBracketDimension: formValue.standOfBracketDimension,
+        electrician: formValue.electrician,
+        electricalConnection: formValue.electricalConnection,
+        location: formValue.location,
+        otherSiteSurveyNotes: formValue.otherSiteSurveyNotes,
+        fixtureType: formValue.fixtureType,
+        operation: formValue.operation,
+        crankLength: formValue.crankLength,
+        operationSide: formValue.operationSide,
+        fabric: formValue.fabric,
+        ral: formValue.ral,
+        valanceChoice: formValue.valanceChoice,
+        valance: formValue.valance,
+        windSensor: formValue.windSensor,
+        shadePlusRequired: formValue.shadePlusRequired,
+        shadeType: formValue.shadeType,
+        shadeplusFabric: formValue.shadeplusFabric,
+        shadePlusAnyOtherDetail: formValue.shadePlusAnyOtherDetail,
+        lights: formValue.lights,
+        lightsType: formValue.lightsType,
+        lightsAnyOtherDetails: formValue.lightsAnyOtherDetails,
+        heater: formValue.heater,
+        heaterManufacturer: formValue.heaterManufacturer,
+        numberRequired: formValue.numberRequired,
+        heaterOutput: formValue.heaterOutput,
+        heaterColour: formValue.heaterColour,
+        remoteControl: formValue.remoteControl,
+        controllerBox: formValue.controllerBox,
+        heaterAnyOtherDetails: formValue.heaterAnyOtherDetails
+      };
+
+      this.siteVisitService.createSiteVisit(createDto)
+        .pipe(
+          takeUntil(this.destroy$),
+          finalize(() => this.isSaving$.next(false))
+        )
+        .subscribe({
+          next: () => {
+            this.showSuccess('Site visit created successfully');
+            this.resetForm();
+            if (this.currentWorkflowId) {
+              this.loadSiteVisits(this.currentWorkflowId);
+            }
+          },
+          error: (error) => {
+            this.showError('Failed to create site visit: ' + error.message);
+          }
+        });
+    }
   }
 
   resetForm(): void {
-    const currentWorkflowId = this.siteVisitForm.get('workflow')?.value;
+    this.editMode = false;
+    this.editingSiteVisitId = null;
     
+    // Reset all fields except workflow
+    const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
     this.siteVisitForm.reset({
-      workflow: currentWorkflowId
+      workflow: currentWorkflow
     });
     
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';
-    this.editMode = false;
-    this.editingSiteVisitId = null;
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
-    
-    // Scroll to product model selection
-    const productModelSection = document.querySelector('.form-section');
-    if (productModelSection) {
-      productModelSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
   }
 
-  onSubmit(): void {
-    if (this.siteVisitForm.valid) {
-      if (this.editMode && this.editingSiteVisitId) {
-        this.updateSiteVisit();
-      } else {
-        this.createSiteVisit();
-      }
-    } else {
-      this.markFormGroupTouched(this.siteVisitForm);
-      this.errorMessage$.next('Please fill in all required fields.');
-      this.clearMessagesAfterDelay();
-    }
+  private showSuccess(message: string): void {
+    this.successMessage$.next(message);
+    setTimeout(() => this.successMessage$.next(''), 5000);
   }
 
-  createSiteVisit(): void {
-    console.log('💾 Creating site visit...');
-    this.isSaving$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
-
-    const formValue = this.siteVisitForm.value;
-    const createDto: CreateSiteVisitDto = {
-      workflowId: +formValue.workflow,
-      productModelType: this.selectedProductModel,
-      model: formValue.model,
-      otherPleaseSpecify: formValue.otherPleaseSpecify,
-      siteLayout: formValue.siteLayout,
-      structure: formValue.structure,
-      passageHeight: formValue.passageHeight,
-      width: formValue.width,
-      projection: formValue.projection,
-      heightAvailable: formValue.heightAvailable,
-      wallType: formValue.wallType,
-      externalInsulation: formValue.externalInsulation,
-      wallFinish: formValue.wallFinish,
-      wallThickness: formValue.wallThickness,
-      specialBrackets: formValue.specialBrackets,
-      sideInfills: formValue.sideInfills,
-      flashingRequired: formValue.flashingRequired,
-      flashingDimensions: formValue.flashingDimensions,
-      standOfBrackets: formValue.standOfBrackets,
-      standOfBracketDimension: formValue.standOfBracketDimension,
-      electrician: formValue.electrician,
-      electricalConnection: formValue.electricalConnection,
-      location: formValue.location,
-      otherSiteSurveyNotes: formValue.otherSiteSurveyNotes,
-      fixtureType: formValue.fixtureType,
-      operation: formValue.operation,
-      crankLength: formValue.crankLength,
-      operationSide: formValue.operationSide,
-      fabric: formValue.fabric,
-      ral: formValue.ral,
-      valanceChoice: formValue.valanceChoice,
-      valance: formValue.valance,
-      windSensor: formValue.windSensor,
-      shadePlusRequired: formValue.shadePlusRequired,
-      shadeType: formValue.shadeType,
-      shadeplusFabric: formValue.shadeplusFabric,
-      shadePlusAnyOtherDetail: formValue.shadePlusAnyOtherDetail,
-      lights: formValue.lights,
-      lightsType: formValue.lightsType,
-      lightsAnyOtherDetails: formValue.lightsAnyOtherDetails,
-      heater: formValue.heater,
-      heaterManufacturer: formValue.heaterManufacturer,
-      numberRequired: formValue.numberRequired,
-      heaterOutput: formValue.heaterOutput,
-      heaterColour: formValue.heaterColour,
-      remoteControl: formValue.remoteControl,
-      controllerBox: formValue.controllerBox,
-      heaterAnyOtherDetails: formValue.heaterAnyOtherDetails
-    };
-
-    this.siteVisitService.createSiteVisit(createDto)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(response => {
-          console.log('✅ Site visit created successfully:', response);
-          this.successMessage$.next('Site visit saved successfully!');
-          this.clearMessagesAfterDelay();
-          
-          // Reset form but keep workflow selected
-          this.resetForm();
-          
-          // Reload the grid
-          if (this.currentWorkflowId) {
-            this.loadSiteVisitsGrid(this.currentWorkflowId);
-          }
-        }),
-        catchError(error => {
-          console.error('❌ Error creating site visit:', error);
-          this.errorMessage$.next(error.message || 'Failed to save site visit. Please try again.');
-          this.clearMessagesAfterDelay();
-          return [];
-        }),
-        finalize(() => this.isSaving$.next(false))
-      )
-      .subscribe();
-  }
-
-  updateSiteVisit(): void {
-    if (!this.editingSiteVisitId) return;
-    
-    console.log('📝 Updating site visit:', this.editingSiteVisitId);
-    this.isSaving$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
-
-    const formValue = this.siteVisitForm.value;
-    const updateDto: SiteVisitDto = {
-      siteVisitId: this.editingSiteVisitId,
-      workflowId: +formValue.workflow,
-      productModelType: this.selectedProductModel,
-      model: formValue.model,
-      otherPleaseSpecify: formValue.otherPleaseSpecify,
-      siteLayout: formValue.siteLayout,
-      structure: formValue.structure,
-      passageHeight: formValue.passageHeight,
-      width: formValue.width,
-      projection: formValue.projection,
-      heightAvailable: formValue.heightAvailable,
-      wallType: formValue.wallType,
-      externalInsulation: formValue.externalInsulation,
-      wallFinish: formValue.wallFinish,
-      wallThickness: formValue.wallThickness,
-      specialBrackets: formValue.specialBrackets,
-      sideInfills: formValue.sideInfills,
-      flashingRequired: formValue.flashingRequired,
-      flashingDimensions: formValue.flashingDimensions,
-      standOfBrackets: formValue.standOfBrackets,
-      standOfBracketDimension: formValue.standOfBracketDimension,
-      electrician: formValue.electrician,
-      electricalConnection: formValue.electricalConnection,
-      location: formValue.location,
-      otherSiteSurveyNotes: formValue.otherSiteSurveyNotes,
-      fixtureType: formValue.fixtureType,
-      operation: formValue.operation,
-      crankLength: formValue.crankLength,
-      operationSide: formValue.operationSide,
-      fabric: formValue.fabric,
-      ral: formValue.ral,
-      valanceChoice: formValue.valanceChoice,
-      valance: formValue.valance,
-      windSensor: formValue.windSensor,
-      shadePlusRequired: formValue.shadePlusRequired,
-      shadeType: formValue.shadeType,
-      shadeplusFabric: formValue.shadeplusFabric,
-      shadePlusAnyOtherDetail: formValue.shadePlusAnyOtherDetail,
-      lights: formValue.lights,
-      lightsType: formValue.lightsType,
-      lightsAnyOtherDetails: formValue.lightsAnyOtherDetails,
-      heater: formValue.heater,
-      heaterManufacturer: formValue.heaterManufacturer,
-      numberRequired: formValue.numberRequired,
-      heaterOutput: formValue.heaterOutput,
-      heaterColour: formValue.heaterColour,
-      remoteControl: formValue.remoteControl,
-      controllerBox: formValue.controllerBox,
-      heaterAnyOtherDetails: formValue.heaterAnyOtherDetails
-    };
-
-    this.siteVisitService.updateSiteVisit(this.editingSiteVisitId, updateDto)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(response => {
-          console.log('✅ Site visit updated successfully:', response);
-          this.successMessage$.next('Site visit updated successfully!');
-          this.clearMessagesAfterDelay();
-          
-          // Reset form but keep workflow selected
-          this.resetForm();
-          
-          // Reload the grid
-          if (this.currentWorkflowId) {
-            this.loadSiteVisitsGrid(this.currentWorkflowId);
-          }
-        }),
-        catchError(error => {
-          console.error('❌ Error updating site visit:', error);
-          this.errorMessage$.next(error.message || 'Failed to update site visit. Please try again.');
-          this.clearMessagesAfterDelay();
-          return [];
-        }),
-        finalize(() => this.isSaving$.next(false))
-      )
-      .subscribe();
-  }
-
-  private markFormGroupTouched(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(key => {
-      const control = formGroup.get(key);
-      control?.markAsTouched();
-    });
-  }
-
-  private clearMessagesAfterDelay(): void {
-    setTimeout(() => {
-      this.successMessage$.next('');
-      this.errorMessage$.next('');
-    }, 5000);
+  private showError(message: string): void {
+    this.errorMessage$.next(message);
+    setTimeout(() => this.errorMessage$.next(''), 5000);
   }
 }

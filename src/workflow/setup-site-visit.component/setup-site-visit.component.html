@@ -14,10 +14,10 @@
       <div class="form-row two-columns">
         <div class="form-group">
           <label>Workflow</label>
-          <select formControlName="workflow" class="form-control">
+          <select formControlName="workflow" [(ngModel)]="selectedWorkflowId" class="form-control">
             <option value="">Select Workflow</option>
             <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
-              {{ workflow.workflowName }} - {{ workflow.workflowId}}
+              {{ workflow.description }} 
             </option>
           </select>
         </div>
