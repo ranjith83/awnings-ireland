@@ -408,8 +408,13 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const amount = this.calculateAmount(1, this.installationFee, this.vatRate, 0);
     
+    // Build description with product name
+    const description = this.selectedProductName 
+      ? `Supply and Fit ${this.selectedProductName}`
+      : 'Supply and Fit';
+    
     const lineItem: QuoteItemDisplay = {
-      description: 'Installation Fee',
+      description: description,
       quantity: 1,
       unitPrice: this.installationFee,
       taxRate: this.vatRate,
