@@ -22,29 +22,34 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Product Model</label>
-          <select formControlName="productModel" class="form-control">
-            <option value="">Select Product Model</option>
-            <option *ngFor="let model of productModels" [value]="model.id">
-              {{ model.name }}
-            </option>
-          </select>
+          <div class="product-model-with-button">
+            <div class="product-model-field">
+              <label>Product Model</label>
+              <select formControlName="productModel" class="form-control">
+                <option value="">Select Product Model</option>
+                <option *ngFor="let model of productModels" [value]="model.id">
+                  {{ model.name }}
+                </option>
+              </select>
+            </div>
+            <!-- Add New Button - Always visible when workflow is selected -->
+            <button 
+              *ngIf="currentWorkflowId"
+              type="button" 
+              class="btn-add-new" 
+              (click)="addNewSiteVisit()"
+              title="Add New Site Visit">
+              + Add New
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Site Visits Grid -->
+    <!-- Site Visits Grid - Always visible when workflow is selected -->
     <div class="form-section" *ngIf="currentWorkflowId">
       <div class="grid-header">
         <h2 class="section-title">Existing Site Visits</h2>
-        <button 
-          *ngIf="editMode" 
-          type="button" 
-          class="btn-add-new" 
-          (click)="resetForm()"
-          title="Add New Site Visit">
-          + Add New
-        </button>
       </div>
       
       <div *ngIf="isLoading$ | async" class="loading-message">
@@ -70,7 +75,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let siteVisit of siteVisits$ | async" 
+            <tr *ngFor="let siteVisit of siteVisits$ | async"
                 [class.editing-row]="editingSiteVisitId === siteVisit.siteVisitId">
               <td>{{ siteVisit.siteVisitId }}</td>
               <td>{{ getProductModelName(siteVisit.productModelType) }}</td>
@@ -95,294 +100,299 @@
       </div>
     </div>
 
-    <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
-    <div class="form-section" *ngIf="selectedProductModel && !showFullTabs">
-      <h2 class="section-title">Product Details</h2>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Model</label>
-          <select formControlName="model" class="form-control">
-            <option value="">Select Model</option>
-            <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
-              {{ value }}
-            </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Other please specify</label>
-          <input 
-            type="text" 
-            formControlName="otherPleaseSpecify" 
-            class="form-control"
-            placeholder="Enter other details">
-        </div>
-      </div>
-    </div>
-
-    <!-- Product Tabs Section (only for Awning and Roof System) -->
-    <div class="form-section" *ngIf="selectedProductModel && showFullTabs">
-      <!-- Other Specify Section (always shown first outside tabs for Awning/RoofSystem) -->
-      <h2 class="section-title">
-        {{ editMode ? 'Edit Site Visit' : 'Product Details' }}
-      </h2>
-      <div class="form-row two-columns other-specify-section">
-        <div class="form-group">
-          <label>Model</label>
-          <select formControlName="model" class="form-control">
-            <option value="">Select Model</option>
-            <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
-              {{ value }}
-            </option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Other please specify</label>
-          <input 
-            type="text" 
-            formControlName="otherPleaseSpecify" 
-            class="form-control"
-            placeholder="Enter other details">
+    <!-- Site Visit Form - Only show when showForm is true (edit or add new) -->
+    <div *ngIf="showForm">
+      <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
+      <div class="form-section" *ngIf="!showFullTabs">
+        <h2 class="section-title">
+          {{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}
+        </h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Model</label>
+            <select formControlName="model" class="form-control">
+              <option value="">Select Model</option>
+              <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
+                {{ value }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Other please specify</label>
+            <input 
+              type="text" 
+              formControlName="otherPleaseSpecify" 
+              class="form-control"
+              placeholder="Enter other details">
+          </div>
         </div>
       </div>
 
-      <!-- Tabs -->
-      <div class="product-tabs">
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'product-model'"
-          (click)="setActiveTab('product-model')">
-          Product Model
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'model-details'"
-          (click)="setActiveTab('model-details')">
-          Model Details
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'shadeplus-lights'"
-          (click)="setActiveTab('shadeplus-lights')">
-          ShadePlus & Lights
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'heater'"
-          (click)="setActiveTab('heater')">
-          Heater
-        </button>
-        <button 
-          type="button"
-          class="product-tab"
-          [class.active]="activeTab === 'images'"
-          (click)="setActiveTab('images')">
-          Images
-        </button>
-      </div>
+      <!-- Product Tabs Section (only for Awning and Roof System) -->
+      <div class="form-section" *ngIf="showFullTabs">
+        <!-- Other Specify Section (always shown first outside tabs for Awning/RoofSystem) -->
+        <h2 class="section-title">
+          {{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}
+        </h2>
+        <div class="form-row two-columns other-specify-section">
+          <div class="form-group">
+            <label>Model</label>
+            <select formControlName="model" class="form-control">
+              <option value="">Select Model</option>
+              <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
+                {{ value }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Other please specify</label>
+            <input 
+              type="text" 
+              formControlName="otherPleaseSpecify" 
+              class="form-control"
+              placeholder="Enter other details">
+          </div>
+        </div>
 
-      <!-- Product Model Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'product-model'">
-        <h3 class="subsection-title">Product Model Section</h3>
+        <!-- Tabs -->
+        <div class="product-tabs">
+          <button 
+            type="button"
+            class="product-tab"
+            [class.active]="activeTab === 'product-model'"
+            (click)="setActiveTab('product-model')">
+            Product Model
+          </button>
+          <button 
+            type="button"
+            class="product-tab"
+            [class.active]="activeTab === 'model-details'"
+            (click)="setActiveTab('model-details')">
+            Model Details
+          </button>
+          <button 
+            type="button"
+            class="product-tab"
+            [class.active]="activeTab === 'shadeplus-lights'"
+            (click)="setActiveTab('shadeplus-lights')">
+            ShadePlus & Lights
+          </button>
+          <button 
+            type="button"
+            class="product-tab"
+            [class.active]="activeTab === 'heater'"
+            (click)="setActiveTab('heater')">
+            Heater
+          </button>
+          <button 
+            type="button"
+            class="product-tab"
+            [class.active]="activeTab === 'images'"
+            (click)="setActiveTab('images')">
+            Images
+          </button>
+        </div>
 
-        <div class="dynamic-fields">
-          <ng-container *ngFor="let field of productModelFields">
-            <div class="form-group" *ngIf="isFieldVisible(field)">
-              <label>{{ field.label }}</label>
-              
-              <!-- Dropdown -->
-              <select 
-                *ngIf="field.type === 'dropdown'" 
-                [formControlName]="field.name" 
-                class="form-control">
-                <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                  {{ value }}
-                </option>
-              </select>
+        <!-- Product Model Tab Content -->
+        <div class="tab-content" *ngIf="activeTab === 'product-model'">
+          <h3 class="subsection-title">Product Model Section</h3>
 
-              <!-- Text Input -->
-              <input 
-                *ngIf="field.type === 'text'" 
-                type="text" 
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
+          <div class="dynamic-fields">
+            <ng-container *ngFor="let field of productModelFields">
+              <div class="form-group" *ngIf="isFieldVisible(field)">
+                <label>{{ field.label }}</label>
+                
+                <!-- Dropdown -->
+                <select 
+                  *ngIf="field.type === 'dropdown'" 
+                  [formControlName]="field.name" 
+                  class="form-control">
+                  <option value="">Select {{ field.label }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
+                    {{ value }}
+                  </option>
+                </select>
 
-              <!-- Number Input -->
-              <input 
-                *ngIf="field.type === 'number'" 
-                type="number" 
-                step="0.01"
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-
-              <!-- Checkbox -->
-              <label *ngIf="field.type === 'checkbox'" class="checkbox-label">
+                <!-- Text Input -->
                 <input 
-                  type="checkbox"
-                  [formControlName]="field.name"
-                  class="checkbox-input">
-                <span>{{ field.label }}</span>
-              </label>
-            </div>
-          </ng-container>
+                  *ngIf="field.type === 'text'" 
+                  type="text" 
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+
+                <!-- Number Input -->
+                <input 
+                  *ngIf="field.type === 'number'" 
+                  type="number" 
+                  step="0.01"
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+
+                <!-- Checkbox -->
+                <label *ngIf="field.type === 'checkbox'" class="checkbox-label">
+                  <input 
+                    type="checkbox"
+                    [formControlName]="field.name"
+                    class="checkbox-input">
+                  <span>{{ field.label }}</span>
+                </label>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Model Details Tab Content -->
+        <div class="tab-content" *ngIf="activeTab === 'model-details'">
+          <h3 class="subsection-title">Model Details Section</h3>
+
+          <div class="dynamic-fields">
+            <ng-container *ngFor="let field of modelDetailsFields">
+              <div class="form-group" *ngIf="isFieldVisible(field)">
+                <label>{{ field.label }}</label>
+                
+                <!-- Dropdown -->
+                <select 
+                  *ngIf="field.type === 'dropdown'" 
+                  [formControlName]="field.name" 
+                  class="form-control">
+                  <option value="">Select {{ field.label }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
+                    {{ value }}
+                  </option>
+                </select>
+
+                <!-- Text Input -->
+                <input 
+                  *ngIf="field.type === 'text'" 
+                  type="text" 
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+
+                <!-- Number Input -->
+                <input 
+                  *ngIf="field.type === 'number'" 
+                  type="number" 
+                  step="0.01"
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- ShadePlus & Lights Tab Content (MERGED) -->
+        <div class="tab-content" *ngIf="activeTab === 'shadeplus-lights'">
+          <h3 class="subsection-title">ShadePlus & Lights Section</h3>
+
+          <div class="dynamic-fields">
+            <ng-container *ngFor="let field of shadePlusLightsFields">
+              <div class="form-group" *ngIf="isFieldVisible(field)">
+                <label>{{ field.label }}</label>
+                
+                <!-- Dropdown -->
+                <select 
+                  *ngIf="field.type === 'dropdown'" 
+                  [formControlName]="field.name" 
+                  class="form-control">
+                  <option value="">Select {{ field.label }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
+                    {{ value }}
+                  </option>
+                </select>
+
+                <!-- Text Input -->
+                <input 
+                  *ngIf="field.type === 'text'" 
+                  type="text" 
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+
+                <!-- Number Input -->
+                <input 
+                  *ngIf="field.type === 'number'" 
+                  type="number" 
+                  step="0.01"
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Heater Tab Content -->
+        <div class="tab-content" *ngIf="activeTab === 'heater'">
+          <h3 class="subsection-title">Heater Section</h3>
+
+          <div class="dynamic-fields">
+            <ng-container *ngFor="let field of heaterFields">
+              <div class="form-group" *ngIf="isFieldVisible(field)">
+                <label>{{ field.label }}</label>
+                
+                <!-- Dropdown -->
+                <select 
+                  *ngIf="field.type === 'dropdown'" 
+                  [formControlName]="field.name" 
+                  class="form-control">
+                  <option value="">Select {{ field.label }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
+                    {{ value }}
+                  </option>
+                </select>
+
+                <!-- Text Input -->
+                <input 
+                  *ngIf="field.type === 'text'" 
+                  type="text" 
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+
+                <!-- Number Input -->
+                <input 
+                  *ngIf="field.type === 'number'" 
+                  type="number" 
+                  step="0.01"
+                  [formControlName]="field.name" 
+                  class="form-control"
+                  [placeholder]="'Enter ' + field.label">
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Images Tab Content -->
+        <div class="tab-content" *ngIf="activeTab === 'images'">
+          <h3 class="subsection-title">Images</h3>
+          <p class="placeholder-text">Image upload will appear here</p>
         </div>
       </div>
 
-      <!-- Model Details Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'model-details'">
-        <h3 class="subsection-title">Model Details Section</h3>
-
-        <div class="dynamic-fields">
-          <ng-container *ngFor="let field of modelDetailsFields">
-            <div class="form-group" *ngIf="isFieldVisible(field)">
-              <label>{{ field.label }}</label>
-              
-              <!-- Dropdown -->
-              <select 
-                *ngIf="field.type === 'dropdown'" 
-                [formControlName]="field.name" 
-                class="form-control">
-                <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                  {{ value }}
-                </option>
-              </select>
-
-              <!-- Text Input -->
-              <input 
-                *ngIf="field.type === 'text'" 
-                type="text" 
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-
-              <!-- Number Input -->
-              <input 
-                *ngIf="field.type === 'number'" 
-                type="number" 
-                step="0.01"
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-            </div>
-          </ng-container>
-        </div>
-      </div>
-
-      <!-- ShadePlus & Lights Tab Content (MERGED) -->
-      <div class="tab-content" *ngIf="activeTab === 'shadeplus-lights'">
-        <h3 class="subsection-title">ShadePlus & Lights Section</h3>
-
-        <div class="dynamic-fields">
-          <ng-container *ngFor="let field of shadePlusLightsFields">
-            <div class="form-group" *ngIf="isFieldVisible(field)">
-              <label>{{ field.label }}</label>
-              
-              <!-- Dropdown -->
-              <select 
-                *ngIf="field.type === 'dropdown'" 
-                [formControlName]="field.name" 
-                class="form-control">
-                <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                  {{ value }}
-                </option>
-              </select>
-
-              <!-- Text Input -->
-              <input 
-                *ngIf="field.type === 'text'" 
-                type="text" 
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-
-              <!-- Number Input -->
-              <input 
-                *ngIf="field.type === 'number'" 
-                type="number" 
-                step="0.01"
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-            </div>
-          </ng-container>
-        </div>
-      </div>
-
-      <!-- Heater Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'heater'">
-        <h3 class="subsection-title">Heater Section</h3>
-
-        <div class="dynamic-fields">
-          <ng-container *ngFor="let field of heaterFields">
-            <div class="form-group" *ngIf="isFieldVisible(field)">
-              <label>{{ field.label }}</label>
-              
-              <!-- Dropdown -->
-              <select 
-                *ngIf="field.type === 'dropdown'" 
-                [formControlName]="field.name" 
-                class="form-control">
-                <option value="">Select {{ field.label }}</option>
-                <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                  {{ value }}
-                </option>
-              </select>
-
-              <!-- Text Input -->
-              <input 
-                *ngIf="field.type === 'text'" 
-                type="text" 
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-
-              <!-- Number Input -->
-              <input 
-                *ngIf="field.type === 'number'" 
-                type="number" 
-                step="0.01"
-                [formControlName]="field.name" 
-                class="form-control"
-                [placeholder]="'Enter ' + field.label">
-            </div>
-          </ng-container>
-        </div>
-      </div>
-
-      <!-- Images Tab Content -->
-      <div class="tab-content" *ngIf="activeTab === 'images'">
-        <h3 class="subsection-title">Images</h3>
-        <p class="placeholder-text">Image upload will appear here</p>
+      <!-- Submit Button - Show when form is visible -->
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cancelForm()">
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          class="btn-primary" 
+          (click)="onSubmit()"
+          [disabled]="isSaving$ | async">
+          {{ (isSaving$ | async) ? 'Saving...' : (editMode ? 'Update Site Visit' : 'Submit Site Visit') }}
+        </button>
       </div>
     </div>
 
-    <!-- No Product Model Selected Message -->
-    <div class="form-section" *ngIf="!selectedProductModel">
+    <!-- Message when form should be shown but product not selected -->
+    <div class="form-section" *ngIf="showForm && !selectedProductModel">
       <div class="no-equipment-message">
         <p>Please select a product model to continue</p>
       </div>
-    </div>
-
-    <!-- Submit Button -->
-    <div class="form-actions" *ngIf="selectedProductModel">
-      <button type="button" class="btn-secondary" (click)="resetForm()">
-        {{ editMode ? 'Cancel' : 'Reset' }}
-      </button>
-      <button 
-        type="submit" 
-        class="btn-primary" 
-        (click)="onSubmit()"
-        [disabled]="isSaving$ | async">
-        {{ (isSaving$ | async) ? 'Saving...' : (editMode ? 'Update Site Visit' : 'Submit Site Visit') }}
-      </button>
     </div>
   </form>
 </div>

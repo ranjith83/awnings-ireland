@@ -77,6 +77,50 @@
   }
 }
 
+// Product Model with Add New Button
+.product-model-with-button {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+
+  .product-model-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+
+    label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+  }
+
+  .btn-add-new {
+    padding: 10px 16px;
+    background-color: #10b981;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    height: 42px; // Match form control height
+
+    &:hover {
+      background-color: #059669;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
 .form-control {
   padding: 10px 12px;
   border: 1px solid #d1d5db;
@@ -105,24 +149,6 @@
 
   .section-title {
     margin: 0;
-  }
-}
-
-.btn-add-new {
-  padding: 8px 16px;
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: #059669;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -395,6 +421,17 @@ textarea.form-control {
 
   .action-buttons {
     flex-direction: column;
+  }
+
+  // Stack Add New button below product model on mobile
+  .product-model-with-button {
+    flex-direction: column;
+    align-items: stretch;
+
+    .btn-add-new {
+      width: 100%;
+      height: auto;
+    }
   }
 }
 

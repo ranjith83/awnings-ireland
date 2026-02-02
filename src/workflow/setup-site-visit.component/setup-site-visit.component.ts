@@ -61,6 +61,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   customerId: number | null = null;
   editMode = false;
   editingSiteVisitId: number | null = null;
+  showForm = false; // Controls whether to show form or grid
   
   private destroy$ = new Subject<void>();
 
@@ -488,14 +489,16 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   private setupFormSubscriptions(): void {
-    // Watch for workflow selection changes
+    // ✅ FIX: Watch for workflow selection changes
     this.siteVisitForm.get('workflow')?.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe((workflowId: string) => {
         if (workflowId) {
           this.currentWorkflowId = parseInt(workflowId);
           this.loadSiteVisits(this.currentWorkflowId);
-          this.resetForm(); // Reset form when workflow changes
+          // ✅ FIX: Don't call resetForm() here - it creates infinite loop!
+          // Instead, just reset the form fields manually without triggering events
+          this.resetFormWithoutEvent();
         }
       });
 
@@ -596,19 +599,26 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     return model ? model.name : productModelType;
   }
 
+  // ✅ FIX: Use emitEvent: false throughout editSiteVisit
   editSiteVisit(siteVisit: SiteVisitDto): void {
     this.editMode = true;
     this.editingSiteVisitId = siteVisit.siteVisitId!;
+    this.showForm = true; // ✅ Show the form when editing
     
     // Find and set the product model
     const model = this.productModels.find(m => m.name === siteVisit.productModelType);
     if (model) {
+      // ✅ FIX: Use emitEvent: false to prevent triggering valueChanges
       this.siteVisitForm.patchValue({
         productModel: model.id
-      });
+      }, { emitEvent: false });
+      
+      // ✅ Update selectedProductModel and showFullTabs manually
+      this.selectedProductModel = model.key;
+      this.showFullTabs = model.key === 'awning' || model.key === 'roofSystem';
     }
     
-    // Patch all form values
+    // ✅ FIX: Patch all form values with emitEvent: false in ONE call
     this.siteVisitForm.patchValue({
       model: siteVisit.model,
       otherPleaseSpecify: siteVisit.otherPleaseSpecify,
@@ -656,7 +666,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       remoteControl: siteVisit.remoteControl,
       controllerBox: siteVisit.controllerBox,
       heaterAnyOtherDetails: siteVisit.heaterAnyOtherDetails
-    });
+    }, { emitEvent: false }); // ✅ FIX: Critical - prevents infinite loop
   }
 
   deleteSiteVisit(siteVisitId: number): void {
@@ -794,15 +804,218 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ✅ FIX: Replace reset() with patchValue + emitEvent: false
   resetForm(): void {
     this.editMode = false;
     this.editingSiteVisitId = null;
+    this.showForm = false; // ✅ Hide form (grid always visible)
     
-    // Reset all fields except workflow
+    // Get current workflow value
     const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
-    this.siteVisitForm.reset({
-      workflow: currentWorkflow
+    
+    // ✅ FIX: Use patchValue with emitEvent: false instead of reset()
+    // This prevents triggering the workflow valueChanges subscription
+    this.siteVisitForm.patchValue({
+      workflow: currentWorkflow,
+      productModel: '',
+      model: '',
+      otherPleaseSpecify: '',
+      siteLayout: '',
+      structure: '',
+      passageHeight: '',
+      width: '',
+      projection: '',
+      heightAvailable: '',
+      wallType: '',
+      externalInsulation: '',
+      wallFinish: '',
+      wallThickness: '',
+      specialBrackets: '',
+      sideInfills: '',
+      flashingRequired: '',
+      flashingDimensions: '',
+      standOfBrackets: '',
+      standOfBracketDimension: '',
+      electrician: '',
+      electricalConnection: '',
+      location: '',
+      otherSiteSurveyNotes: '',
+      fixtureType: '',
+      operation: '',
+      crankLength: '',
+      operationSide: '',
+      fabric: '',
+      ral: '',
+      valanceChoice: '',
+      valance: '',
+      windSensor: '',
+      shadePlusRequired: '',
+      shadeType: '',
+      shadeplusFabric: '',
+      shadePlusAnyOtherDetail: '',
+      lights: '',
+      lightsType: '',
+      lightsAnyOtherDetails: '',
+      heater: '',
+      heaterManufacturer: '',
+      numberRequired: '',
+      heaterOutput: '',
+      heaterColour: '',
+      remoteControl: '',
+      controllerBox: '',
+      heaterAnyOtherDetails: ''
+    }, { emitEvent: false }); // ✅ CRITICAL - prevents infinite loop
+    
+    // Manually reset form state
+    Object.keys(this.siteVisitForm.controls).forEach(key => {
+      const control = this.siteVisitForm.get(key);
+      control?.markAsUntouched();
+      control?.markAsPristine();
     });
+    
+    this.selectedProductModel = '';
+    this.showFullTabs = false;
+    this.activeTab = 'product-model';
+  }
+
+  // ✅ NEW METHOD: Add new site visit - shows form in add mode
+  addNewSiteVisit(): void {
+    if (!this.currentWorkflowId) {
+      this.showError('Please select a workflow first');
+      return;
+    }
+    
+    // Reset form fields but keep workflow selected
+    const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
+    
+    this.editMode = false;
+    this.editingSiteVisitId = null;
+    this.showForm = true; // ✅ Show the form
+    
+    this.siteVisitForm.patchValue({
+      workflow: currentWorkflow,
+      productModel: '',
+      model: '',
+      otherPleaseSpecify: '',
+      siteLayout: '',
+      structure: '',
+      passageHeight: '',
+      width: '',
+      projection: '',
+      heightAvailable: '',
+      wallType: '',
+      externalInsulation: '',
+      wallFinish: '',
+      wallThickness: '',
+      specialBrackets: '',
+      sideInfills: '',
+      flashingRequired: '',
+      flashingDimensions: '',
+      standOfBrackets: '',
+      standOfBracketDimension: '',
+      electrician: '',
+      electricalConnection: '',
+      location: '',
+      otherSiteSurveyNotes: '',
+      fixtureType: '',
+      operation: '',
+      crankLength: '',
+      operationSide: '',
+      fabric: '',
+      ral: '',
+      valanceChoice: '',
+      valance: '',
+      windSensor: '',
+      shadePlusRequired: '',
+      shadeType: '',
+      shadeplusFabric: '',
+      shadePlusAnyOtherDetail: '',
+      lights: '',
+      lightsType: '',
+      lightsAnyOtherDetails: '',
+      heater: '',
+      heaterManufacturer: '',
+      numberRequired: '',
+      heaterOutput: '',
+      heaterColour: '',
+      remoteControl: '',
+      controllerBox: '',
+      heaterAnyOtherDetails: ''
+    }, { emitEvent: false });
+    
+    // Manually reset form state
+    Object.keys(this.siteVisitForm.controls).forEach(key => {
+      const control = this.siteVisitForm.get(key);
+      control?.markAsUntouched();
+      control?.markAsPristine();
+    });
+    
+    this.selectedProductModel = '';
+    this.showFullTabs = false;
+    this.activeTab = 'product-model';
+  }
+
+  // ✅ NEW METHOD: Cancel form and return to grid
+  cancelForm(): void {
+    this.resetForm();
+  }
+
+  // ✅ NEW METHOD: Reset form without triggering events (for workflow change)
+  private resetFormWithoutEvent(): void {
+    this.editMode = false;
+    this.editingSiteVisitId = null;
+    this.showForm = false; // ✅ Hide form when workflow changes (grid always visible)
+    
+    // ✅ Reset only the form fields, NOT the workflow field
+    this.siteVisitForm.patchValue({
+      productModel: '',
+      model: '',
+      otherPleaseSpecify: '',
+      siteLayout: '',
+      structure: '',
+      passageHeight: '',
+      width: '',
+      projection: '',
+      heightAvailable: '',
+      wallType: '',
+      externalInsulation: '',
+      wallFinish: '',
+      wallThickness: '',
+      specialBrackets: '',
+      sideInfills: '',
+      flashingRequired: '',
+      flashingDimensions: '',
+      standOfBrackets: '',
+      standOfBracketDimension: '',
+      electrician: '',
+      electricalConnection: '',
+      location: '',
+      otherSiteSurveyNotes: '',
+      fixtureType: '',
+      operation: '',
+      crankLength: '',
+      operationSide: '',
+      fabric: '',
+      ral: '',
+      valanceChoice: '',
+      valance: '',
+      windSensor: '',
+      shadePlusRequired: '',
+      shadeType: '',
+      shadeplusFabric: '',
+      shadePlusAnyOtherDetail: '',
+      lights: '',
+      lightsType: '',
+      lightsAnyOtherDetails: '',
+      heater: '',
+      heaterManufacturer: '',
+      numberRequired: '',
+      heaterOutput: '',
+      heaterColour: '',
+      remoteControl: '',
+      controllerBox: '',
+      heaterAnyOtherDetails: ''
+    }, { emitEvent: false });
     
     this.selectedProductModel = '';
     this.showFullTabs = false;
