@@ -1,0 +1,445 @@
+.email-tasks-container {
+  width: 100%;
+  height: 100vh;
+  background: #fff;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
+
+/* Header with Tabs */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #333;
+  padding-bottom: 10px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+}
+
+.tab-button {
+  padding: 10px 30px;
+  border: 2px solid #333;
+  border-bottom: none;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  background: #e8e8e8;
+}
+
+.tab-button.active {
+  background: #fff;
+  border-bottom: 2px solid #fff;
+  margin-bottom: -2px;
+  position: relative;
+  z-index: 1;
+}
+
+.tab-button:not(:last-child) {
+  border-right: none;
+}
+
+.new-task-btn {
+  padding: 8px 24px;
+  border: 2px solid #333;
+  border-radius: 20px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.new-task-btn:hover {
+  background: #f0f0f0;
+}
+
+/* Tasks Table */
+.tasks-table-container {
+  border: 2px solid #333;
+  overflow-x: auto;
+}
+
+.tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tasks-table thead {
+  background: #f5f5f5;
+}
+
+.tasks-table th {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 2px solid #333;
+  border-right: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tasks-table th:last-child {
+  border-right: none;
+}
+
+.tasks-table tbody tr {
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.tasks-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+.tasks-table tbody tr.task-row:focus {
+  outline: 2px solid #4CAF50;
+  outline-offset: -2px;
+}
+
+.tasks-table td {
+  padding: 12px;
+  font-size: 14px;
+  border-right: 1px solid #ddd;
+  position: relative;
+}
+
+.tasks-table td:last-child {
+  border-right: none;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px !important;
+  color: #999;
+  font-style: italic;
+}
+
+/* View Hint (on hover) */
+.view-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 2px solid #333;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+
+.view-button {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.shortcut {
+  background: #f0f0f0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+/* Email Viewer Modal */
+.email-viewer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.email-viewer-container {
+  background: #fff;
+  width: 90%;
+  max-width: 1200px;
+  height: 80%;
+  border: 3px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Email Tabs */
+.email-tabs {
+  display: flex;
+  border-bottom: 2px solid #333;
+}
+
+.email-tab-button {
+  padding: 10px 30px;
+  border: none;
+  border-right: 1px solid #333;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.email-tab-button:hover {
+  background: #e8e8e8;
+}
+
+.email-tab-button.active {
+  background: #fff;
+  font-weight: 600;
+}
+
+/* Email Content */
+.email-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.email-header-box {
+  border: 2px solid #333;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.email-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.email-from {
+  font-size: 14px;
+}
+
+.company-number {
+  font-size: 14px;
+}
+
+.email-body-box {
+  border: 2px solid #333;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.email-body-title {
+  padding: 10px 15px;
+  border-bottom: 2px solid #333;
+  background: #f5f5f5;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.email-body-content {
+  padding: 15px;
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+/* Attachments Content */
+.attachments-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.attachments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.attachment-item:hover {
+  background: #f9f9f9;
+  border-color: #999;
+}
+
+.attachment-icon {
+  font-size: 24px;
+}
+
+.attachment-info {
+  flex: 1;
+}
+
+.attachment-name {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.attachment-size {
+  font-size: 12px;
+  color: #666;
+}
+
+.download-btn {
+  padding: 6px 16px;
+  border: 2px solid #333;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.download-btn:hover {
+  background: #f0f0f0;
+}
+
+.no-attachments {
+  text-align: center;
+  padding: 60px;
+  color: #999;
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Email Footer */
+.email-footer {
+  border-top: 2px solid #333;
+  padding: 15px 20px;
+  background: #f9f9f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.form-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.assign-select,
+.action-select {
+  padding: 8px 12px;
+  border: 2px solid #333;
+  border-radius: 4px;
+  font-size: 14px;
+  background: #fff;
+  min-width: 180px;
+  cursor: pointer;
+}
+
+.assign-select:focus,
+.action-select:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.footer-right {
+  display: flex;
+  gap: 15px;
+}
+
+.save-btn,
+.close-btn {
+  padding: 8px 24px;
+  border: 2px solid #333;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.save-btn {
+  background: #fff;
+}
+
+.save-btn:hover {
+  background: #f0f0f0;
+}
+
+.close-btn {
+  background: #fff;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+}
+
+/* User Tasks View (Image 3) */
+.user-tasks-view {
+  margin-top: 30px;
+}
+
+.user-tasks-title {
+  padding: 10px 15px;
+  background: #f5f5f5;
+  border: 2px solid #333;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .email-viewer-container {
+    width: 95%;
+    height: 90%;
+  }
+
+  .email-footer {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+
+  .footer-left {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .form-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .assign-select,
+  .action-select {
+    width: 100%;
+  }
+}

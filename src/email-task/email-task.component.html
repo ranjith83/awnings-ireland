@@ -1,0 +1,205 @@
+<div class="email-tasks-container">
+  <!-- Header with Tabs -->
+  <div class="header-section">
+    <div class="tabs">
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'tasks'"
+        (click)="setActiveTab('tasks')">
+        Tasks
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'processed'"
+        (click)="setActiveTab('processed')">
+        Processed
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'junk'"
+        (click)="setActiveTab('junk')">
+        Junk
+      </button>
+    </div>
+    
+    <button class="new-task-btn" (click)="createNewTask()">
+      New Task
+    </button>
+  </div>
+
+  <!-- Tasks Table -->
+  <div class="tasks-table-container" *ngIf="!showEmailViewer">
+    <table class="tasks-table">
+      <thead>
+        <tr>
+          <th>From</th>
+          <th>Subject</th>
+          <th>Category</th>
+          <th>DateAdded</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Tasks Tab -->
+        <ng-container *ngIf="activeTab === 'tasks'">
+          <tr 
+            *ngFor="let task of tasks$ | async" 
+            (dblclick)="onRowDoubleClick(task)"
+            (contextmenu)="onContextMenu($event, task)"
+            (keydown)="onKeyDown($event, task)"
+            tabindex="0"
+            class="task-row">
+            <td>{{ task.fromName }}</td>
+            <td>
+              {{ task.subject }}
+              <div class="view-hint" *ngIf="task === (tasks$ | async)?.[5]">
+                <span class="view-button">View</span>
+                <span class="shortcut">CTRL+V</span>
+              </div>
+            </td>
+            <td>{{ getCategoryDisplay(task.category) }}</td>
+            <td>{{ formatDate(task.dateAdded) }}</td>
+          </tr>
+        </ng-container>
+
+        <!-- Processed Tab -->
+        <ng-container *ngIf="activeTab === 'processed'">
+          <tr 
+            *ngFor="let task of processedTasks$ | async" 
+            (dblclick)="onRowDoubleClick(task)"
+            (contextmenu)="onContextMenu($event, task)"
+            tabindex="0"
+            class="task-row">
+            <td>{{ task.fromName }}</td>
+            <td>{{ task.subject }}</td>
+            <td>{{ getCategoryDisplay(task.category) }}</td>
+            <td>{{ formatDate(task.dateAdded) }}</td>
+          </tr>
+        </ng-container>
+
+        <!-- Junk Tab -->
+        <ng-container *ngIf="activeTab === 'junk'">
+          <tr 
+            *ngFor="let task of junkTasks$ | async" 
+            (dblclick)="onRowDoubleClick(task)"
+            (contextmenu)="onContextMenu($event, task)"
+            tabindex="0"
+            class="task-row">
+            <td>{{ task.fromName }}</td>
+            <td>{{ task.subject }}</td>
+            <td>{{ getCategoryDisplay(task.category) }}</td>
+            <td>{{ formatDate(task.dateAdded) }}</td>
+          </tr>
+        </ng-container>
+
+        <!-- Empty State -->
+        <tr *ngIf="(activeTab === 'tasks' && (tasks$ | async)?.length === 0) ||
+                   (activeTab === 'processed' && (processedTasks$ | async)?.length === 0) ||
+                   (activeTab === 'junk' && (junkTasks$ | async)?.length === 0)">
+          <td colspan="4" class="empty-state">
+            No {{ activeTab }} found
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Email Viewer Modal -->
+  <div class="email-viewer-modal" *ngIf="showEmailViewer && selectedTask">
+    <div class="email-viewer-container">
+      <!-- Email Viewer Tabs -->
+      <div class="email-tabs">
+        <button 
+          class="email-tab-button" 
+          [class.active]="activeEmailTab === 'email'"
+          (click)="setEmailTab('email')">
+          Email
+        </button>
+        <button 
+          class="email-tab-button" 
+          [class.active]="activeEmailTab === 'attachments'"
+          (click)="setEmailTab('attachments')">
+          Attachments
+        </button>
+      </div>
+
+      <!-- Email Tab Content -->
+      <div class="email-content" *ngIf="activeEmailTab === 'email'">
+        <div class="email-header-box">
+          <div class="email-header-row">
+            <div class="email-from">
+              <strong>From:</strong> {{ selectedTask.fromEmail }}
+            </div>
+            <div class="company-number" *ngIf="selectedTask.companyNumber">
+              <strong>CompanyNumber:</strong> {{ selectedTask.companyNumber }}
+            </div>
+          </div>
+        </div>
+
+        <div class="email-body-box">
+          <div class="email-body-title">Contents of Email</div>
+          <div class="email-body-content" [innerHTML]="selectedTask.emailBody"></div>
+        </div>
+      </div>
+
+      <!-- Attachments Tab Content -->
+      <div class="attachments-content" *ngIf="activeEmailTab === 'attachments'">
+        <div class="attachments-list" *ngIf="selectedTask && selectedTask.hasAttachments && selectedTask.attachments.length > 0">
+          <div 
+            class="attachment-item" 
+            *ngFor="let attachment of selectedTask.attachments"
+            (click)="downloadAttachment(attachment)">
+            <div class="attachment-icon">📎</div>
+            <div class="attachment-info">
+              <div class="attachment-name">{{ attachment.fileName }}</div>
+              <div class="attachment-size">{{ (attachment.fileSize / 1024).toFixed(2) }} KB</div>
+            </div>
+            <button class="download-btn">Download</button>
+          </div>
+        </div>
+        <div class="no-attachments" *ngIf="!selectedTask.hasAttachments || selectedTask.attachments.length === 0">
+          No attachments
+        </div>
+      </div>
+
+      <!-- Action Footer -->
+      <div class="email-footer">
+        <div class="footer-left">
+          <div class="form-group">
+            <label>Assign To:</label>
+            <select 
+              [(ngModel)]="selectedAssignee" 
+              class="assign-select">
+              <option [value]="null">-- Select User --</option>
+              <option *ngFor="let user of users" [value]="user.userId">
+                {{ user.username }} ({{ user.email }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Action:</label>
+            <select 
+              [(ngModel)]="selectedAction" 
+              class="action-select">
+              <option value="">-- Select Action --</option>
+              <option *ngFor="let action of availableActions" [value]="action.value">
+                {{ action.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="footer-right">
+          <button class="save-btn" (click)="save()">Save</button>
+          <button class="close-btn" (click)="closeEmailViewer()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- User's Assigned Tasks View (Image 3) -->
+  <div class="user-tasks-view" *ngIf="activeTab === 'tasks' && currentUser">
+    <h3 class="user-tasks-title">{{ currentUser.username }}'s Tasks Assigned</h3>
+    <!-- Can be toggled to show only assigned tasks -->
+  </div>
+</div>

@@ -19,6 +19,7 @@ import { UserManagementComponent } from '../user-management.component/user-manag
 import { AuditHistoryComponent } from '../audit-history.component/audit-history.component';
 import { PaymentComponent } from '../payment/payment.component';
 import { QuickCalculatorComponent } from './quick-calculator.component/quick-calculator.component';
+import { EmailTaskComponent } from '../email-task/email-task.component';
 
 export const routes: Routes = [
   // Public routes (NO AppLayoutComponent - no sidebar/header)
@@ -57,7 +58,7 @@ export const routes: Routes = [
       { path: 'reports', component: ReportsComponent },
       
       // Tasks
-      { path: 'task', component: TaskComponent },
+      { path: 'task', component: EmailTaskComponent },
       { path: 'tasks', component: TaskComponent }, // Alias for consistency
       { path: 'tasks/:id', component: TaskDetailComponent },
       { path: 'taskdetail', component: TaskDetailComponent },
