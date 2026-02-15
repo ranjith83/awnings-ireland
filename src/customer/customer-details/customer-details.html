@@ -123,7 +123,7 @@
   </div>
 
   <!-- Edit/Add Modal -->
-  <div class="modal-overlay" *ngIf="showModal$ | async" (click)="closeModal()">
+  <div class="modal-overlay" *ngIf="showModal$ | async" (click)="$event.stopPropagation()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>{{ (modalMode$ | async) === 'add' ? 'Add Customer' : 'Edit Customer' }}</h2>

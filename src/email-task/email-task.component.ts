@@ -1,25 +1,10 @@
-import { Component, OnInit } from '@angular/core';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { EmailTaskService } from '../service/email-task.service';
+import { Component, OnInit, ChangeDetectionStrategy, Inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { EmailTaskService, EmailTask, User, PaginatedResponse, PageInfo, TaskFilterParams } from '../service/email-task.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
-export interface EmailTask {
-  taskId: number;
-  incomingEmailId: number;
-  fromName: string;
-  fromEmail: string;
-  subject: string;
-  category: string;
-  dateAdded: Date;
-  status: string; // 'Pending', 'Processed', 'Junk'
-  assignedTo: string | null;
-  assignedToUserId: number | null;
-  companyNumber: string | null;
-  emailBody: string;
-  hasAttachments: boolean;
-  attachments: EmailAttachment[];
-}
+import { Observable, BehaviorSubject, combineLatest, of } from 'rxjs';
+import { map, switchMap, catchError, shareReplay, tap, startWith } from 'rxjs/operators';
 
 export interface EmailAttachment {
   attachmentId: number;
@@ -29,44 +14,95 @@ export interface EmailAttachment {
   blobUrl: string;
 }
 
-export interface User {
-  userId: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  department?: string;
-}
-
 @Component({
   selector: 'app-email-tasks',
   templateUrl: './email-task.component.html',
-  imports: [FormsModule,  CommonModule],
-  styleUrls: ['./email-task.component.css']
+  standalone: true,
+  imports: [FormsModule, CommonModule],
+  styleUrls: ['./email-task.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EmailTaskComponent implements OnInit {
-  // Tab Management
-  activeTab: 'tasks' | 'processed' | 'junk' = 'tasks';
+  private isBrowser: boolean;
 
-  // Task Lists
-  tasks$: Observable<EmailTask[]>;
-  processedTasks$: Observable<EmailTask[]>;
-  junkTasks$: Observable<EmailTask[]>;
+  // ==================== REACTIVE STATE (Subjects) ====================
+  private activeTabSubject = new BehaviorSubject<'tasks' | 'processed' | 'junk'>('tasks');
+  private currentPageSubject = new BehaviorSubject<number>(1);
+  private pageSizeSubject = new BehaviorSubject<number>(20);
+  private searchTermSubject = new BehaviorSubject<string>('');
+  private sortBySubject = new BehaviorSubject<string>('DateAdded');
+  private sortDirectionSubject = new BehaviorSubject<'ASC' | 'DESC'>('DESC');
+  private filterPrioritySubject = new BehaviorSubject<string>('');
+  private filterAssignedUserSubject = new BehaviorSubject<number | null>(null);
+  private refreshTrigger = new BehaviorSubject<void>(undefined);
+
+  // ==================== OBSERVABLES (For Template with async pipe) ====================
   
-  private tasksSubject = new BehaviorSubject<EmailTask[]>([]);
-  private processedSubject = new BehaviorSubject<EmailTask[]>([]);
-  private junkSubject = new BehaviorSubject<EmailTask[]>([]);
+  // Active tab
+  activeTab$ = this.activeTabSubject.asObservable();
+  
+  // Current page info
+  currentPage$ = this.currentPageSubject.asObservable();
+  pageSize$ = this.pageSizeSubject.asObservable();
+  
+  // Filters
+  searchTerm$ = this.searchTermSubject.asObservable();
+  filterPriority$ = this.filterPrioritySubject.asObservable();
+  filterAssignedUser$ = this.filterAssignedUserSubject.asObservable();
 
-  // Current View
+  // Combined filter state
+  private filters$ = combineLatest([
+    this.activeTabSubject,
+    this.currentPageSubject,
+    this.pageSizeSubject,
+    this.searchTermSubject,
+    this.sortBySubject,
+    this.sortDirectionSubject,
+    this.filterPrioritySubject,
+    this.filterAssignedUserSubject,
+    this.refreshTrigger
+  ]).pipe(
+    map(([activeTab, page, pageSize, searchTerm, sortBy, sortDirection, priority, assignedUser]) => ({
+      status: this.getStatusFromTab(activeTab),
+      page,
+      pageSize,
+      sortBy,
+      sortDirection,
+      searchTerm: searchTerm || undefined,
+      priority: priority || undefined,
+      assignedToUserId: assignedUser || undefined
+    }))
+  );
+
+  // Main data stream - will be initialized in ngOnInit
+  private tasksResponse$!: Observable<PaginatedResponse<EmailTask>>;
+
+  // Derived observables - will be initialized in ngOnInit
+  tasks$!: Observable<EmailTask[]>;
+  pageInfo$!: Observable<PageInfo>;
+  totalItems$!: Observable<number>;
+  totalPages$!: Observable<number>;
+  pageNumbers$!: Observable<number[]>;
+
+  // Loading state
+  isLoading$ = new BehaviorSubject<boolean>(false);
+
+  // Users and current user - will be initialized in ngOnInit
+  users$!: Observable<User[]>;
+  currentUser$!: Observable<User | null>;
+
+  // ==================== NON-REACTIVE STATE (For Email Viewer) ====================
   selectedTask: EmailTask | null = null;
   showEmailViewer: boolean = false;
   activeEmailTab: 'email' | 'attachments' = 'email';
+  selectedAssignee: number | null = null;
+  selectedAction: string = '';
 
-  // Available Users for Assignment
-  users: User[] = [];
+  // Constants
+  pageSizeOptions: number[] = [10, 20, 50, 100];
+  today: Date = new Date();
+  Math = Math;
 
-  // Actions List
   availableActions = [
     { value: 'add_company', label: 'Add Company' },
     { value: 'generate_quote', label: 'Generate Quote' },
@@ -75,259 +111,334 @@ export class EmailTaskComponent implements OnInit {
     { value: 'move_to_junk', label: 'Move to Junk' }
   ];
 
-  // Form Models
-  selectedAssignee: number | null = null;
-  selectedAction: string = '';
-
-  // Current User (logged in user)
-  currentUser: User | null = null;
-
-  constructor(private emailTaskService: EmailTaskService) {
-    this.tasks$ = this.tasksSubject.asObservable();
-    this.processedTasks$ = this.processedSubject.asObservable();
-    this.junkTasks$ = this.junkSubject.asObservable();
+  constructor(
+    private emailTaskService: EmailTaskService,
+    @Inject(PLATFORM_ID) platformId: Object
+  ) {
+    this.isBrowser = isPlatformBrowser(platformId);
   }
 
   ngOnInit(): void {
-    this.loadCurrentUser();
-    this.loadUsers();
-    this.loadAllTasks();
+    // Initialize observables that depend on injected services
+    this.initializeDataStreams();
   }
 
-  loadCurrentUser(): void {
-    // Get current logged-in user
-    this.emailTaskService.getCurrentUser().subscribe(user => {
-      this.currentUser = user;
+  private initializeDataStreams(): void {
+    // Main data stream - loads tasks based on filters
+    this.tasksResponse$ = this.filters$.pipe(
+      switchMap(filters => {
+        console.log('📥 Loading tasks with filters:', filters);
+        return this.emailTaskService.getTasksPaginated(filters).pipe(
+          tap(response => console.log('✅ Received:', response.tasks.length, 'tasks')),
+          catchError(error => {
+            console.error('❌ Error loading tasks:', error);
+            return of({ tasks: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 });
+          })
+        );
+      }),
+      shareReplay(1) // Cache latest response
+    );
+
+    // Derived observables from response
+    this.tasks$ = this.tasksResponse$.pipe(
+      map(response => response.tasks)
+    );
+
+    this.pageInfo$ = this.tasksResponse$.pipe(
+      map(response => this.emailTaskService.getPageInfo(response))
+    );
+
+    this.totalItems$ = this.tasksResponse$.pipe(map(r => r.totalCount));
+    this.totalPages$ = this.tasksResponse$.pipe(map(r => r.totalPages));
+
+    // Page numbers for pagination
+    this.pageNumbers$ = combineLatest([
+      this.currentPageSubject,
+      this.totalPages$
+    ]).pipe(
+      map(([currentPage, totalPages]) => this.calculatePageNumbers(currentPage, totalPages))
+    );
+
+    // Users list
+    this.users$ = this.emailTaskService.getUsers().pipe(
+      catchError(() => of([])),
+      shareReplay(1)
+    );
+
+    // Current user
+    this.currentUser$ = this.emailTaskService.getCurrentUser().pipe(
+      catchError(() => of(null)),
+      shareReplay(1)
+    );
+  }
+
+  // ==================== STATE UPDATES (Trigger reactive streams) ====================
+
+  setActiveTab(tab: 'tasks' | 'processed' | 'junk'): void {
+    this.activeTabSubject.next(tab);
+    this.currentPageSubject.next(1); // Reset to page 1
+  }
+
+  goToPage(page: number): void {
+    this.currentPageSubject.next(page);
+  }
+
+  nextPage(): void {
+    const current = this.currentPageSubject.value;
+    const total = this.totalPages$.pipe(map(t => t)).subscribe(totalPages => {
+      if (current < totalPages) {
+        this.currentPageSubject.next(current + 1);
+      }
     });
   }
 
-  loadUsers(): void {
-    this.emailTaskService.getUsers().subscribe(users => {
-      this.users = users;
-    });
-  }
-
-  loadAllTasks(): void {
-    // Load tasks for current tab
-    this.emailTaskService.getTasks('Pending').subscribe(tasks => {
-      this.tasksSubject.next(tasks);
-    });
-
-    this.emailTaskService.getTasks('Processed').subscribe(tasks => {
-      this.processedSubject.next(tasks);
-    });
-
-    this.emailTaskService.getTasks('Junk').subscribe(tasks => {
-      this.junkSubject.next(tasks);
-    });
-  }
-
-  // Load tasks assigned to current user
-  loadMyTasks(): void {
-    if (this.currentUser) {
-      this.emailTaskService.getTasksByUser(this.currentUser.userId).subscribe(tasks => {
-        this.tasksSubject.next(tasks.filter(t => t.status === 'Pending'));
-        this.processedSubject.next(tasks.filter(t => t.status === 'Processed'));
-      });
+  previousPage(): void {
+    const current = this.currentPageSubject.value;
+    if (current > 1) {
+      this.currentPageSubject.next(current - 1);
     }
   }
 
-  // Tab Switching
-  setActiveTab(tab: 'tasks' | 'processed' | 'junk'): void {
-    this.activeTab = tab;
-    this.closeEmailViewer();
+  firstPage(): void {
+    this.currentPageSubject.next(1);
   }
 
-  // View Email (Double-click or Context Menu)
-  viewEmail(task: EmailTask): void {
+  lastPage(): void {
+    this.totalPages$.subscribe(totalPages => {
+      this.currentPageSubject.next(totalPages);
+    }).unsubscribe();
+  }
+
+  changePageSize(newSize: number): void {
+    this.pageSizeSubject.next(newSize);
+    this.currentPageSubject.next(1);
+  }
+
+  applySearch(): void {
+    // searchTerm is already bound via [(ngModel)] in template
+    // Just trigger refresh
+    this.currentPageSubject.next(1);
+    this.refreshTrigger.next();
+  }
+
+  clearSearch(): void {
+    this.searchTermSubject.next('');
+    this.currentPageSubject.next(1);
+  }
+
+  applyFilters(): void {
+    this.currentPageSubject.next(1);
+    this.refreshTrigger.next();
+  }
+
+  clearFilters(): void {
+    this.filterPrioritySubject.next('');
+    this.filterAssignedUserSubject.next(null);
+    this.currentPageSubject.next(1);
+  }
+
+  sortByColumn(column: string): void {
+    const currentSort = this.sortBySubject.value;
+    const currentDirection = this.sortDirectionSubject.value;
+
+    if (currentSort === column) {
+      this.sortDirectionSubject.next(currentDirection === 'ASC' ? 'DESC' : 'ASC');
+    } else {
+      this.sortBySubject.next(column);
+      this.sortDirectionSubject.next('DESC');
+    }
+  }
+
+  getSortIndicator(column: string): string {
+    const currentSort = this.sortBySubject.value;
+    const currentDirection = this.sortDirectionSubject.value;
+    
+    if (currentSort !== column) return '';
+    return currentDirection === 'ASC' ? '↑' : '↓';
+  }
+
+  // Update search/filter from template
+  updateSearchTerm(term: string): void {
+    this.searchTermSubject.next(term);
+  }
+
+  updateFilterPriority(priority: string): void {
+    this.filterPrioritySubject.next(priority);
+  }
+
+  updateFilterAssignedUser(userId: number | null): void {
+    this.filterAssignedUserSubject.next(userId);
+  }
+
+  // ==================== EMAIL VIEWER (Non-Reactive) ====================
+
+  onRowDoubleClick(task: EmailTask): void {
     this.selectedTask = task;
     this.showEmailViewer = true;
     this.activeEmailTab = 'email';
-    
-    // Pre-select current assignee
     this.selectedAssignee = task.assignedToUserId;
-    this.selectedAction = '';
-
-    // Load full email details if needed
-    this.emailTaskService.getTaskById(task.taskId).subscribe(fullTask => {
-      this.selectedTask = fullTask;
-    });
   }
 
   closeEmailViewer(): void {
     this.showEmailViewer = false;
     this.selectedTask = null;
-    this.selectedAssignee = null;
     this.selectedAction = '';
+    this.selectedAssignee = null;
   }
 
-  // Email Viewer Tab Switching
   setEmailTab(tab: 'email' | 'attachments'): void {
     this.activeEmailTab = tab;
   }
 
-  // Assignment
-  assignTask(): void {
-    if (!this.selectedTask || !this.selectedAssignee) return;
-
-    this.emailTaskService.assignTask(this.selectedTask.taskId, this.selectedAssignee).subscribe({
-      next: () => {
-        alert('Task assigned successfully');
-        this.loadAllTasks();
-        // Keep viewer open after assignment
-      },
-      error: (err) => {
-        alert('Error assigning task: ' + err.message);
-      }
-    });
-  }
-
-  // Execute Action
-  executeAction(): void {
-    if (!this.selectedTask || !this.selectedAction) return;
-
-    switch (this.selectedAction) {
-      case 'add_company':
-        this.addCompany();
-        break;
-      case 'generate_quote':
-        this.generateQuote();
-        break;
-      case 'generate_invoice':
-        this.generateInvoice();
-        break;
-      case 'add_site_visit':
-        this.addSiteVisit();
-        break;
-      case 'move_to_junk':
-        this.moveToJunk();
-        break;
-    }
-  }
-
-  addCompany(): void {
-    // Navigate to add company page or open modal
-    console.log('Add company for email:', this.selectedTask);
-    // TODO: Implement company creation with pre-filled data
-    // After completion, mark task as processed
-    this.markAsProcessed();
-  }
-
-  generateQuote(): void {
-    // Navigate to quote generation page with pre-filled data
-    console.log('Generate quote for email:', this.selectedTask);
-    // TODO: Open quote component with extracted data
-    this.markAsProcessed();
-  }
-
-  generateInvoice(): void {
-    // Navigate to invoice generation page with pre-filled data
-    console.log('Generate invoice for email:', this.selectedTask);
-    // TODO: Open invoice component with extracted data
-    this.markAsProcessed();
-  }
-
-  addSiteVisit(): void {
-    // Navigate to site visit scheduling
-    console.log('Add site visit for email:', this.selectedTask);
-    // TODO: Open site visit component
-    this.markAsProcessed();
-  }
-
-  moveToJunk(): void {
-    if (!this.selectedTask) return;
-
-    if (confirm('Move this email to Junk?')) {
-      this.emailTaskService.updateTaskStatus(this.selectedTask.taskId, 'Junk').subscribe({
-        next: () => {
-          this.closeEmailViewer();
-          this.loadAllTasks();
-        },
-        error: (err) => {
-          alert('Error moving to junk: ' + err.message);
-        }
-      });
-    }
-  }
-
-  markAsProcessed(): void {
-    if (!this.selectedTask) return;
-
-    this.emailTaskService.updateTaskStatus(this.selectedTask.taskId, 'Processed').subscribe({
-      next: () => {
-        this.closeEmailViewer();
-        this.loadAllTasks();
-      },
-      error: (err) => {
-        alert('Error marking as processed: ' + err.message);
-      }
-    });
-  }
-
-  // Save (Assign + Execute Action)
   save(): void {
-    // First assign if needed
-    if (this.selectedAssignee && this.selectedTask?.assignedToUserId !== this.selectedAssignee) {
-      this.assignTask();
+    if (!this.selectedTask) return;
+
+    const promises: Promise<any>[] = [];
+
+    if (this.selectedAssignee && this.selectedAssignee !== this.selectedTask.assignedToUserId) {
+      promises.push(
+        this.emailTaskService.assignTask(this.selectedTask.taskId, this.selectedAssignee).toPromise()
+      );
     }
 
-    // Then execute action if selected
     if (this.selectedAction) {
-      this.executeAction();
-    } else {
-      // Just close if no action
+      promises.push(
+        this.emailTaskService.executeAction(this.selectedTask.taskId, this.selectedAction).toPromise()
+      );
+    }
+
+    Promise.all(promises).then(() => {
+      console.log('✅ Task updated');
       this.closeEmailViewer();
+      this.refreshTrigger.next(); // Refresh the list
+    }).catch(error => {
+      console.error('❌ Error:', error);
+    });
+  }
+
+  downloadAttachment(attachment: EmailAttachment): void {
+    if (this.isBrowser && attachment.blobUrl) {
+      window.open(attachment.blobUrl, '_blank');
     }
   }
 
-  // New Task Button
   createNewTask(): void {
-    // TODO: Open modal to manually create a task
-    console.log('Create new task manually');
+    console.log('Create new task');
   }
 
-  // Download Attachment
-  downloadAttachment(attachment: EmailAttachment): void {
-    window.open(attachment.blobUrl, '_blank');
+  // ==================== HELPER METHODS ====================
+
+  private getStatusFromTab(tab: 'tasks' | 'processed' | 'junk'): string {
+    switch (tab) {
+      case 'tasks': return 'Pending';
+      case 'processed': return 'Processed';
+      case 'junk': return 'Junk';
+      default: return 'Pending';
+    }
   }
 
-  // Context Menu (Right-click)
+  private calculatePageNumbers(currentPage: number, totalPages: number): number[] {
+    const pages: number[] = [];
+    const maxVisible = 7;
+    
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      pages.push(1);
+      let start = Math.max(2, currentPage - 2);
+      let end = Math.min(totalPages - 1, currentPage + 2);
+      if (start > 2) pages.push(-1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (end < totalPages - 1) pages.push(-1);
+      pages.push(totalPages);
+    }
+    return pages;
+  }
+
+  formatDate(date: Date | string): string {
+    if (!date) return '';
+    return new Date(date).toLocaleString('en-IE', { 
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  getCategoryDisplay(category: string): string {
+    const map: any = {
+      'initial_enquiry': 'Initial Enquiry',
+      'site_visit_meeting': 'Site Visit',
+      'invoice_due': 'Invoice Due',
+      'quote_creation': 'Quote Request',
+      'showroom_booking': 'Showroom',
+      'complaint': 'Complaint',
+      'general_inquiry': 'General',
+      'junk': 'Junk'
+    };
+    return map[category] || category;
+  }
+
+  onKeyDown(event: KeyboardEvent, task: EmailTask): void {
+    if (event.key === 'Enter') {
+      this.onRowDoubleClick(task);
+    }
+  }
+
   onContextMenu(event: MouseEvent, task: EmailTask): void {
     event.preventDefault();
-    this.viewEmail(task);
   }
 
-  // Double-click
-  onRowDoubleClick(task: EmailTask): void {
-    this.viewEmail(task);
+  // ==================== TEMPLATE HELPER OBSERVABLES ====================
+
+  // Current active tab as string for template
+  get activeTab(): 'tasks' | 'processed' | 'junk' {
+    return this.activeTabSubject.value;
   }
 
-  // Keyboard Shortcut (CTRL+V)
-  onKeyDown(event: KeyboardEvent, task: EmailTask): void {
-    if (event.ctrlKey && event.key === 'v') {
-      event.preventDefault();
-      this.viewEmail(task);
-    }
+  // For two-way binding in template
+  get searchTerm(): string {
+    return this.searchTermSubject.value;
+  }
+  set searchTerm(value: string) {
+    this.searchTermSubject.next(value);
   }
 
-  // Get category display name
-  getCategoryDisplay(category: string): string {
-    const categoryMap: { [key: string]: string } = {
-      'invoice_creation': 'New Invoice',
-      'quote_creation': 'New Quote',
-      'customer_creation': 'New Customer',
-      'showroom_booking': 'Site Visit',
-      'product_inquiry': 'Inquiry',
-      'complaint': 'Complaint',
-      'general_inquiry': 'Inquiry',
-      'payment': 'Payment'
-    };
-    return categoryMap[category] || category;
+  get filterPriority(): string {
+    return this.filterPrioritySubject.value;
+  }
+  set filterPriority(value: string) {
+    this.filterPrioritySubject.next(value);
   }
 
-  // Format date for display
-  formatDate(date: Date | string): string {
-    const d = new Date(date);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  get filterAssignedUser(): number | null {
+    return this.filterAssignedUserSubject.value;
+  }
+  set filterAssignedUser(value: number | null) {
+    this.filterAssignedUserSubject.next(value);
+  }
+
+  get currentPage(): number {
+    return this.currentPageSubject.value;
+  }
+  set currentPage(value: number) {
+    this.currentPageSubject.next(value);
+  }
+
+  get pageSize(): number {
+    return this.pageSizeSubject.value;
+  }
+  set pageSize(value: number) {
+    this.pageSizeSubject.next(value);
+  }
+
+  get sortBy(): string {
+    return this.sortBySubject.value;
+  }
+
+  get sortDirection(): 'ASC' | 'DESC' {
+    return this.sortDirectionSubject.value;
   }
 }

@@ -4,21 +4,30 @@
     <div class="tabs">
       <button 
         class="tab-button" 
-        [class.active]="activeTab === 'tasks'"
+        [class.active]="(activeTab$ | async) === 'tasks'"
         (click)="setActiveTab('tasks')">
         Tasks
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'tasks' && (totalItems$ | async) as total">
+          ({{ total }})
+        </span>
       </button>
       <button 
         class="tab-button" 
-        [class.active]="activeTab === 'processed'"
+        [class.active]="(activeTab$ | async) === 'processed'"
         (click)="setActiveTab('processed')">
         Processed
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'processed' && (totalItems$ | async) as total">
+          ({{ total }})
+        </span>
       </button>
       <button 
         class="tab-button" 
-        [class.active]="activeTab === 'junk'"
+        [class.active]="(activeTab$ | async) === 'junk'"
         (click)="setActiveTab('junk')">
         Junk
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'junk' && (totalItems$ | async) as total">
+          ({{ total }})
+        </span>
       </button>
     </div>
     
@@ -27,83 +36,207 @@
     </button>
   </div>
 
+  <!-- Search and Filter Bar -->
+  <div class="filter-section" *ngIf="!showEmailViewer">
+    <div class="search-bar">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm" 
+        placeholder="Search tasks..."
+        class="search-input"
+        (keyup.enter)="applySearch()">
+      <button class="search-btn" (click)="applySearch()">Search</button>
+      <button class="clear-btn" (click)="clearSearch()" *ngIf="searchTerm">Clear</button>
+    </div>
+
+    <div class="advanced-filters">
+      <select [(ngModel)]="filterPriority" class="filter-select" (change)="applyFilters()">
+        <option value="">All Priorities</option>
+        <option value="Low">Low</option>
+        <option value="Normal">Normal</option>
+        <option value="High">High</option>
+        <option value="Urgent">Urgent</option>
+      </select>
+
+      <select [(ngModel)]="filterAssignedUser" class="filter-select" (change)="applyFilters()">
+        <option [value]="null">All Users</option>
+        <option *ngFor="let user of users$ | async" [value]="user.userId">
+          {{ user.username }}
+        </option>
+      </select>
+
+      <button class="clear-filters-btn" (click)="clearFilters()">Clear Filters</button>
+    </div>
+  </div>
+
+ 
+  <!-- Loading Indicator -->
+  <div class="loading-overlay" *ngIf="isLoading$ | async">
+    <div class="spinner"></div>
+    <p>Loading tasks...</p>
+  </div>
+
   <!-- Tasks Table -->
   <div class="tasks-table-container" *ngIf="!showEmailViewer">
     <table class="tasks-table">
       <thead>
         <tr>
-          <th>From</th>
-          <th>Subject</th>
-          <th>Category</th>
-          <th>DateAdded</th>
+          <th (click)="sortByColumn('FromName')" class="sortable">
+            From {{ getSortIndicator('FromName') }}
+          </th>
+          <th (click)="sortByColumn('Subject')" class="sortable">
+            Subject {{ getSortIndicator('Subject') }}
+          </th>
+          <th (click)="sortByColumn('Category')" class="sortable">
+            Category {{ getSortIndicator('Category') }}
+          </th>
+          <th (click)="sortByColumn('DateAdded')" class="sortable">
+            Date Added {{ getSortIndicator('DateAdded') }}
+          </th>
+          <th *ngIf="(activeTab$ | async) === 'tasks'">Assigned To</th>
+          <th *ngIf="(activeTab$ | async) === 'tasks'">Priority</th>
         </tr>
       </thead>
       <tbody>
-        <!-- Tasks Tab -->
-        <ng-container *ngIf="activeTab === 'tasks'">
-          <tr 
-            *ngFor="let task of tasks$ | async" 
-            (dblclick)="onRowDoubleClick(task)"
-            (contextmenu)="onContextMenu($event, task)"
-            (keydown)="onKeyDown($event, task)"
-            tabindex="0"
-            class="task-row">
-            <td>{{ task.fromName }}</td>
-            <td>
-              {{ task.subject }}
-              <div class="view-hint" *ngIf="task === (tasks$ | async)?.[5]">
-                <span class="view-button">View</span>
-                <span class="shortcut">CTRL+V</span>
-              </div>
-            </td>
-            <td>{{ getCategoryDisplay(task.category) }}</td>
-            <td>{{ formatDate(task.dateAdded) }}</td>
-          </tr>
-        </ng-container>
-
-        <!-- Processed Tab -->
-        <ng-container *ngIf="activeTab === 'processed'">
-          <tr 
-            *ngFor="let task of processedTasks$ | async" 
-            (dblclick)="onRowDoubleClick(task)"
-            (contextmenu)="onContextMenu($event, task)"
-            tabindex="0"
-            class="task-row">
-            <td>{{ task.fromName }}</td>
-            <td>{{ task.subject }}</td>
-            <td>{{ getCategoryDisplay(task.category) }}</td>
-            <td>{{ formatDate(task.dateAdded) }}</td>
-          </tr>
-        </ng-container>
-
-        <!-- Junk Tab -->
-        <ng-container *ngIf="activeTab === 'junk'">
-          <tr 
-            *ngFor="let task of junkTasks$ | async" 
-            (dblclick)="onRowDoubleClick(task)"
-            (contextmenu)="onContextMenu($event, task)"
-            tabindex="0"
-            class="task-row">
-            <td>{{ task.fromName }}</td>
-            <td>{{ task.subject }}</td>
-            <td>{{ getCategoryDisplay(task.category) }}</td>
-            <td>{{ formatDate(task.dateAdded) }}</td>
-          </tr>
-        </ng-container>
+        <!-- ✅ Using async pipe here -->
+        <tr 
+          *ngFor="let task of tasks$ | async" 
+          (dblclick)="onRowDoubleClick(task)"
+          (contextmenu)="onContextMenu($event, task)"
+          (keydown)="onKeyDown($event, task)"
+          tabindex="0"
+          class="task-row"
+          [class.high-priority]="task.priority === 'High' || task.priority === 'Urgent'"
+          [class.overdue]="task.dueDate && task.dueDate < today">
+          <td>{{ task.fromName }}</td>
+          <td>
+            {{ task.subject }}
+            <span class="ai-confidence" *ngIf="task.aiConfidence">
+              ({{ (task.aiConfidence * 100).toFixed(0) }}%)
+            </span>
+          </td>
+          <td>
+            <span class="category-badge" [class]="'category-' + task.category">
+              {{ getCategoryDisplay(task.category) }}
+            </span>
+          </td>
+          <td>{{ formatDate(task.dateAdded) }}</td>
+          <td *ngIf="(activeTab$ | async) === 'tasks'">
+            <span *ngIf="task.assignedTo">{{ task.assignedTo }}</span>
+            <span *ngIf="!task.assignedTo" class="unassigned">Unassigned</span>
+          </td>
+          <td *ngIf="(activeTab$ | async) === 'tasks'">
+            <span class="priority-badge" [class]="'priority-' + task.priority.toLowerCase()">
+              {{ task.priority }}
+            </span>
+          </td>
+        </tr>
 
         <!-- Empty State -->
-        <tr *ngIf="(activeTab === 'tasks' && (tasks$ | async)?.length === 0) ||
-                   (activeTab === 'processed' && (processedTasks$ | async)?.length === 0) ||
-                   (activeTab === 'junk' && (junkTasks$ | async)?.length === 0)">
-          <td colspan="4" class="empty-state">
-            No {{ activeTab }} found
+        <tr *ngIf="(tasks$ | async)?.length === 0 && !(isLoading$ | async)">
+          <td [attr.colspan]="(activeTab$ | async) === 'tasks' ? 6 : 4" class="empty-state">
+            <div class="empty-message">
+              <p>No {{ activeTab$ | async }} found</p>
+              <p class="empty-hint" *ngIf="searchTerm || filterPriority || filterAssignedUser">
+                Try adjusting your filters
+              </p>
+            </div>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Email Viewer Modal -->
+  <!-- Pagination Controls -->
+  <div class="pagination-container" *ngIf="!showEmailViewer && (totalPages$ | async) as totalPages">
+    <ng-container *ngIf="totalPages > 1">
+      <div class="pagination-info">
+        Page {{ currentPage$ | async }} of {{ totalPages }}
+      </div>
+
+      <div class="pagination-controls">
+        <!-- First Page -->
+        <button 
+          class="page-btn" 
+          (click)="firstPage()" 
+          [disabled]="(currentPage$ | async) === 1"
+          title="First Page">
+          &laquo;&laquo;
+        </button>
+
+        <!-- Previous Page -->
+        <button 
+          class="page-btn" 
+          (click)="previousPage()" 
+          [disabled]="(currentPage$ | async) === 1"
+          title="Previous Page">
+          &laquo;
+        </button>
+
+        <!-- Page Numbers -->
+        <button 
+          *ngFor="let page of pageNumbers$ | async" 
+          class="page-btn page-number"
+          [class.active]="page === (currentPage$ | async)"
+          [disabled]="page === -1"
+          (click)="page !== -1 && goToPage(page)">
+          {{ page === -1 ? '...' : page }}
+        </button>
+
+        <!-- Next Page -->
+        <button 
+          class="page-btn" 
+          (click)="nextPage()" 
+          [disabled]="(currentPage$ | async) === totalPages"
+          title="Next Page">
+          &raquo;
+        </button>
+
+        <!-- Last Page -->
+        <button 
+          class="page-btn" 
+          (click)="lastPage()" 
+          [disabled]="(currentPage$ | async) === totalPages"
+          title="Last Page">
+          &raquo;&raquo;
+        </button>
+      </div>
+
+      <div class="pagination-jump">
+        <label>Go to page:</label>
+        <input 
+          type="number" 
+          class="page-jump-input"
+          [min]="1" 
+          [max]="totalPages"
+          [(ngModel)]="currentPage"
+          (keyup.enter)="goToPage(currentPage)">
+        <button class="go-btn" (click)="goToPage(currentPage)">Go</button>
+      </div>
+    </ng-container>
+  </div>
+
+   <!-- Page Size Selector -->
+  <div class="page-controls-top" *ngIf="!showEmailViewer">
+    <div class="page-size-selector">
+      <label>Show:</label>
+      <select [(ngModel)]="pageSize" (change)="changePageSize(pageSize)" class="page-size-select">
+        <option *ngFor="let size of pageSizeOptions" [value]="size">{{ size }}</option>
+      </select>
+      <span class="items-info">items per page</span>
+    </div>
+
+    <div class="results-info" *ngIf="pageInfo$ | async as pageInfo">
+      <span *ngIf="pageInfo.totalItems > 0">
+        Showing {{ (pageInfo.currentPage - 1) * pageInfo.pageSize + 1 }} 
+        to {{ Math.min(pageInfo.currentPage * pageInfo.pageSize, pageInfo.totalItems) }} 
+        of {{ pageInfo.totalItems }} results
+      </span>
+    </div>
+  </div>
+
+
+  <!-- Email Viewer Modal (No changes needed here) -->
   <div class="email-viewer-modal" *ngIf="showEmailViewer && selectedTask">
     <div class="email-viewer-container">
       <!-- Email Viewer Tabs -->
@@ -119,6 +252,9 @@
           [class.active]="activeEmailTab === 'attachments'"
           (click)="setEmailTab('attachments')">
           Attachments
+          <span class="attachment-count" *ngIf="selectedTask.hasAttachments">
+            ({{ selectedTask.attachments.length || 0 }})
+          </span>
         </button>
       </div>
 
@@ -127,10 +263,32 @@
         <div class="email-header-box">
           <div class="email-header-row">
             <div class="email-from">
-              <strong>From:</strong> {{ selectedTask.fromEmail }}
+              <strong>From:</strong> {{ selectedTask.fromName }} 
+              &lt;{{ selectedTask.fromEmail }}&gt;
             </div>
             <div class="company-number" *ngIf="selectedTask.companyNumber">
-              <strong>CompanyNumber:</strong> {{ selectedTask.companyNumber }}
+              <strong>Company Number:</strong> {{ selectedTask.companyNumber }}
+            </div>
+          </div>
+          <div class="email-header-row">
+            <div class="email-subject">
+              <strong>Subject:</strong> {{ selectedTask.subject }}
+            </div>
+          </div>
+          <div class="email-header-row">
+            <div class="email-date">
+              <strong>Date:</strong> {{ formatDate(selectedTask.dateAdded) }}
+            </div>
+            <div class="email-category">
+              <strong>Category:</strong> 
+              <span class="category-badge" [class]="'category-' + selectedTask.category">
+                {{ getCategoryDisplay(selectedTask.category) }}
+              </span>
+            </div>
+          </div>
+          <div class="email-header-row" *ngIf="selectedTask.aiConfidence">
+            <div class="ai-info">
+              <strong>AI Confidence:</strong> {{ (selectedTask.aiConfidence * 100).toFixed(0) }}%
             </div>
           </div>
         </div>
@@ -143,21 +301,32 @@
 
       <!-- Attachments Tab Content -->
       <div class="attachments-content" *ngIf="activeEmailTab === 'attachments'">
-        <div class="attachments-list" *ngIf="selectedTask && selectedTask.hasAttachments && selectedTask.attachments.length > 0">
+        <div class="attachments-list" *ngIf="selectedTask.hasAttachments && selectedTask.attachments.length > 0">
           <div 
             class="attachment-item" 
             *ngFor="let attachment of selectedTask.attachments"
             (click)="downloadAttachment(attachment)">
-            <div class="attachment-icon">📎</div>
+            <div class="attachment-icon">
+              <span *ngIf="attachment.fileType.includes('pdf')">📄</span>
+              <span *ngIf="attachment.fileType.includes('image')">🖼️</span>
+              <span *ngIf="attachment.fileType.includes('word')">📝</span>
+              <span *ngIf="attachment.fileType.includes('excel')">📊</span>
+              <span *ngIf="!attachment.fileType.includes('pdf') && !attachment.fileType.includes('image') && !attachment.fileType.includes('word') && !attachment.fileType.includes('excel')">📎</span>
+            </div>
             <div class="attachment-info">
               <div class="attachment-name">{{ attachment.fileName }}</div>
-              <div class="attachment-size">{{ (attachment.fileSize / 1024).toFixed(2) }} KB</div>
+              <div class="attachment-meta">
+                <span class="attachment-size">{{ (attachment.fileSize / 1024).toFixed(2) }} KB</span>
+                <span class="attachment-type">{{ attachment.fileType }}</span>
+              </div>
             </div>
-            <button class="download-btn">Download</button>
+            <button class="download-btn" (click)="downloadAttachment(attachment); $event.stopPropagation()">
+              Download
+            </button>
           </div>
         </div>
-        <div class="no-attachments" *ngIf="!selectedTask.hasAttachments || selectedTask.attachments.length === 0">
-          No attachments
+        <div class="no-attachments" *ngIf="!selectedTask.hasAttachments || !selectedTask.attachments || selectedTask.attachments.length === 0">
+          <p>No attachments</p>
         </div>
       </div>
 
@@ -170,8 +339,8 @@
               [(ngModel)]="selectedAssignee" 
               class="assign-select">
               <option [value]="null">-- Select User --</option>
-              <option *ngFor="let user of users" [value]="user.userId">
-                {{ user.username }} ({{ user.email }})
+              <option *ngFor="let user of users$ | async" [value]="user.userId">
+                {{ user.username }} ({{ user.firstName }} {{ user.lastName }})
               </option>
             </select>
           </div>
@@ -195,11 +364,5 @@
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- User's Assigned Tasks View (Image 3) -->
-  <div class="user-tasks-view" *ngIf="activeTab === 'tasks' && currentUser">
-    <h3 class="user-tasks-title">{{ currentUser.username }}'s Tasks Assigned</h3>
-    <!-- Can be toggled to show only assigned tasks -->
   </div>
 </div>
