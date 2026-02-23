@@ -6,26 +6,63 @@ import { environment } from '../app/environments/environment';
 // ==================== INTERFACES ====================
 
 export interface EmailTask {
-  taskId: number;
-  incomingEmailId: number;
-  fromName: string;
-  fromEmail: string;
-  subject: string;
-  category: string;
-  dateAdded: Date;
-  status: string;
-  taskType: string;
-  priority: string;
-  assignedTo: string | null;
-  assignedToUserId: number | null;
-  companyNumber: string | null;
-  emailBody: string;
-  hasAttachments: boolean;
-  attachments: EmailAttachment[];
-  aiConfidence?: number;
-  extractedData?: any;
-  customerName?: string;
-  dueDate?: Date;
+  // ── Core identity ──────────────────────────────────────────────────────────
+  taskId:           number;
+  incomingEmailId:  number;
+  fromName:         string;
+  fromEmail:        string;
+  subject:          string;
+  category:         string;
+  status:           string;
+  taskType:         string;
+  priority:         string;
+
+  // ── Dates ─────────────────────────────────────────────────────────────────
+  dateAdded:        Date;
+  dueDate?:         Date;
+  dateCreated?:     Date;
+  dateUpdated?:     Date;
+  dateProcessed?:   Date;
+  completedDate?:   Date;
+
+  // ── Assignment ────────────────────────────────────────────────────────────
+  assignedTo?:          string | null;
+  assignedToUserId?:    number | null;
+  assignedToUserName?:  string | null;
+  assignedByUserId?:    number | null;
+  assignedByUserName?:  string | null;
+
+  // ── Customer / company ────────────────────────────────────────────────────
+  companyNumber?:   string | null;
+  customerId?:      number | null;
+  customerName?:    string | null;
+  customerEmail?:   string | null;
+  workflowId?:      number | null;
+  quoteId?:         number | null;
+
+  // ── Content ───────────────────────────────────────────────────────────────
+  emailBody:        string;
+  hasAttachments:   boolean;
+  selectedAction?:  string | null;
+
+  // ── Processing / completion ───────────────────────────────────────────────
+  processedBy?:     string | null;
+  completedBy?:     string | null;
+  completionNotes?: string | null;
+
+  // ── AI / extracted data ───────────────────────────────────────────────────
+  aiConfidence?:    number;
+  aiReasoning?:     string | null;
+  extractedData?:   any;
+
+  // ── Audit trail ───────────────────────────────────────────────────────────
+  createdBy?:       string | null;
+  updatedBy?:       string | null;
+
+  // ── Relations ─────────────────────────────────────────────────────────────
+  attachments?:     EmailAttachment[];
+  comments?:        any[];
+  history?:         any[];
 }
 
 export interface EmailAttachment {
@@ -92,6 +129,27 @@ export interface PageInfo {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+// Add to interfaces
+export interface ExtractedCustomerData {
+  taskId: number;
+  email?: string;
+  fromName?: string;
+  companyNumber?: string;
+  subject?: string;
+  customerName?: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+}
+
+export interface CustomerExistsResponse {
+  exists: boolean;
+  customerId?: number;
+  customerName?: string;
+  email?: string;
+  companyNumber?: string;
+}
+
 
 // ==================== SERVICE ====================
 
@@ -226,14 +284,14 @@ export class EmailTaskService {
   // ==================== TASK ACTIONS ====================
 
   assignTask(taskId: number, userId: number, notes?: string): Observable<EmailTask> {
-    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/assign`, {
+    return this.http.put<EmailTask>(`${this.apiUrl}/${taskId}/assign`, {
       assignedToUserId: userId,
       notes
     });
   }
 
   unassignTask(taskId: number): Observable<EmailTask> {
-    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/unassign`, {});
+    return this.http.put<EmailTask>(`${this.apiUrl}/${taskId}/unassign`, {});
   }
 
   updateTaskStatus(taskId: number, status: string, completionNotes?: string): Observable<EmailTask> {
@@ -330,4 +388,37 @@ export class EmailTaskService {
       hasPreviousPage: response.page > 1
     };
   }
+
+
+// ==================== TASK AUDIT ====================
+
+  /**
+   * Get paginated task audit history from TaskHistories table.
+   * Filtered to: Created | Assigned | Unassigned
+   * GET /api/EmailTask/audit?page=1&pageSize=20&action=Assigned
+   */
+  getTaskAuditHistory(page: number = 1, pageSize: number = 20, action?: string): Observable<any> {
+    let url = `${this.apiUrl}/audit?page=${page}&pageSize=${pageSize}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+    return this.http.get<any>(url);
+  }
+
+  /** @deprecated Use getTaskAuditHistory instead */
+  getTaskAuditLogs(page: number = 1, pageSize: number = 20, action?: string): Observable<any> {
+    return this.getTaskAuditHistory(page, pageSize, action);
+  }
+
+// Add to service methods
+  getExtractedCustomerData(taskId: number): Observable<ExtractedCustomerData> {
+    return this.http.get<ExtractedCustomerData>(`${this.apiUrl}/${taskId}/extracted-customer-data`);
+  }
+
+  checkCustomerExists(request: { email?: string; companyNumber?: string }): Observable<CustomerExistsResponse> {
+    return this.http.post<CustomerExistsResponse>(`${this.apiUrl}/check-customer-exists`, request);
+  }
+
+  linkCustomerToTask(taskId: number, customerId: number): Observable<EmailTask> {
+    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-customer`, { customerId });
+  }
+
 }

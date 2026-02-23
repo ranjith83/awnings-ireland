@@ -631,6 +631,7 @@
   border-top: 2px solid #eee;
   gap: 20px;
   flex-wrap: wrap;
+  align-items: flex-start;
 }
 
 .footer-left {
@@ -694,6 +695,277 @@
   background: #d32f2f;
 }
 
+  .customer-info {
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+  border-radius: 6px;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.create-customer-btn {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s;
+  width: 100%;
+}
+
+.create-customer-btn:hover {
+  background: #45a049;
+}
+
+/* Workflow status pills next to "Quick Actions" label */
+.workflow-status-pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.workflow-status-pill--checking {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.workflow-status-pill--ok {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.workflow-status-pill--missing {
+  background: #ffebee;
+  color: #c62828;
+  border: 1px solid #ef9a9a;
+}
+
+.workflow-status-pill--nocustomer {
+  background: #fff8e1;
+  color: #e65100;
+  border: 1px solid #ffe082;
+}
+
+/* ==================== NO-WORKFLOW BANNER ==================== */
+.no-workflow-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #fff8e1;
+  border-top: 1px solid #ffe082;
+  border-bottom: 1px solid #ffe082;
+}
+
+.no-workflow-icon {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.no-workflow-text {
+  flex: 1;
+}
+
+.no-workflow-text strong {
+  display: block;
+  color: #e65100;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.no-workflow-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #5d4037;
+  line-height: 1.4;
+}
+
+.no-workflow-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.create-workflow-primary-btn {
+  padding: 8px 16px;
+  background: #e65100;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.create-workflow-primary-btn:hover {
+  background: #bf360c;
+}
+
+.dismiss-banner-btn {
+  padding: 6px 12px;
+  background: transparent;
+  color: #795548;
+  border: 1px solid #bcaaa4;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  transition: all 0.2s;
+}
+
+.dismiss-banner-btn:hover {
+  background: #efebe9;
+}
+
+/* Workflow-checking spinner row */
+.workflow-checking {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+  font-size: 13px;
+  color: #666;
+}
+
+.spinner--small {
+  width: 18px;
+  height: 18px;
+  border-width: 3px;
+}
+
+/* ==================== QUICK ACTIONS ==================== */
+.footer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.quick-actions-label {
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9em;
+}
+
+.quick-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.action-btn--quote {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
+.action-btn--quote:hover {
+  background: #1565c0;
+  color: white;
+}
+
+.action-btn--invoice {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+.action-btn--invoice:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+.action-btn--site-visit {
+  background: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.action-btn--site-visit:hover {
+  background: #e65100;
+  color: white;
+}
+
+.no-quote-hint {
+  font-size: 14px;
+  margin-left: 2px;
+  opacity: 0.8;
+}
+
+.action-btn--workflow {
+  background: #fce4ec;
+  color: #880e4f;
+  border: 1px solid #f48fb1;
+}
+
+.action-btn--workflow:hover:not(:disabled) {
+  background: #880e4f;
+  color: white;
+}
+
+/* Workflow already exists — show as muted/done, not a primary action */
+.action-btn--workflow-done {
+  background: #f5f5f5 !important;
+  color: #9e9e9e !important;
+  border: 1px solid #e0e0e0 !important;
+  cursor: not-allowed;
+}
+
+/* Locked state — button is visible but workflow missing */
+.action-btn--locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+  position: relative;
+}
+
+.action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Hint below buttons when workflow is missing */
+.no-workflow-hint-row {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #c62828;
+  background: #ffebee;
+  border: 1px solid #ef9a9a;
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 768px) {
   .pagination-container {
@@ -724,4 +996,223 @@
   .footer-right button {
     flex: 1;
   }
+
+
 }
+/* ==================== TOAST NOTIFICATION ==================== */
+.toast-popup {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 320px;
+  max-width: 480px;
+  padding: 14px 18px;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  font-size: 14px;
+  font-weight: 500;
+  animation: toast-slide-in 0.3s ease;
+}
+
+@keyframes toast-slide-in {
+  from { opacity: 0; transform: translateX(60px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.toast-success {
+  background: #e8f5e9;
+  border-left: 5px solid #2e7d32;
+  color: #1b5e20;
+}
+
+.toast-error {
+  background: #ffebee;
+  border-left: 5px solid #c62828;
+  color: #b71c1c;
+}
+
+.toast-warning {
+  background: #fff8e1;
+  border-left: 5px solid #f57f17;
+  color: #e65100;
+}
+
+.toast-icon { font-size: 18px; flex-shrink: 0; }
+
+.toast-message { flex: 1; line-height: 1.4; }
+
+.toast-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0.6;
+  padding: 0 4px;
+  flex-shrink: 0;
+  color: inherit;
+}
+
+.toast-close:hover { opacity: 1; }
+
+/* ==================== AUDIT TAB ==================== */
+
+/* Tab button variant */
+.tab-button--audit { letter-spacing: 0.01em; }
+
+/* Audit toolbar */
+.audit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  flex-wrap: wrap;
+}
+
+.audit-toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  margin-right: 4px;
+}
+
+.audit-filter-btn {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1.5px solid #dee2e6;
+  border-radius: 20px;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.audit-filter-btn:hover       { background: #e9ecef; border-color: #adb5bd; }
+.audit-filter-btn.active      { background: #343a40; color: #fff; border-color: #343a40; }
+
+.audit-filter-btn--create.active  { background: #198754; border-color: #198754; }
+.audit-filter-btn--assign.active  { background: #0d6efd; border-color: #0d6efd; }
+.audit-filter-btn--unassign.active{ background: #dc3545; border-color: #dc3545; }
+
+.audit-refresh-btn {
+  margin-left: auto;
+  padding: 5px 14px;
+  font-size: 13px;
+  border: 1.5px solid #dee2e6;
+  border-radius: 6px;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.audit-refresh-btn:hover { background: #e9ecef; }
+
+/* Audit action badges */
+.audit-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.audit-action--create  { background: #d1e7dd; color: #0a3622; }
+.audit-action--assign  { background: #cfe2ff; color: #084298; }
+.audit-action--unassign{ background: #f8d7da; color: #58151c; }
+
+/* Task ID cell */
+.audit-taskid {
+  font-family: monospace;
+  font-size: 13px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+/* Subject — allows wrap on narrow viewports */
+.audit-subject { max-width: 300px; word-break: break-word; }
+
+/* ==================== TASK AUDIT TAB ==================== */
+
+.tab-button--audit { font-weight: 600; }
+
+/* Toolbar */
+.audit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  flex-wrap: wrap;
+}
+.audit-toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6c757d;
+  margin-right: 4px;
+}
+
+/* Filter pills */
+.audit-filter-btn {
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1.5px solid #dee2e6;
+  border-radius: 20px;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.audit-filter-btn:hover         { background: #e9ecef; border-color: #adb5bd; }
+.audit-filter-btn.active        { background: #343a40; color: #fff; border-color: #343a40; }
+.audit-filter-btn--create.active  { background: #198754; border-color: #198754; }
+.audit-filter-btn--assign.active  { background: #0d6efd; border-color: #0d6efd; }
+.audit-filter-btn--unassign.active{ background: #dc3545; border-color: #dc3545; }
+
+.audit-refresh-btn {
+  margin-left: auto;
+  padding: 4px 14px;
+  font-size: 13px;
+  border: 1.5px solid #dee2e6;
+  border-radius: 6px;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.audit-refresh-btn:hover { background: #e9ecef; }
+
+/* Action badges */
+.audit-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.audit-action--create   { background: #d1e7dd; color: #0a3622; }
+.audit-action--assign   { background: #cfe2ff; color: #084298; }
+.audit-action--unassign { background: #f8d7da; color: #58151c; }
+
+/* Task ID */
+.audit-taskid {
+  font-family: monospace;
+  font-size: 13px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+/* Subject */
+.audit-subject { max-width: 300px; word-break: break-word; }

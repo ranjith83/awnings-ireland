@@ -6,10 +6,39 @@
       <span class="audit-icon">📜</span>
       Audit Trail
     </h3>
-    <button class="btn-export" (click)="exportAuditLogs()" [disabled]="isLoading() || !isBrowser">
-      <span>📥 Export</span>
+    <div class="header-actions">
+      <button class="btn-export"
+              *ngIf="activeTab === 'auditTrail'"
+              (click)="exportAuditLogs()"
+              [disabled]="isLoading() || !isBrowser">
+        <span>📥 Export</span>
+      </button>
+      <button class="btn-export btn-export--task"
+              *ngIf="activeTab === 'taskAudit'"
+              (click)="exportTaskAuditLogs()"
+              [disabled]="taskAuditLoading() || !isBrowser">
+        <span>📥 Export</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <div class="main-tabs">
+    <button class="main-tab-btn"
+            [class.active]="activeTab === 'auditTrail'"
+            (click)="setActiveTab('auditTrail')">
+      📜 Audit Trail
+    </button>
+    <button class="main-tab-btn main-tab-btn--task"
+            [class.active]="activeTab === 'taskAudit'"
+            (click)="setActiveTab('taskAudit')">
+      📋 Task Audit
+      <span class="tab-badge" *ngIf="taskAuditTotalCount() > 0">{{ taskAuditTotalCount() }}</span>
     </button>
   </div>
+
+  <!-- ═══════════════════ AUDIT TRAIL TAB ═══════════════════ -->
+  <ng-container *ngIf="activeTab === 'auditTrail'">
 
   <!-- SSR Placeholder -->
   <div *ngIf="!isBrowser" class="ssr-placeholder">
@@ -282,7 +311,177 @@
       </select>
     </div>
   </div>
-</div>
+
+  </ng-container><!-- /auditTrail tab -->
+
+  <!-- ═══════════════════ TASK AUDIT TAB ════════════════════ -->
+  <ng-container *ngIf="activeTab === 'taskAudit'">
+    <div *ngIf="isBrowser">
+
+      <!-- Action filter toolbar -->
+      <div class="task-audit-toolbar">
+        <span class="toolbar-label">Filter by action:</span>
+        <button class="task-filter-btn"
+                [class.active]="taskAuditFilterAction === ''"
+                (click)="setTaskAuditActionFilter('')">
+          All
+        </button>
+        <button class="task-filter-btn task-filter-btn--create"
+                [class.active]="taskAuditFilterAction === 'Created'"
+                (click)="setTaskAuditActionFilter('Created')">
+          🆕 Created
+        </button>
+        <button class="task-filter-btn task-filter-btn--assign"
+                [class.active]="taskAuditFilterAction === 'Assigned'"
+                (click)="setTaskAuditActionFilter('Assigned')">
+          👤 Assigned
+        </button>
+        <button class="task-filter-btn task-filter-btn--unassign"
+                [class.active]="taskAuditFilterAction === 'Unassigned'"
+                (click)="setTaskAuditActionFilter('Unassigned')">
+          🔓 Unassigned
+        </button>
+        <button class="task-refresh-btn"
+                (click)="loadTaskAuditLogs()"
+                [disabled]="taskAuditLoading()">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <!-- Results summary -->
+      <div class="results-summary" *ngIf="!taskAuditLoading()">
+        <div class="summary-item">
+          <span class="summary-label">Total Records:</span>
+          <span class="summary-value">{{ taskAuditTotalCount() }}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Page:</span>
+          <span class="summary-value">{{ taskAuditCurrentPage() }} of {{ taskAuditTotalPages() }}</span>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="taskAuditLoading()" class="loading-state">
+        <div class="spinner"></div>
+        <p>Loading task audit logs...</p>
+      </div>
+
+      <!-- Error -->
+      <div *ngIf="taskAuditError() && !taskAuditLoading()" class="error-state">
+        <p>{{ taskAuditError() }}</p>
+        <button class="btn-retry" (click)="loadTaskAuditLogs()">Retry</button>
+      </div>
+
+      <!-- Task Audit Table -->
+      <div class="audit-table" *ngIf="!taskAuditLoading() && !taskAuditError()">
+
+        <!-- Empty state -->
+        <div *ngIf="taskAuditLogs().length === 0" class="no-audits">
+          <p>No task audit records found</p>
+          <p *ngIf="taskAuditFilterAction" style="font-size:13px;color:#9ca3af;margin-top:6px">
+            Try a different action filter
+          </p>
+        </div>
+
+        <!-- Table header -->
+        <div class="table-header task-audit-header" *ngIf="taskAuditLogs().length > 0">
+          <div>Task ID</div>
+          <div>Customer</div>
+          <div>Action</div>
+          <div>Subject</div>
+          <div>Category</div>
+          <div>Date Added</div>
+        </div>
+
+        <!-- Table rows -->
+        <div class="task-audit-row"
+             *ngFor="let log of taskAuditLogs(); trackBy: trackByHistoryId"
+             [class]="getTaskActionClass(log.action)">
+
+          <div class="ta-col ta-col-id">
+            <span class="task-id-badge">#{{ log.taskId }}</span>
+          </div>
+
+          <div class="ta-col">
+            <span *ngIf="log.customerName" class="ta-customer">{{ log.customerName }}</span>
+            <span *ngIf="!log.customerName" class="ta-empty">—</span>
+          </div>
+
+          <div class="ta-col">
+            <span class="task-action-badge" [class]="getTaskActionClass(log.action)">
+              {{ getTaskActionIcon(log.action) }} {{ log.action }}
+            </span>
+          </div>
+
+          <div class="ta-col ta-col-subject" [title]="log.subject ?? ''">
+            {{ (log.subject && log.subject.length > 60)
+                ? log.subject.slice(0, 60) + '…'
+                : (log.subject ?? '—') }}
+          </div>
+
+          <div class="ta-col">
+            <span *ngIf="log.category" class="entity-badge">
+              {{ getCategoryDisplay(log.category) }}
+            </span>
+            <span *ngIf="!log.category" class="ta-empty">—</span>
+          </div>
+
+          <div class="ta-col ta-col-date">
+            {{ log.dateCreated }}
+          </div>
+        </div>
+
+      </div><!-- /audit-table -->
+
+      <!-- Pagination -->
+      <div class="pagination"
+           *ngIf="!taskAuditLoading() && !taskAuditError() && taskAuditTotalPages() > 1">
+        <button class="btn-page"
+                (click)="goToTaskAuditPage(1)"
+                [disabled]="taskAuditCurrentPage() === 1">
+          ⏮️ First
+        </button>
+        <button class="btn-page"
+                (click)="goToTaskAuditPage(taskAuditCurrentPage() - 1)"
+                [disabled]="taskAuditCurrentPage() === 1">
+          ◀️ Previous
+        </button>
+        <div class="page-numbers">
+          <button *ngFor="let page of getTaskAuditPageNumbers()"
+                  class="btn-page-number"
+                  [class.active]="page === taskAuditCurrentPage()"
+                  (click)="goToTaskAuditPage(page)"
+                  [disabled]="page === taskAuditCurrentPage()">
+            {{ page }}
+          </button>
+        </div>
+        <button class="btn-page"
+                (click)="goToTaskAuditPage(taskAuditCurrentPage() + 1)"
+                [disabled]="taskAuditCurrentPage() === taskAuditTotalPages()">
+          Next ▶️
+        </button>
+        <button class="btn-page"
+                (click)="goToTaskAuditPage(taskAuditTotalPages())"
+                [disabled]="taskAuditCurrentPage() === taskAuditTotalPages()">
+          Last ⏭️
+        </button>
+      </div>
+
+      <!-- Page size selector -->
+      <div class="page-size-selector" *ngIf="!taskAuditLoading() && taskAuditTotalCount() > 0">
+        <label>Items per page:</label>
+        <select [(ngModel)]="taskAuditPageSize" (change)="taskAuditCurrentPage.set(1); loadTaskAuditLogs()">
+          <option [value]="10">10</option>
+          <option [value]="20">20</option>
+          <option [value]="50">50</option>
+          <option [value]="100">100</option>
+        </select>
+      </div>
+
+    </div><!-- /isBrowser -->
+  </ng-container><!-- /taskAudit tab -->
+
+</div><!-- /audit-history-container -->
 
 <!-- Details Popup Modal -->
 <div class="modal-overlay" *ngIf="showDetailsPopup()" (click)="closeDetailsPopup()">

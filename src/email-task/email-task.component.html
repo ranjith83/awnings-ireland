@@ -1,54 +1,48 @@
 <div class="email-tasks-container">
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div class="toast-popup"
+       *ngIf="toast.visible"
+       [class.toast-success]="toast.type === 'success'"
+       [class.toast-error]="toast.type === 'error'"
+       [class.toast-warning]="toast.type === 'warning'">
+    <span class="toast-icon">
+      <ng-container [ngSwitch]="toast.type">
+        <span *ngSwitchCase="'success'">✅</span>
+        <span *ngSwitchCase="'error'">❌</span>
+        <span *ngSwitchCase="'warning'">⚠️</span>
+      </ng-container>
+    </span>
+    <span class="toast-message">{{ toast.message }}</span>
+    <button class="toast-close" (click)="dismissToast()">✕</button>
+  </div>
+
   <!-- Header with Tabs -->
   <div class="header-section">
     <div class="tabs">
-      <button 
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'tasks'"
-        (click)="setActiveTab('tasks')">
+      <button class="tab-button" [class.active]="(activeTab$ | async) === 'tasks'" (click)="setActiveTab('tasks')">
         Tasks
-        <span class="tab-count" *ngIf="(activeTab$ | async) === 'tasks' && (totalItems$ | async) as total">
-          ({{ total }})
-        </span>
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'tasks' && (totalItems$ | async) as total">({{ total }})</span>
       </button>
-      <button 
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'processed'"
-        (click)="setActiveTab('processed')">
+      <button class="tab-button" [class.active]="(activeTab$ | async) === 'processed'" (click)="setActiveTab('processed')">
         Processed
-        <span class="tab-count" *ngIf="(activeTab$ | async) === 'processed' && (totalItems$ | async) as total">
-          ({{ total }})
-        </span>
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'processed' && (totalItems$ | async) as total">({{ total }})</span>
       </button>
-      <button 
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'junk'"
-        (click)="setActiveTab('junk')">
+      <button class="tab-button" [class.active]="(activeTab$ | async) === 'junk'" (click)="setActiveTab('junk')">
         Junk
-        <span class="tab-count" *ngIf="(activeTab$ | async) === 'junk' && (totalItems$ | async) as total">
-          ({{ total }})
-        </span>
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'junk' && (totalItems$ | async) as total">({{ total }})</span>
       </button>
     </div>
-    
-    <button class="new-task-btn" (click)="createNewTask()">
-      New Task
-    </button>
+    <button class="new-task-btn" (click)="createNewTask()">New Task</button>
   </div>
 
   <!-- Search and Filter Bar -->
   <div class="filter-section" *ngIf="!showEmailViewer">
     <div class="search-bar">
-      <input 
-        type="text" 
-        [(ngModel)]="searchTerm" 
-        placeholder="Search tasks..."
-        class="search-input"
-        (keyup.enter)="applySearch()">
+      <input type="text" [(ngModel)]="searchTerm" placeholder="Search tasks..." class="search-input" (keyup.enter)="applySearch()">
       <button class="search-btn" (click)="applySearch()">Search</button>
       <button class="clear-btn" (click)="clearSearch()" *ngIf="searchTerm">Clear</button>
     </div>
-
     <div class="advanced-filters">
       <select [(ngModel)]="filterPriority" class="filter-select" (change)="applyFilters()">
         <option value="">All Priorities</option>
@@ -57,19 +51,14 @@
         <option value="High">High</option>
         <option value="Urgent">Urgent</option>
       </select>
-
       <select [(ngModel)]="filterAssignedUser" class="filter-select" (change)="applyFilters()">
         <option [value]="null">All Users</option>
-        <option *ngFor="let user of users$ | async" [value]="user.userId">
-          {{ user.username }}
-        </option>
+        <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
       </select>
-
       <button class="clear-filters-btn" (click)="clearFilters()">Clear Filters</button>
     </div>
   </div>
 
- 
   <!-- Loading Indicator -->
   <div class="loading-overlay" *ngIf="isLoading$ | async">
     <div class="spinner"></div>
@@ -81,44 +70,30 @@
     <table class="tasks-table">
       <thead>
         <tr>
-          <th (click)="sortByColumn('FromName')" class="sortable">
-            From {{ getSortIndicator('FromName') }}
-          </th>
-          <th (click)="sortByColumn('Subject')" class="sortable">
-            Subject {{ getSortIndicator('Subject') }}
-          </th>
-          <th (click)="sortByColumn('Category')" class="sortable">
-            Category {{ getSortIndicator('Category') }}
-          </th>
-          <th (click)="sortByColumn('DateAdded')" class="sortable">
-            Date Added {{ getSortIndicator('DateAdded') }}
-          </th>
+          <th (click)="sortByColumn('FromName')" class="sortable">From {{ getSortIndicator('FromName') }}</th>
+          <th (click)="sortByColumn('Subject')" class="sortable">Subject {{ getSortIndicator('Subject') }}</th>
+          <th (click)="sortByColumn('Category')" class="sortable">Category {{ getSortIndicator('Category') }}</th>
+          <th (click)="sortByColumn('DateAdded')" class="sortable">Date Added {{ getSortIndicator('DateAdded') }}</th>
           <th *ngIf="(activeTab$ | async) === 'tasks'">Assigned To</th>
           <th *ngIf="(activeTab$ | async) === 'tasks'">Priority</th>
         </tr>
       </thead>
       <tbody>
-        <!-- ✅ Using async pipe here -->
-        <tr 
-          *ngFor="let task of tasks$ | async" 
-          (dblclick)="onRowDoubleClick(task)"
-          (contextmenu)="onContextMenu($event, task)"
-          (keydown)="onKeyDown($event, task)"
-          tabindex="0"
-          class="task-row"
-          [class.high-priority]="task.priority === 'High' || task.priority === 'Urgent'"
-          [class.overdue]="task.dueDate && task.dueDate < today">
+        <tr *ngFor="let task of tasks$ | async"
+            (dblclick)="onRowDoubleClick(task)"
+            (contextmenu)="onContextMenu($event, task)"
+            (keydown)="onKeyDown($event, task)"
+            tabindex="0"
+            class="task-row"
+            [class.high-priority]="task.priority === 'High' || task.priority === 'Urgent'"
+            [class.overdue]="task.dueDate && task.dueDate < today">
           <td>{{ task.fromName }}</td>
           <td>
             {{ task.subject }}
-            <span class="ai-confidence" *ngIf="task.aiConfidence">
-              ({{ (task.aiConfidence * 100).toFixed(0) }}%)
-            </span>
+            <span class="ai-confidence" *ngIf="task.aiConfidence">({{ (task.aiConfidence * 100).toFixed(0) }}%)</span>
           </td>
           <td>
-            <span class="category-badge" [class]="'category-' + task.category">
-              {{ getCategoryDisplay(task.category) }}
-            </span>
+            <span class="category-badge" [class]="'category-' + task.category">{{ getCategoryDisplay(task.category) }}</span>
           </td>
           <td>{{ formatDate(task.dateAdded) }}</td>
           <td *ngIf="(activeTab$ | async) === 'tasks'">
@@ -126,20 +101,14 @@
             <span *ngIf="!task.assignedTo" class="unassigned">Unassigned</span>
           </td>
           <td *ngIf="(activeTab$ | async) === 'tasks'">
-            <span class="priority-badge" [class]="'priority-' + task.priority.toLowerCase()">
-              {{ task.priority }}
-            </span>
+            <span class="priority-badge" [class]="'priority-' + task.priority.toLowerCase()">{{ task.priority }}</span>
           </td>
         </tr>
-
-        <!-- Empty State -->
         <tr *ngIf="(tasks$ | async)?.length === 0 && !(isLoading$ | async)">
           <td [attr.colspan]="(activeTab$ | async) === 'tasks' ? 6 : 4" class="empty-state">
             <div class="empty-message">
               <p>No {{ activeTab$ | async }} found</p>
-              <p class="empty-hint" *ngIf="searchTerm || filterPriority || filterAssignedUser">
-                Try adjusting your filters
-              </p>
+              <p class="empty-hint" *ngIf="searchTerm || filterPriority || filterAssignedUser">Try adjusting your filters</p>
             </div>
           </td>
         </tr>
@@ -150,73 +119,26 @@
   <!-- Pagination Controls -->
   <div class="pagination-container" *ngIf="!showEmailViewer && (totalPages$ | async) as totalPages">
     <ng-container *ngIf="totalPages > 1">
-      <div class="pagination-info">
-        Page {{ currentPage$ | async }} of {{ totalPages }}
-      </div>
-
+      <div class="pagination-info">Page {{ currentPage$ | async }} of {{ totalPages }}</div>
       <div class="pagination-controls">
-        <!-- First Page -->
-        <button 
-          class="page-btn" 
-          (click)="firstPage()" 
-          [disabled]="(currentPage$ | async) === 1"
-          title="First Page">
-          &laquo;&laquo;
-        </button>
-
-        <!-- Previous Page -->
-        <button 
-          class="page-btn" 
-          (click)="previousPage()" 
-          [disabled]="(currentPage$ | async) === 1"
-          title="Previous Page">
-          &laquo;
-        </button>
-
-        <!-- Page Numbers -->
-        <button 
-          *ngFor="let page of pageNumbers$ | async" 
-          class="page-btn page-number"
-          [class.active]="page === (currentPage$ | async)"
-          [disabled]="page === -1"
-          (click)="page !== -1 && goToPage(page)">
-          {{ page === -1 ? '...' : page }}
-        </button>
-
-        <!-- Next Page -->
-        <button 
-          class="page-btn" 
-          (click)="nextPage()" 
-          [disabled]="(currentPage$ | async) === totalPages"
-          title="Next Page">
-          &raquo;
-        </button>
-
-        <!-- Last Page -->
-        <button 
-          class="page-btn" 
-          (click)="lastPage()" 
-          [disabled]="(currentPage$ | async) === totalPages"
-          title="Last Page">
-          &raquo;&raquo;
-        </button>
+        <button class="page-btn" (click)="firstPage()"    [disabled]="(currentPage$ | async) === 1"          title="First Page">&laquo;&laquo;</button>
+        <button class="page-btn" (click)="previousPage()" [disabled]="(currentPage$ | async) === 1"          title="Previous Page">&laquo;</button>
+        <button *ngFor="let page of pageNumbers$ | async" class="page-btn page-number"
+                [class.active]="page === (currentPage$ | async)"
+                [disabled]="page === -1"
+                (click)="page !== -1 && goToPage(page)">{{ page === -1 ? '...' : page }}</button>
+        <button class="page-btn" (click)="nextPage()"    [disabled]="(currentPage$ | async) === totalPages"  title="Next Page">&raquo;</button>
+        <button class="page-btn" (click)="lastPage()"    [disabled]="(currentPage$ | async) === totalPages"  title="Last Page">&raquo;&raquo;</button>
       </div>
-
       <div class="pagination-jump">
         <label>Go to page:</label>
-        <input 
-          type="number" 
-          class="page-jump-input"
-          [min]="1" 
-          [max]="totalPages"
-          [(ngModel)]="currentPage"
-          (keyup.enter)="goToPage(currentPage)">
+        <input type="number" class="page-jump-input" [min]="1" [max]="totalPages" [(ngModel)]="currentPage" (keyup.enter)="goToPage(currentPage)">
         <button class="go-btn" (click)="goToPage(currentPage)">Go</button>
       </div>
     </ng-container>
   </div>
 
-   <!-- Page Size Selector -->
+  <!-- Page Size Selector -->
   <div class="page-controls-top" *ngIf="!showEmailViewer">
     <div class="page-size-selector">
       <label>Show:</label>
@@ -225,87 +147,59 @@
       </select>
       <span class="items-info">items per page</span>
     </div>
-
     <div class="results-info" *ngIf="pageInfo$ | async as pageInfo">
       <span *ngIf="pageInfo.totalItems > 0">
-        Showing {{ (pageInfo.currentPage - 1) * pageInfo.pageSize + 1 }} 
-        to {{ Math.min(pageInfo.currentPage * pageInfo.pageSize, pageInfo.totalItems) }} 
+        Showing {{ (pageInfo.currentPage - 1) * pageInfo.pageSize + 1 }}
+        to {{ Math.min(pageInfo.currentPage * pageInfo.pageSize, pageInfo.totalItems) }}
         of {{ pageInfo.totalItems }} results
       </span>
     </div>
   </div>
 
-
-  <!-- Email Viewer Modal (No changes needed here) -->
+  <!-- ==================== EMAIL VIEWER MODAL ==================== -->
   <div class="email-viewer-modal" *ngIf="showEmailViewer && selectedTask">
     <div class="email-viewer-container">
+
       <!-- Email Viewer Tabs -->
       <div class="email-tabs">
-        <button 
-          class="email-tab-button" 
-          [class.active]="activeEmailTab === 'email'"
-          (click)="setEmailTab('email')">
-          Email
-        </button>
-        <button 
-          class="email-tab-button" 
-          [class.active]="activeEmailTab === 'attachments'"
-          (click)="setEmailTab('attachments')">
+        <button class="email-tab-button" [class.active]="activeEmailTab === 'email'"       (click)="setEmailTab('email')">Email</button>
+        <button class="email-tab-button" [class.active]="activeEmailTab === 'attachments'" (click)="setEmailTab('attachments')">
           Attachments
-          <span class="attachment-count" *ngIf="selectedTask.hasAttachments">
-            ({{ selectedTask.attachments.length || 0 }})
-          </span>
+          <span class="attachment-count" *ngIf="selectedTask.hasAttachments">({{ selectedTask.attachments?.length || 0 }})</span>
         </button>
       </div>
 
-      <!-- Email Tab Content -->
+      <!-- Email Tab -->
       <div class="email-content" *ngIf="activeEmailTab === 'email'">
         <div class="email-header-box">
           <div class="email-header-row">
-            <div class="email-from">
-              <strong>From:</strong> {{ selectedTask.fromName }} 
-              &lt;{{ selectedTask.fromEmail }}&gt;
-            </div>
-            <div class="company-number" *ngIf="selectedTask.companyNumber">
-              <strong>Company Number:</strong> {{ selectedTask.companyNumber }}
-            </div>
+            <div class="email-from"><strong>From:</strong> {{ selectedTask.fromName }} &lt;{{ selectedTask.fromEmail }}&gt;</div>
+            <div class="company-number" *ngIf="selectedTask.companyNumber"><strong>Company Number:</strong> {{ selectedTask.companyNumber }}</div>
           </div>
           <div class="email-header-row">
-            <div class="email-subject">
-              <strong>Subject:</strong> {{ selectedTask.subject }}
-            </div>
+            <div class="email-subject"><strong>Subject:</strong> {{ selectedTask.subject }}</div>
           </div>
           <div class="email-header-row">
-            <div class="email-date">
-              <strong>Date:</strong> {{ formatDate(selectedTask.dateAdded) }}
-            </div>
+            <div class="email-date"><strong>Date:</strong> {{ formatDate(selectedTask.dateAdded) }}</div>
             <div class="email-category">
-              <strong>Category:</strong> 
-              <span class="category-badge" [class]="'category-' + selectedTask.category">
-                {{ getCategoryDisplay(selectedTask.category) }}
-              </span>
+              <strong>Category:</strong>
+              <span class="category-badge" [class]="'category-' + selectedTask.category">{{ getCategoryDisplay(selectedTask.category) }}</span>
             </div>
           </div>
           <div class="email-header-row" *ngIf="selectedTask.aiConfidence">
-            <div class="ai-info">
-              <strong>AI Confidence:</strong> {{ (selectedTask.aiConfidence * 100).toFixed(0) }}%
-            </div>
+            <div class="ai-info"><strong>AI Confidence:</strong> {{ (selectedTask.aiConfidence * 100).toFixed(0) }}%</div>
           </div>
         </div>
-
         <div class="email-body-box">
           <div class="email-body-title">Contents of Email</div>
           <div class="email-body-content" [innerHTML]="selectedTask.emailBody"></div>
         </div>
       </div>
 
-      <!-- Attachments Tab Content -->
+      <!-- Attachments Tab -->
       <div class="attachments-content" *ngIf="activeEmailTab === 'attachments'">
-        <div class="attachments-list" *ngIf="selectedTask.hasAttachments && selectedTask.attachments.length > 0">
-          <div 
-            class="attachment-item" 
-            *ngFor="let attachment of selectedTask.attachments"
-            (click)="downloadAttachment(attachment)">
+        <div class="attachments-list" *ngIf="selectedTask && selectedTask.attachments && selectedTask.hasAttachments && selectedTask.attachments.length > 0">
+          <div class="attachment-item" *ngFor="let attachment of selectedTask.attachments" (click)="downloadAttachment(attachment)">
             <div class="attachment-icon">
               <span *ngIf="attachment.fileType.includes('pdf')">📄</span>
               <span *ngIf="attachment.fileType.includes('image')">🖼️</span>
@@ -320,9 +214,7 @@
                 <span class="attachment-type">{{ attachment.fileType }}</span>
               </div>
             </div>
-            <button class="download-btn" (click)="downloadAttachment(attachment); $event.stopPropagation()">
-              Download
-            </button>
+            <button class="download-btn" (click)="downloadAttachment(attachment); $event.stopPropagation()">Download</button>
           </div>
         </div>
         <div class="no-attachments" *ngIf="!selectedTask.hasAttachments || !selectedTask.attachments || selectedTask.attachments.length === 0">
@@ -330,39 +222,176 @@
         </div>
       </div>
 
-      <!-- Action Footer -->
+      <!-- ==================== NO-WORKFLOW BANNER ==================== -->
+      <div class="no-workflow-banner" *ngIf="showNoWorkflowBanner">
+        <div class="no-workflow-icon">⚠️</div>
+        <div class="no-workflow-text">
+          <strong>No Workflow Found</strong>
+          <p>
+            This customer doesn't have a workflow yet. A workflow is required before you can
+            <ng-container [ngSwitch]="workflowMissingForAction">
+              <span *ngSwitchCase="'generate_quote'">generate a quote.</span>
+              <span *ngSwitchCase="'generate_invoice'">generate an invoice.</span>
+              <span *ngSwitchCase="'add_site_visit'">add a site visit.</span>
+              <span *ngSwitchDefault>proceed.</span>
+            </ng-container>
+          </p>
+        </div>
+        <div class="no-workflow-actions">
+          <button class="create-workflow-primary-btn" (click)="onCreateWorkflowFromBanner()">🔧 Create Workflow</button>
+          <button class="dismiss-banner-btn" (click)="dismissNoWorkflowBanner()">Dismiss</button>
+        </div>
+      </div>
+
+      <!-- Workflow check spinner (mid-action re-check only) -->
+      <div class="workflow-checking" *ngIf="workflowCheckInProgress">
+        <div class="spinner spinner--small"></div>
+        <span>Checking workflow...</span>
+      </div>
+
+      <!-- ==================== ACTION FOOTER ==================== -->
       <div class="email-footer">
+
+        <!-- Left: form controls -->
         <div class="footer-left">
           <div class="form-group">
             <label>Assign To:</label>
-            <select 
-              [(ngModel)]="selectedAssignee" 
-              class="assign-select">
+            <select [(ngModel)]="selectedAssignee" class="assign-select">
               <option [value]="null">-- Select User --</option>
-              <option *ngFor="let user of users$ | async" [value]="user.userId">
-                {{ user.username }} ({{ user.firstName }} {{ user.lastName }})
-              </option>
+              <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label>Customer:</label>
+            <div *ngIf="selectedTask.customerId" class="customer-info">{{ selectedTask.customerName }}</div>
+            <button *ngIf="!selectedTask.customerId" class="create-customer-btn" (click)="onCreateCustomerClick(selectedTask)">
+              Create Customer
+            </button>
           </div>
 
           <div class="form-group">
             <label>Action:</label>
-            <select 
-              [(ngModel)]="selectedAction" 
-              class="action-select">
+            <select [(ngModel)]="selectedAction" class="action-select">
               <option value="">-- Select Action --</option>
-              <option *ngFor="let action of availableActions" [value]="action.value">
-                {{ action.label }}
-              </option>
+              <option *ngFor="let action of availableActions" [value]="action.value">{{ action.label }}</option>
             </select>
           </div>
         </div>
 
+        <!-- Centre: Quick Action buttons — visible by category, enabled by workflow status -->
+        <div class="footer-actions">
+          <div class="quick-actions-label">
+            Quick Actions
+
+            <!-- Workflow status pill — only shown when customer is linked -->
+            <ng-container *ngIf="selectedTask.customerId">
+              <span class="workflow-status-pill workflow-status-pill--checking"
+                    *ngIf="workflowExists === null">
+                ⏳ Checking…
+              </span>
+              <span class="workflow-status-pill workflow-status-pill--ok"
+                    *ngIf="workflowExists === true">
+                ✓ Workflow exists
+              </span>
+              <span class="workflow-status-pill workflow-status-pill--missing"
+                    *ngIf="workflowExists === false">
+                ✗ No workflow — create one first
+              </span>
+            </ng-container>
+            <span class="workflow-status-pill workflow-status-pill--nocustomer"
+                  *ngIf="!selectedTask.customerId">
+              ⚠ No customer linked
+            </span>
+          </div>
+
+          <div class="quick-actions-row">
+
+            <!-- ── Generate Quote ──────────────────────────────────────────── -->
+            <!-- Visible only for: quote_creation, invoice_due, initial_enquiry,
+                 general_inquiry, showroom_booking
+                 Enabled only when: customer exists + workflow exists           -->
+            <button *ngIf="showQuoteBtn"
+                    class="action-btn action-btn--quote"
+                    [class.action-btn--locked]="!canQuote"
+                    (click)="onGenerateQuoteClick(selectedTask)"
+                    [disabled]="!canQuote || workflowCheckInProgress"
+                    [title]="!selectedTask.customerId ? noCustomerTip
+                             : workflowExists === false ? noWorkflowTip
+                             : workflowExists === null  ? 'Checking workflow…'
+                             :                            'Generate a quote for this customer'">
+              📄 Generate Quote
+            </button>
+
+            <!-- ── Generate Invoice ───────────────────────────────────────── -->
+            <!-- Visible only for: invoice_due, initial_enquiry, general_inquiry
+                 Enabled only when: customer exists + workflow exists           -->
+            <button *ngIf="showInvoiceBtn"
+                    class="action-btn action-btn--invoice"
+                    [class.action-btn--locked]="!canInvoice"
+                    (click)="onGenerateInvoiceClick(selectedTask)"
+                    [disabled]="!canInvoice || workflowCheckInProgress"
+                    [title]="!selectedTask.customerId ? noCustomerTip
+                             : workflowExists === false ? noWorkflowTip
+                             : workflowExists === null  ? 'Checking workflow…'
+                             : !selectedTask.quoteId    ? 'No quote yet — will redirect to Generate Quote first'
+                             :                            'Generate an invoice for this customer'">
+              🧾 Generate Invoice
+              <!-- warning badge when workflow ok but no quote yet -->
+              <span class="no-quote-hint"
+                    *ngIf="canInvoice && !selectedTask.quoteId"
+                    title="No quote yet — you will be taken to Generate Quote first">⚠</span>
+            </button>
+
+            <!-- ── Add Site Visit ─────────────────────────────────────────── -->
+            <!-- Visible only for: site_visit_meeting, initial_enquiry, general_inquiry
+                 Enabled only when: customer exists + workflow exists           -->
+            <button *ngIf="showSiteVisitBtn"
+                    class="action-btn action-btn--site-visit"
+                    [class.action-btn--locked]="!canSiteVisit"
+                    (click)="onAddSiteVisitClick(selectedTask)"
+                    [disabled]="!canSiteVisit || workflowCheckInProgress"
+                    [title]="!selectedTask.customerId ? noCustomerTip
+                             : workflowExists === false ? noWorkflowTip
+                             : workflowExists === null  ? 'Checking workflow…'
+                             :                            'Add a site visit (email content pre-filled)'">
+              📍 Add Site Visit
+            </button>
+
+            <!-- ── Create Workflow ────────────────────────────────────────── -->
+            <!-- Visible by category.
+                 ENABLED  when: customer exists + NO workflow yet  (primary CTA)
+                 DISABLED when: workflow already exists                         -->
+            <button *ngIf="showWorkflowBtn"
+                    class="action-btn action-btn--workflow"
+                    [class.action-btn--workflow-done]="workflowExists === true"
+                    (click)="onCreateWorkflowClick(selectedTask)"
+                    [disabled]="!canWorkflow || workflowCheckInProgress"
+                    [title]="!selectedTask.customerId  ? noCustomerTip
+                             : workflowExists === true  ? workflowDoneTip
+                             : workflowExists === null  ? 'Checking workflow…'
+                             :                            'Create a workflow for this customer'">
+              🔧 Create Workflow
+            </button>
+
+          </div>
+
+          <!-- Hint row: explains why action buttons are greyed out -->
+          <div class="no-workflow-hint-row"
+               *ngIf="selectedTask.customerId && workflowExists === false && (showQuoteBtn || showInvoiceBtn || showSiteVisitBtn)">
+            <span>👆 Create a workflow first to unlock the action buttons above.</span>
+          </div>
+
+        </div>
+
+        <!-- Right: Save / Close -->
         <div class="footer-right">
           <button class="save-btn" (click)="save()">Save</button>
           <button class="close-btn" (click)="closeEmailViewer()">Close</button>
         </div>
-      </div>
-    </div>
-  </div>
-</div>
+
+      </div><!-- /email-footer -->
+    </div><!-- /email-viewer-container -->
+  </div><!-- /email-viewer-modal -->
+
+</div><!-- /email-tasks-container -->

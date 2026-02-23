@@ -118,6 +118,53 @@ export interface AuditSummaryDto {
   }[];
 }
 
+// ── Task Audit interfaces ────────────────────────────────────────────────────
+// These mirror the C# TaskHistoryDto / TaskHistoryPagedDto exactly.
+// Property names are camelCase because .NET's JSON serialiser lowercases them.
+//
+// C#  →  JSON/TS
+// HistoryId    → historyId
+// TaskId       → taskId
+// Action       → action
+// OldValue     → oldValue
+// NewValue     → newValue
+// Details      → details
+// DateCreated  → dateCreated
+// CreatedBy    → createdBy
+// CustomerName → customerName
+// Subject      → subject
+// Category     → category
+// Items        → items
+// TotalCount   → totalCount
+// Page         → page
+// PageSize     → pageSize
+// TotalPages   → totalPages
+
+export interface TaskHistoryAuditDto {
+  historyId:    number;
+  taskId:       number;
+  /** 'Created' | 'Assigned' | 'Unassigned' */
+  action:       string;
+  oldValue:     string | null;
+  newValue:     string | null;
+  details:      string | null;
+  dateCreated:  string;
+  createdBy:    string | null;
+  /** Populated for Created / Assigned / Unassigned; null for other actions */
+  customerName: string | null;
+  subject:      string | null;
+  category:     string | null;
+}
+
+export interface TaskHistoryPagedDto {
+  items:      TaskHistoryAuditDto[];
+  totalCount: number;
+  page:       number;
+  pageSize:   number;
+  totalPages: number;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 @Injectable({
   providedIn: 'root'
 })
@@ -285,6 +332,35 @@ export class AuditTrailService {
       return String(value);
     }
   }
+
+  // ── Task Audit History (GET /api/EmailTask/audit) ──────────────────────────
+
+  private emailTaskApiUrl = `${environment.apiUrl}/api/EmailTask`;
+
+  /**
+   * Fetch paginated Task Audit history from the TaskHistories table.
+   * The backend filters to Created | Assigned | Unassigned actions only.
+   *
+   * @param page      1-based page number
+   * @param pageSize  rows per page (default 20)
+   * @param action    optional action filter: 'Created' | 'Assigned' | 'Unassigned'
+   *
+   * Returns TaskHistoryPagedDto whose property names exactly match
+   * what C# serialises (camelCase): items, totalCount, page, pageSize, totalPages
+   */
+  getTaskAuditHistory(
+    page: number = 1,
+    pageSize: number = 20,
+    action?: string
+  ): Observable<TaskHistoryPagedDto> {
+    let url = `${this.emailTaskApiUrl}/audit?page=${page}&pageSize=${pageSize}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+    return this.http.get<TaskHistoryPagedDto>(url).pipe(
+      catchError(this.handleError)
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   /**
    * Centralized error handler

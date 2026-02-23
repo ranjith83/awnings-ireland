@@ -938,3 +938,222 @@
     }
   }
 }
+// ─── Main Tab Navigation ────────────────────────────────────────────────────
+.main-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.main-tab-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    color: #374151;
+    background: #f9fafb;
+  }
+
+  &.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+  }
+
+  &.main-tab-btn--task {
+    &:hover { color: #6d28d9; }
+    &.active {
+      color: #7c3aed;
+      border-bottom-color: #7c3aed;
+    }
+  }
+
+  .tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background: #7c3aed;
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 10px;
+  }
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-export--task {
+  background-color: #7c3aed !important;
+
+  &:hover:not(:disabled) {
+    background-color: #6d28d9 !important;
+    box-shadow: 0 4px 6px rgba(124, 58, 237, 0.3) !important;
+  }
+}
+
+// ─── Task Audit Toolbar ─────────────────────────────────────────────────────
+.task-audit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.toolbar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-right: 4px;
+}
+
+.task-filter-btn {
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover:not(:disabled) { background: #f3f4f6; border-color: #d1d5db; }
+
+  &.active {
+    background: #374151;
+    color: white;
+    border-color: #374151;
+  }
+
+  &.task-filter-btn--create.active  { background: #059669; border-color: #059669; }
+  &.task-filter-btn--assign.active  { background: #2563eb; border-color: #2563eb; }
+  &.task-filter-btn--unassign.active{ background: #dc2626; border-color: #dc2626; }
+}
+
+.task-refresh-btn {
+  margin-left: auto;
+  padding: 5px 14px;
+  font-size: 13px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) { background: #f3f4f6; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+// ─── Task Audit Table ────────────────────────────────────────────────────────
+.task-audit-header {
+  display: grid !important;
+  grid-template-columns: 80px 180px 140px 1fr 150px 170px !important;
+}
+
+.task-audit-row {
+  display: grid;
+  grid-template-columns: 80px 180px 140px 1fr 150px 170px;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  align-items: center;
+  transition: background 0.15s;
+
+  &:hover { background: #f9fafb; }
+  &:last-child { border-bottom: none; }
+
+  &.task-action-create   { border-left: 4px solid #10b981; }
+  &.task-action-assign   { border-left: 4px solid #3b82f6; }
+  &.task-action-unassign { border-left: 4px solid #ef4444; }
+}
+
+.ta-col {
+  font-size: 14px;
+  color: #374151;
+  word-break: break-word;
+}
+
+.ta-col-id {
+  .task-id-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+}
+
+.ta-col-subject {
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.ta-col-date {
+  font-size: 12px;
+  color: #6b7280;
+  font-family: 'Courier New', monospace;
+}
+
+.ta-customer { font-weight: 500; color: #1f2937; }
+.ta-empty    { color: #9ca3af; }
+
+.task-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.task-action-create   { background: #d1fae5; color: #065f46; }
+  &.task-action-assign   { background: #dbeafe; color: #1e40af; }
+  &.task-action-unassign { background: #fee2e2; color: #991b1b; }
+}
+
+// ─── Responsive ─────────────────────────────────────────────────────────────
+@media (max-width: 1024px) {
+  .task-audit-header,
+  .task-audit-row {
+    grid-template-columns: 70px 160px 120px 1fr 130px 150px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .task-audit-header { display: none !important; }
+
+  .task-audit-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .main-tab-btn { padding: 10px 16px; font-size: 13px; }
+}

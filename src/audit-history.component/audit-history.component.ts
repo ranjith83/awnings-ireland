@@ -9,7 +9,9 @@ import {
   AuditAction, 
   AuditEntityType, 
   FieldChange,
-  AuditLogFilterDto 
+  AuditLogFilterDto,
+  TaskHistoryAuditDto,
+  TaskHistoryPagedDto
 } from '../service/audit-trail.service';
 import { Observable, of, Subject, firstValueFrom } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -24,6 +26,8 @@ interface UserDto {
   firstName: string;
   lastName: string;
 }
+
+// TaskHistoryAuditDto and TaskHistoryPagedDto are imported from audit-trail.service
 
 @Component({
   selector: 'app-audit-history',
@@ -40,7 +44,22 @@ export class AuditHistoryComponent implements OnInit {
   showFilters = signal(true);
   selectedAudit = signal<AuditLogDto | null>(null);
   showDetailsPopup = signal(false);
-  
+
+  // ── Active top-level tab ──────────────────────────────────────────────────
+  activeTab: 'auditTrail' | 'taskAudit' = 'auditTrail';
+
+  // ── Task Audit tab state ──────────────────────────────────────────────────
+  taskAuditLogs      = signal<TaskHistoryAuditDto[]>([]);
+  taskAuditLoading   = signal(false);
+  taskAuditError     = signal('');
+  taskAuditFilterAction: string = '';   // '' | 'Created' | 'Assigned' | 'Unassigned'
+  taskAuditCurrentPage = signal(1);
+  taskAuditPageSize    = signal(20);
+  taskAuditTotalCount  = signal(0);
+  taskAuditTotalPages  = computed(() =>
+    Math.ceil(this.taskAuditTotalCount() / this.taskAuditPageSize())
+  );
+
   // Pagination signals
   currentPage = signal(1);
   pageSize = signal(20);
@@ -492,5 +511,138 @@ export class AuditHistoryComponent implements OnInit {
 
   trackByFieldName(index: number, change: FieldChange): string {
     return change.fieldName || index.toString();
+  }
+
+  trackByHistoryId(index: number, log: TaskHistoryAuditDto): number {
+    return log.historyId || index;
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+
+  setActiveTab(tab: 'auditTrail' | 'taskAudit'): void {
+    this.activeTab = tab;
+    // Lazy-load task audit on first visit
+    if (tab === 'taskAudit' && this.taskAuditLogs().length === 0 && !this.taskAuditLoading()) {
+      this.loadTaskAuditLogs();
+    }
+  }
+
+  // ── Task Audit methods ────────────────────────────────────────────────────
+
+  async loadTaskAuditLogs(): Promise<void> {
+    if (!this.isBrowser) return;
+
+    this.taskAuditLoading.set(true);
+    this.taskAuditError.set('');
+
+    try {
+      // Delegates to AuditTrailService.getTaskAuditHistory() which calls
+      // GET /api/EmailTask/audit?page=&pageSize=&action=
+      // Response shape (camelCase from C# PascalCase):
+      //   { items[], totalCount, page, pageSize, totalPages }
+      const result = await firstValueFrom(
+        this.auditService.getTaskAuditHistory(
+          this.taskAuditCurrentPage(),
+          this.taskAuditPageSize(),
+          this.taskAuditFilterAction || undefined
+        )
+      );
+
+      this.taskAuditLogs.set(result.items);           // C#: Items → items
+      this.taskAuditTotalCount.set(result.totalCount); // C#: TotalCount → totalCount
+      this.taskAuditCurrentPage.set(result.page);      // C#: Page → page
+    } catch (error: any) {
+      console.error('Error loading task audit logs:', error);
+      this.taskAuditError.set('Failed to load task audit logs. Please try again.');
+      this.taskAuditLogs.set([]);
+    } finally {
+      this.taskAuditLoading.set(false);
+    }
+  }
+
+  setTaskAuditActionFilter(action: string): void {
+    this.taskAuditFilterAction = action;
+    this.taskAuditCurrentPage.set(1);
+    this.loadTaskAuditLogs();
+  }
+
+  async goToTaskAuditPage(page: number): Promise<void> {
+    if (page < 1 || page > this.taskAuditTotalPages() || page === this.taskAuditCurrentPage()) return;
+    this.taskAuditCurrentPage.set(page);
+    await this.loadTaskAuditLogs();
+  }
+
+  getTaskAuditPageNumbers(): number[] {
+    const pages: number[] = [];
+    const maxPages = 5;
+    const current  = this.taskAuditCurrentPage();
+    const total    = this.taskAuditTotalPages();
+    let start = Math.max(1, current - Math.floor(maxPages / 2));
+    let end   = Math.min(total, start + maxPages - 1);
+    if (end - start < maxPages - 1) start = Math.max(1, end - maxPages + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
+    return pages;
+  }
+
+  getTaskActionIcon(action: string): string {
+    const icons: Record<string, string> = {
+      Created:    '🆕',
+      Assigned:   '👤',
+      Unassigned: '🔓'
+    };
+    return icons[action] ?? '📝';
+  }
+
+  getTaskActionClass(action: string): string {
+    const classes: Record<string, string> = {
+      Created:    'task-action-create',
+      Assigned:   'task-action-assign',
+      Unassigned: 'task-action-unassign'
+    };
+    return classes[action] ?? '';
+  }
+
+  getCategoryDisplay(category: string | null): string {
+    if (!category) return '—';
+    const map: Record<string, string> = {
+      invoice_creation:    'Invoice',
+      quote_creation:      'Quote',
+      customer_creation:   'New Customer',
+      showroom_booking:    'Showroom',
+      product_inquiry:     'Inquiry',
+      complaint:           'Complaint',
+      general_inquiry:     'General',
+      payment:             'Payment',
+      junk:                'Junk'
+    };
+    return map[category] ?? category;
+  }
+
+  exportTaskAuditLogs(): void {
+    const headers = ['History ID', 'Task ID', 'Customer', 'Action', 'Subject', 'Category', 'Assigned To', 'Performed By', 'Date Added'];
+    const rows = this.taskAuditLogs().map(log => [
+      log.historyId.toString(),
+      log.taskId.toString(),
+      log.customerName ?? '',
+      log.action,
+      log.subject ?? '',
+      this.getCategoryDisplay(log.category),
+      log.newValue ?? '',
+      log.createdBy ?? '',
+      this.formatDate(new Date(log.dateCreated))
+    ]);
+
+    const csv = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href     = url;
+    link.download = `task-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
   }
 }

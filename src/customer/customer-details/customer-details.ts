@@ -3,9 +3,11 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService, SalespersonDto } from '../../service/customer-service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
 import { map, shareReplay, tap } from 'rxjs/operators';
+import { EmailTask, EmailTaskService } from '../../service/email-task.service';
+import { AuditTrailService, AuditAction, AuditEntityType } from '../../service/audit-trail.service';
 
 @Component({
   selector: 'app-customer-details',
@@ -73,6 +75,7 @@ export class CustomerDetails implements OnInit {
   // Salesperson list - loaded from API
   salespeople: SalespersonDto[] = [];
   
+  
   // Keep these for template two-way binding with ngModel
   searchFilters = {
     companyName: '',
@@ -85,11 +88,15 @@ export class CustomerDetails implements OnInit {
 
   // Store the current customer ID separately (not in the form)
   private currentCustomerId: number | null = null;
+  linkedTaskId: any;
 
   constructor(
     private fb: FormBuilder,
     private customerService: CustomerService,
-    private router: Router
+    private router: Router,
+    private emailTaskService: EmailTaskService,
+    private auditService: AuditTrailService,
+    private route: ActivatedRoute,
   ) {
     this.customerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
@@ -117,6 +124,12 @@ export class CustomerDetails implements OnInit {
   ngOnInit(): void {
     this.loadCustomers();
     this.loadSalespeople();
+
+     this.route.queryParams.subscribe(params => {
+    if (params['taskId']) {
+      this.openAddModalWithPrefilledData(params);
+    }
+  });
   }
 
   loadCustomers(): void {
@@ -238,6 +251,19 @@ export class CustomerDetails implements OnInit {
     this.customerService.deleteCompany(customer.customerId).pipe(
       tap(() => {
         console.log('Customer deleted successfully');
+
+        // ── Audit: DELETE ──────────────────────────────────────────────────
+        this.auditService.createAuditLog({
+          entityType:  AuditEntityType.CUSTOMER,
+          entityId:    customer.customerId,
+          entityName:  customer.companyName,
+          action:      AuditAction.DELETE,
+          changes:     [],
+          performedBy: 0,
+          notes:       `Customer '${customer.companyName}' deleted via Customer Details`
+        }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
+        // ──────────────────────────────────────────────────────────────────
+
         alert('Customer deleted successfully');
         this.loadCustomers();
         this.closeDeleteModal();
@@ -323,10 +349,35 @@ export class CustomerDetails implements OnInit {
       }]
     };
 
-    this.customerService.addCompanyWithContact(newCustomer).pipe(
+     this.customerService.addCompanyWithContact(newCustomer).pipe(
       tap(response => {
         console.log('Customer added:', response);
-        alert('Customer added successfully');
+
+        // ── Audit: CREATE ──────────────────────────────────────────────────
+        this.auditService.createAuditLog({
+          entityType:      AuditEntityType.CUSTOMER,
+          entityId:        response.customerId,
+          entityName:      newCustomer.name,
+          action:          AuditAction.CREATE,
+          changes:         [],
+          performedBy:     0,   // resolved server-side via HttpContext
+          notes:           this.linkedTaskId
+                             ? `Customer created and linked to task #${this.linkedTaskId}`
+                             : 'Customer created via Customer Details form'
+        }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
+        // ──────────────────────────────────────────────────────────────────
+
+        // If this was created from a task, link them
+        if (this.linkedTaskId) {
+          this.emailTaskService.linkCustomerToTask(this.linkedTaskId, response.customerId)
+            .subscribe(() => {
+              alert('Customer created and linked to task successfully');
+              this.router.navigate(['/tasks']); // Go back to tasks
+            });
+        } else {
+          alert('Customer added successfully');
+        }
+        
         this.loadCustomers();
         this.closeModal();
       })
@@ -338,6 +389,23 @@ export class CustomerDetails implements OnInit {
       }
     });
   }
+
+  openAddModalWithPrefilledData(params: any): void {
+    this.modalModeSubject.next('add');
+    this.currentCustomerId = null;
+    this.customerForm.patchValue({
+      email: params['email'] || '',
+      contactFirstName: params['contactFirstName'] || '',
+      contactLastName: params['contactLastName'] || '',
+      name: params['companyName'] || '',
+      residential: false,
+      assignedSalespersonId: null
+    });
+    this.showModalSubject.next(true);
+    
+    // Store task ID to link after creation
+    this.linkedTaskId = params['taskId'];
+}
 
   private updateCustomer(): void {
     const formValue = this.customerForm.value;
@@ -373,6 +441,19 @@ export class CustomerDetails implements OnInit {
     this.customerService.updateCompany(this.currentCustomerId, updateData).pipe(
       tap(response => {
         console.log('Customer updated:', response);
+
+        // ── Audit: UPDATE ──────────────────────────────────────────────────
+        this.auditService.createAuditLog({
+          entityType:  AuditEntityType.CUSTOMER,
+          entityId:    this.currentCustomerId!,
+          entityName:  updateData.name,
+          action:      AuditAction.UPDATE,
+          changes:     [],   // field-level diff not computed here; server-side diff covers it
+          performedBy: 0,
+          notes:       `Customer record updated via Customer Details form`
+        }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
+        // ──────────────────────────────────────────────────────────────────
+
         alert('Customer updated successfully');
         this.loadCustomers();
         this.closeModal();
@@ -431,5 +512,22 @@ export class CustomerDetails implements OnInit {
       contactEmail: 'Contact Email'
     };
     return labels[fieldName] || fieldName;
+  }
+
+  openCustomerCreationModal(task: EmailTask): void {
+    this.emailTaskService.getExtractedCustomerData(task.taskId).subscribe({
+      next: (data) => {
+        // Navigate to customer details page with pre-filled data
+        this.router.navigate(['/customers/new'], {
+          queryParams: {
+            taskId: task.taskId,
+            email: data.email,
+            contactFirstName: data.contactFirstName,
+            contactLastName: data.contactLastName,
+            companyName: data.customerName || data.fromName
+          }
+        });
+      }
+    });
   }
 }
