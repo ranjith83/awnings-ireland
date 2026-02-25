@@ -390,6 +390,8 @@
           <div>Action</div>
           <div>Subject</div>
           <div>Category</div>
+          <div>Assignee</div>
+          <div>Assigned By</div>
           <div>Date Added</div>
         </div>
 
@@ -426,8 +428,20 @@
             <span *ngIf="!log.category" class="ta-empty">—</span>
           </div>
 
+          <div class="ta-col ta-col-assignee">
+            <span *ngIf="log.assignedTo" class="ta-assignee-badge">
+              👤 {{ log.assignedTo }}
+            </span>
+            <span *ngIf="!log.assignedTo" class="ta-empty">—</span>
+          </div>
+
+          <div class="ta-col ta-col-assigned-by">
+            <span *ngIf="log.assignedBy" class="ta-assignedby">{{ log.assignedBy }}</span>
+            <span *ngIf="!log.assignedBy" class="ta-empty">—</span>
+          </div>
+
           <div class="ta-col ta-col-date">
-            {{ log.dateCreated }}
+            {{ formatDate(log.dateCreated) }}
           </div>
         </div>
 

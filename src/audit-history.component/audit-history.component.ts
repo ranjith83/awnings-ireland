@@ -438,24 +438,26 @@ export class AuditHistoryComponent implements OnInit {
     }
   }
 
-  formatDate(date: Date): string {
-    if (!this.isBrowser) {
-      return '';
-    }
-    
-    try {
-      return new Date(date).toLocaleString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
-    } catch (error) {
-      return String(date);
-    }
+  formatDate(date: string | Date): string {
+  if (!this.isBrowser) {
+    return '';
   }
+
+  try {
+    const parsedDate = new Date(date);
+
+    return parsedDate.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  } catch (error) {
+    return String(date);
+  }
+}
 
   formatDateForInput(date: Date): string {
     const year = date.getFullYear();
@@ -619,7 +621,7 @@ export class AuditHistoryComponent implements OnInit {
   }
 
   exportTaskAuditLogs(): void {
-    const headers = ['History ID', 'Task ID', 'Customer', 'Action', 'Subject', 'Category', 'Assigned To', 'Performed By', 'Date Added'];
+    const headers = ['History ID', 'Task ID', 'Customer', 'Action', 'Subject', 'Category', 'Assignee', 'Assigned By', 'Date Added'];
     const rows = this.taskAuditLogs().map(log => [
       log.historyId.toString(),
       log.taskId.toString(),
@@ -627,8 +629,8 @@ export class AuditHistoryComponent implements OnInit {
       log.action,
       log.subject ?? '',
       this.getCategoryDisplay(log.category),
-      log.newValue ?? '',
-      log.createdBy ?? '',
+      log.assignedTo ?? '',
+      log.assignedBy ?? '',
       this.formatDate(new Date(log.dateCreated))
     ]);
 

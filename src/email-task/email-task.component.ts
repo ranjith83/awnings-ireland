@@ -46,7 +46,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   private pendingRefreshOnReturn = false;
 
   // ==================== REACTIVE STATE ====================
-  private activeTabSubject       = new BehaviorSubject<'tasks' | 'processed' | 'junk'>('tasks');
+  private activeTabSubject       = new BehaviorSubject<'tasks' | 'in-progress' | 'completed' | 'junk'>('tasks');
   private currentPageSubject     = new BehaviorSubject<number>(1);
   private pageSizeSubject        = new BehaviorSubject<number>(20);
   private searchTermSubject      = new BehaviorSubject<string>('');
@@ -56,7 +56,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   private filterAssignedUserSubject = new BehaviorSubject<number | null>(null);
   private refreshTrigger         = new BehaviorSubject<void>(undefined);
 
-  activeTab$          = this.activeTabSubject.asObservable();
+  activeTab$          = this.activeTabSubject.asObservable() as Observable<'tasks' | 'in-progress' | 'completed' | 'junk'>;
   currentPage$        = this.currentPageSubject.asObservable();
   pageSize$           = this.pageSizeSubject.asObservable();
   searchTerm$         = this.searchTermSubject.asObservable();
@@ -69,7 +69,9 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.filterPrioritySubject, this.filterAssignedUserSubject, this.refreshTrigger
   ]).pipe(
     map(([activeTab, page, pageSize, searchTerm, sortBy, sortDirection, priority, assignedUser]) => ({
-      status: this.getStatusFromTab(activeTab), page, pageSize, sortBy, sortDirection,
+      status: this.getStatusFromTab(activeTab),
+      statuses: this.getStatusesFromTab(activeTab),
+      page, pageSize, sortBy, sortDirection,
       searchTerm: searchTerm || undefined,
       priority: priority || undefined,
       assignedToUserId: assignedUser || undefined
@@ -93,6 +95,21 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   activeEmailTab:   'email' | 'attachments' | 'send-email' = 'email';
   selectedAssignee: number | null = null;
   selectedAction:   string = '';
+  selectedStatus:   string = '';   // bound to the Status dropdown in the viewer
+
+  /** Status options shown in the viewer dropdown */
+  readonly statusOptions = [
+    { value: 'New',         label: 'New' },
+    { value: 'In Progress', label: 'In Progress' },
+    { value: 'More Info',   label: 'More Info' },
+    { value: 'Closed',      label: 'Closed' },
+    { value: 'Reopened',    label: 'Reopened' },
+    { value: 'Completed',   label: 'Completed' },
+  ];
+
+  // Current user context resolved at startup
+  currentUserId: number | null = null;
+  isAdmin: boolean = false;
 
   // ── Send Email tab state ────────────────────────────────────────────────────
   sendEmailSubject:  string = '';
@@ -301,11 +318,20 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
 
     this.users$       = this.emailTaskService.getUsers().pipe(catchError(() => of([])), shareReplay(1));
     this.currentUser$ = this.emailTaskService.getCurrentUser().pipe(catchError(() => of(null)), shareReplay(1));
+
+    // Resolve current user role once at startup for role-based visibility
+    this.currentUser$.pipe(take(1)).subscribe(user => {
+      if (user) {
+        this.currentUserId = (user as any).userId ?? null;
+        this.isAdmin = (user as any).role === 'Admin';
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   // ==================== PAGINATION ====================
 
-  setActiveTab(tab: 'tasks' | 'processed' | 'junk'): void {
+  setActiveTab(tab: 'tasks' | 'in-progress' | 'completed' | 'junk'): void {
     this.activeTabSubject.next(tab);
     this.currentPageSubject.next(1);
   }
@@ -368,6 +394,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.showEmailViewer         = true;
     this.activeEmailTab          = 'email';
     this.selectedAssignee        = task.assignedToUserId ?? null;
+    this.selectedStatus          = task.status ?? 'New';
     this.showNoWorkflowBanner    = false;
     this.workflowMissingForAction = '';
     this.workflowExists          = null;       // reset — will be checked below
@@ -410,6 +437,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.selectedTask             = null;
     this.selectedAction           = '';
     this.selectedAssignee         = null;
+    this.selectedStatus           = '';
     this.showNoWorkflowBanner     = false;
     this.workflowMissingForAction = '';
     this.workflowExists           = null;
@@ -487,8 +515,10 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     const isUnassigning= this.selectedAssignee === null && task.assignedToUserId !== null;
     const isSameUser   = this.selectedAssignee !== null && this.selectedAssignee === task.assignedToUserId;
 
+    const isStatusChange = this.selectedStatus && this.selectedStatus !== task.status;
+
     // Block if user tries to assign to the same person already assigned
-    if (isSameUser && !this.selectedAction) {
+    if (isSameUser && !this.selectedAction && !isStatusChange) {
       const userName = task.assignedTo ?? 'this user';
       this.showToast('warning', `Task is already assigned to ${userName}. No changes made.`);
       return;
@@ -503,6 +533,14 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     } else if (isUnassigning) {
       promises.push(
         this.emailTaskService.unassignTask(task.taskId).toPromise()
+      );
+    }
+
+    // Handle status change (if not already covered by assignment backend logic)
+    if (isStatusChange && !isAssigning) {
+      // Calls PUT /api/EmailTask/{taskId}/status — add updateTaskStatus() to EmailTaskService if not present
+      promises.push(
+        this.emailTaskService.updateTaskStatus(task.taskId, this.selectedStatus).toPromise()
       );
     }
 
@@ -527,9 +565,17 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
           // Close viewer, refresh, show toast, then switch tab.
           this.closeEmailViewer();
           this.refreshTrigger.next();
-          this.showToast('success', `Task assigned successfully and moved to Processed.`);
+          this.showToast('success', `Task assigned successfully and moved to In Progress.`);
           setTimeout(() => {
-            this.setActiveTab('processed');
+            this.setActiveTab('in-progress');
+            this.cdr.markForCheck();
+          }, 600);
+        } else if (isStatusChange && (this.selectedStatus === 'Completed' || this.selectedStatus === 'Closed')) {
+          this.closeEmailViewer();
+          this.refreshTrigger.next();
+          this.showToast('success', `Task marked as ${this.selectedStatus}.`);
+          setTimeout(() => {
+            this.setActiveTab('completed');
             this.cdr.markForCheck();
           }, 600);
         } else {
@@ -754,9 +800,20 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
 
   // ==================== HELPERS ====================
 
-  private getStatusFromTab(tab: 'tasks' | 'processed' | 'junk'): string {
-    const map: Record<string, string> = { tasks: 'Pending', processed: 'Processed', junk: 'Junk' };
-    return map[tab] ?? 'Pending';
+  private getStatusFromTab(tab: 'tasks' | 'in-progress' | 'completed' | 'junk'): string {
+    const map: Record<string, string> = {
+      tasks: 'New',
+      'in-progress': 'In Progress',
+      completed: 'Completed',
+      junk: 'Junk'
+    };
+    return map[tab] ?? 'New';
+  }
+
+  private getStatusesFromTab(tab: string): string[] | undefined {
+    if (tab === 'in-progress') return ['In Progress', 'More Info', 'Reopened'];
+    if (tab === 'completed')   return ['Completed', 'Closed'];
+    return undefined;
   }
 
   private calculatePageNumbers(currentPage: number, totalPages: number): number[] {
@@ -804,7 +861,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
 
   // ==================== GETTERS/SETTERS ====================
 
-  get activeTab(): 'tasks' | 'processed' | 'junk' { return this.activeTabSubject.value; }
+  get activeTab(): 'tasks' | 'in-progress' | 'completed' | 'junk' { return this.activeTabSubject.value; }
 
   get searchTerm(): string { return this.searchTermSubject.value; }
   set searchTerm(v: string) { this.searchTermSubject.next(v); }

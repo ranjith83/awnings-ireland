@@ -24,9 +24,13 @@
         Tasks
         <span class="tab-count" *ngIf="(activeTab$ | async) === 'tasks' && (totalItems$ | async) as total">({{ total }})</span>
       </button>
-      <button class="tab-button" [class.active]="(activeTab$ | async) === 'processed'" (click)="setActiveTab('processed')">
-        Processed
-        <span class="tab-count" *ngIf="(activeTab$ | async) === 'processed' && (totalItems$ | async) as total">({{ total }})</span>
+      <button class="tab-button" [class.active]="(activeTab$ | async) === 'in-progress'" (click)="setActiveTab('in-progress')">
+        In Progress
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'in-progress' && (totalItems$ | async) as total">({{ total }})</span>
+      </button>
+      <button class="tab-button tab-button--completed" [class.active]="(activeTab$ | async) === 'completed'" (click)="setActiveTab('completed')">
+        Completed
+        <span class="tab-count" *ngIf="(activeTab$ | async) === 'completed' && (totalItems$ | async) as total">({{ total }})</span>
       </button>
       <button class="tab-button" [class.active]="(activeTab$ | async) === 'junk'" (click)="setActiveTab('junk')">
         Junk
@@ -34,6 +38,12 @@
       </button>
     </div>
     <button class="new-task-btn" (click)="createNewTask()">New Task</button>
+  </div>
+
+  <!-- Role visibility banner -->
+  <div class="role-banner" *ngIf="!showEmailViewer">
+    <span *ngIf="isAdmin" class="role-badge role-badge--admin">🔑 Admin — viewing all tasks</span>
+    <span *ngIf="!isAdmin" class="role-badge role-badge--user">👤 Viewing your assigned tasks only</span>
   </div>
 
   <!-- Search and Filter Bar -->
@@ -74,6 +84,7 @@
           <th (click)="sortByColumn('Subject')" class="sortable">Subject {{ getSortIndicator('Subject') }}</th>
           <th (click)="sortByColumn('Category')" class="sortable">Category {{ getSortIndicator('Category') }}</th>
           <th (click)="sortByColumn('DateAdded')" class="sortable">Date Added {{ getSortIndicator('DateAdded') }}</th>
+          <th *ngIf="(activeTab$ | async) !== 'junk'">Status</th>
           <th *ngIf="(activeTab$ | async) === 'tasks'">Assigned To</th>
           <th *ngIf="(activeTab$ | async) === 'tasks'">Priority</th>
         </tr>
@@ -96,6 +107,9 @@
             <span class="category-badge" [class]="'category-' + task.category">{{ getCategoryDisplay(task.category) }}</span>
           </td>
           <td>{{ formatDate(task.dateAdded) }}</td>
+          <td *ngIf="(activeTab$ | async) !== 'junk'">
+            <span class="status-badge" [class]="'status-' + (task.status || 'new').toLowerCase().replace(' ', '-')">{{ task.status || 'New' }}</span>
+          </td>
           <td *ngIf="(activeTab$ | async) === 'tasks'">
             <span *ngIf="task.assignedTo">{{ task.assignedTo }}</span>
             <span *ngIf="!task.assignedTo" class="unassigned">Unassigned</span>
@@ -105,7 +119,7 @@
           </td>
         </tr>
         <tr *ngIf="(tasks$ | async)?.length === 0 && !(isLoading$ | async)">
-          <td [attr.colspan]="(activeTab$ | async) === 'tasks' ? 6 : 4" class="empty-state">
+          <td [attr.colspan]="(activeTab$ | async) === 'tasks' ? 7 : 5" class="empty-state">
             <div class="empty-message">
               <p>No {{ activeTab$ | async }} found</p>
               <p class="empty-hint" *ngIf="searchTerm || filterPriority || filterAssignedUser">Try adjusting your filters</p>
@@ -319,9 +333,16 @@
         <!-- Left: form controls -->
         <div class="footer-left">
           <div class="form-group">
+            <label>Status:</label>
+            <select [(ngModel)]="selectedStatus" class="status-select">
+              <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
             <label>Assign To:</label>
             <select [(ngModel)]="selectedAssignee" class="assign-select">
-              <option [value]="null">-- Select User --</option>
+              <option [value]="null">-- Unassigned --</option>
               <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
             </select>
           </div>

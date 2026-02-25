@@ -134,6 +134,8 @@ export interface AuditSummaryDto {
 // CustomerName → customerName
 // Subject      → subject
 // Category     → category
+// AssignedTo   → assignedTo   (new: the assignee name)
+// AssignedBy   → assignedBy   (new: who performed the assignment)
 // Items        → items
 // TotalCount   → totalCount
 // Page         → page
@@ -154,6 +156,10 @@ export interface TaskHistoryAuditDto {
   customerName: string | null;
   subject:      string | null;
   category:     string | null;
+  /** The user the task is/was assigned TO (newValue for Assigned, oldValue for Unassigned) */
+  assignedTo:   string | null;
+  /** The user who performed the assignment action (createdBy) */
+  assignedBy:   string | null;
 }
 
 export interface TaskHistoryPagedDto {
