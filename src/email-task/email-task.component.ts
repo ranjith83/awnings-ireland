@@ -86,9 +86,16 @@ export class EmailTaskComponent implements OnInit {
   // ==================== EMAIL VIEWER STATE ====================
   selectedTask:     EmailTaskExtended | null = null;
   showEmailViewer:  boolean = false;
-  activeEmailTab:   'email' | 'attachments' = 'email';
+  activeEmailTab:   'email' | 'attachments' | 'send-email' = 'email';
   selectedAssignee: number | null = null;
   selectedAction:   string = '';
+
+  // ── Send Email tab state ────────────────────────────────────────────────────
+  sendEmailSubject:  string = '';
+  sendEmailBody:     string = '';
+  isSendingEmail:    boolean = false;
+  sendEmailSuccess:  string = '';
+  sendEmailError:    string = '';
 
   // Workflow guard UI
   workflowCheckInProgress:  boolean       = false;
@@ -373,9 +380,64 @@ export class EmailTaskComponent implements OnInit {
     this.workflowMissingForAction = '';
     this.workflowExists           = null;
     this.existingWorkflowId       = null;
+    this.clearSendEmail();
   }
 
-  setEmailTab(tab: 'email' | 'attachments'): void { this.activeEmailTab = tab; }
+  setEmailTab(tab: 'email' | 'attachments' | 'send-email'): void {
+    this.activeEmailTab = tab;
+    if (tab === 'send-email') this.prefillReply();
+  }
+
+  /** Pre-fills Subject with Re: when the send-email tab opens. */
+  private prefillReply(): void {
+    if (!this.selectedTask) return;
+    if (!this.sendEmailSubject) {
+      this.sendEmailSubject = `Re: ${this.selectedTask.subject ?? ''}`;
+    }
+  }
+
+  /** Calls POST /api/EmailTask/{taskId}/send-email */
+  sendEmail(): void {
+    if (!this.selectedTask) return;
+    if (!this.sendEmailBody.trim()) {
+      this.sendEmailError = 'Please enter a message body.';
+      return;
+    }
+
+    this.isSendingEmail = true;
+    this.sendEmailError   = '';
+    this.sendEmailSuccess = '';
+
+    const payload = {
+      toEmail:              this.selectedTask.fromEmail,
+      toName:               this.selectedTask.fromName,
+      subject:              this.sendEmailSubject,
+      body:                 this.sendEmailBody,
+      originalEmailGraphId: (this.selectedTask as any).emailGraphId ?? null
+    };
+
+    this.emailTaskService.sendTaskEmail(this.selectedTask.taskId, payload)
+      .subscribe({
+        next: () => {
+          this.isSendingEmail   = false;
+          this.sendEmailSuccess = 'Email sent successfully!';
+          this.showToast('success', 'Email sent successfully!');
+          setTimeout(() => { this.sendEmailSuccess = ''; }, 4000);
+        },
+        error: (err) => {
+          this.isSendingEmail = false;
+          this.sendEmailError = err?.error?.error ?? 'Failed to send email. Please try again.';
+          this.showToast('error', this.sendEmailError);
+        }
+      });
+  }
+
+  clearSendEmail(): void {
+    this.sendEmailSubject  = '';
+    this.sendEmailBody     = '';
+    this.sendEmailError    = '';
+    this.sendEmailSuccess  = '';
+  }
 
   save(): void {
     if (!this.selectedTask) return;

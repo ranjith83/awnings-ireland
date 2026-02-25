@@ -2,17 +2,37 @@ import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { takeUntil, tap, catchError, finalize } from 'rxjs/operators';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
 import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
 import { Customer, CustomerService } from '../../service/customer-service';
+import { environment } from '../../app/environments/environment';
 
 interface EmailTemplate {
   id: string;
   name: string;
   subject: string;
   body: string;
+}
+
+/** Shape returned by GET /api/EmailProcessing/emails?category=initial_enquiry */
+export interface IncomingEmailDto {
+  id: number;
+  emailId: string;
+  subject: string;
+  fromEmail: string;
+  fromName: string;
+  bodyPreview: string;
+  bodyContent?: string;   // full HTML body — loaded on demand
+  receivedDateTime: string;
+  category: string;
+  processingStatus: string;
+  hasAttachments: boolean;
+  attachmentCount: number;
+  importance: string;
 }
 
 @Component({
@@ -50,8 +70,16 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // Component state
   selectedEnquiryId?: number;
   selectedWorkflow: SelectedWorkflow | null = null;
-  loggedInUserName: string = 'Michael';
+  loggedInUserName: string = 'System';
   
+  // ── Incoming email grid & viewer ─────────────────────────────────────────────
+  incomingEmails$   = new BehaviorSubject<IncomingEmailDto[]>([]);
+  isEmailsLoading$  = new BehaviorSubject<boolean>(false);
+  selectedEmail$    = new BehaviorSubject<IncomingEmailDto | null>(null);
+  selectedEmailHtml$= new BehaviorSubject<SafeHtml | null>(null);
+  isEmailDetailLoading$ = new BehaviorSubject<boolean>(false);
+
+  private API_BASE = `${environment.apiUrl}/api`;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -59,7 +87,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private workflowService: WorkflowService,
     private workflowStateService: WorkflowStateService,
     private customerService: CustomerService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private sanitizer: DomSanitizer,
+    private http: HttpClient
   ) {
     // Initialize forms
     this.enquiryForm = this.fb.group({
@@ -112,6 +142,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
         
         console.log('Selected workflow:', workflow);
       });
+
+    // Load the incoming email grid on init
+    this.loadIncomingEmails();
   }
 
   ngOnDestroy(): void {
@@ -249,6 +282,106 @@ Awnings of Ireland`
     this.activeTab$.next(tab);
   }
 
+  // ── Incoming email grid & viewer ─────────────────────────────────────────────
+
+  /** Load all emails categorised as initial_enquiry from the API */
+  loadIncomingEmails(): void {
+    this.isEmailsLoading$.next(true);
+    this.http
+      .get<any>(`${this.API_BASE}/EmailProcessing/emails`, {
+        params: { category: 'initial_enquiry', page: 1, pageSize: 20 }
+      })
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isEmailsLoading$.next(false)),
+        catchError(err => {
+          console.error('❌ Error loading incoming emails:', err);
+          return of({ emails: [] });
+        })
+      )
+      .subscribe(result => {
+        this.incomingEmails$.next(result.emails ?? []);
+      });
+  }
+
+  /** Called when a row in the grid is clicked */
+  selectEmail(email: IncomingEmailDto): void {
+    // If already selected, deselect (toggle)
+    if (this.selectedEmail$.value?.id === email.id) {
+      this.closeEmailViewer();
+      return;
+    }
+
+    this.selectedEmail$.next(email);
+    this.selectedEmailHtml$.next(null);
+
+    // If we already have the full body, render it immediately
+    if (email.bodyContent) {
+      this.renderEmailHtml(email.bodyContent);
+      return;
+    }
+
+    // Otherwise fetch the full email record
+    this.isEmailDetailLoading$.next(true);
+    this.http
+      .get<any>(`${this.API_BASE}/EmailProcessing/emails/${email.id}`)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isEmailDetailLoading$.next(false)),
+        catchError(err => {
+          console.error('❌ Error loading email detail:', err);
+          return of(null);
+        })
+      )
+      .subscribe(full => {
+        if (full) {
+          // Cache body on the list item so repeat clicks are instant
+          const list = this.incomingEmails$.value;
+          const idx  = list.findIndex(e => e.id === email.id);
+          if (idx > -1) {
+            list[idx].bodyContent = full.bodyContent;
+            this.incomingEmails$.next([...list]);
+          }
+          this.renderEmailHtml(full.bodyContent ?? full.bodyPreview ?? '');
+        }
+      });
+  }
+
+  closeEmailViewer(): void {
+    this.selectedEmail$.next(null);
+    this.selectedEmailHtml$.next(null);
+  }
+
+  /** Sanitize the raw HTML from the email so Angular renders it safely */
+  private renderEmailHtml(raw: string): void {
+    // Strip <style> blocks that hide elements (common in Outlook HTML)
+    const cleaned = raw
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/display\s*:\s*none/gi, '')
+      // Remove tracking pixels (1×1 images)
+      .replace(/<img[^>]+width=["']?1["']?[^>]*>/gi, '')
+      // Remove font-size:1px spans (signature tracking)
+      .replace(/<span[^>]+font-size:\s*1px[^>]*>[\s\S]*?<\/span>/gi, '');
+
+    this.selectedEmailHtml$.next(
+      this.sanitizer.bypassSecurityTrustHtml(cleaned)
+    );
+  }
+
+  /** Plain-text preview: strips all HTML tags */
+  stripHtml(html: string): string {
+    if (!html) return '';
+    return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /** Format a UTC date string for display */
+  formatDate(dateStr: string): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-IE', { day: '2-digit', month: 'short', year: 'numeric' })
+      + ' ' + d.toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit' });
+  }
+
   onTemplateSelect(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const templateId = selectElement.value;
@@ -292,7 +425,7 @@ Awnings of Ireland`
 
   loadEnquiries(workflowId: number): void {
     console.log('🔄 Loading enquiries for workflow:', workflowId);
-    this.isLoading$.next(true);
+    //this.isLoading$.next(true);
     this.errorMessage$.next('');
 
     this.workflowService.getInitialEnquiryForWorkflow(workflowId)

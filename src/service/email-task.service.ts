@@ -94,6 +94,14 @@ export interface TaskStatistics {
   dueTodayTasks: number;
 }
 
+export interface SendTaskEmailPayload {
+  toEmail?:               string;
+  toName?:                string;
+  subject:                string;
+  body:                   string;
+  originalEmailGraphId?:  string | null;
+}
+
 // ==================== PAGINATION INTERFACES ====================
 
 export interface TaskFilterParams {
@@ -421,4 +429,10 @@ export class EmailTaskService {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-customer`, { customerId });
   }
 
+  sendTaskEmail(taskId: number, payload: SendTaskEmailPayload): Observable<{ message: string }> {
+  return this.http.post<{ message: string }>(
+    `${this.apiUrl}/${taskId}/send-email`,
+    payload
+  );
+}
 }

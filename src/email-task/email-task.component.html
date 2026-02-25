@@ -167,6 +167,9 @@
           Attachments
           <span class="attachment-count" *ngIf="selectedTask.hasAttachments">({{ selectedTask.attachments?.length || 0 }})</span>
         </button>
+        <button class="email-tab-button email-tab-send" [class.active]="activeEmailTab === 'send-email'" (click)="setEmailTab('send-email')">
+          ✉ Send Email
+        </button>
       </div>
 
       <!-- Email Tab -->
@@ -219,6 +222,67 @@
         </div>
         <div class="no-attachments" *ngIf="!selectedTask.hasAttachments || !selectedTask.attachments || selectedTask.attachments.length === 0">
           <p>No attachments</p>
+        </div>
+      </div>
+
+      <!-- ==================== SEND EMAIL TAB ==================== -->
+      <div class="send-email-content" *ngIf="activeEmailTab === 'send-email'">
+
+        <!-- Success / Error banners -->
+        <div class="send-alert send-alert--success" *ngIf="sendEmailSuccess">✅ {{ sendEmailSuccess }}</div>
+        <div class="send-alert send-alert--error"   *ngIf="sendEmailError">❌ {{ sendEmailError }}</div>
+
+        <!-- To (read-only — always replies to the original sender) -->
+        <div class="send-field">
+          <label class="send-label">To</label>
+          <div class="send-to-box">
+            <span class="send-to-avatar">{{ (selectedTask.fromName || selectedTask.fromEmail || '?')[0].toUpperCase() }}</span>
+            <span class="send-to-name">{{ selectedTask.fromName || selectedTask.fromEmail }}</span>
+            <span class="send-to-email">&lt;{{ selectedTask.fromEmail }}&gt;</span>
+          </div>
+        </div>
+
+        <!-- Subject -->
+        <div class="send-field">
+          <label class="send-label" for="sendSubject">Subject</label>
+          <input
+            id="sendSubject"
+            type="text"
+            class="send-input"
+            [(ngModel)]="sendEmailSubject"
+            placeholder="Subject"
+          />
+        </div>
+
+        <!-- Body -->
+        <div class="send-field send-field--body">
+          <label class="send-label" for="sendBody">Message</label>
+          <textarea
+            id="sendBody"
+            class="send-textarea"
+            [(ngModel)]="sendEmailBody"
+            placeholder="Type your reply here…"
+            rows="10"
+          ></textarea>
+        </div>
+
+        <!-- Actions -->
+        <div class="send-actions">
+          <button
+            class="send-btn"
+            (click)="sendEmail()"
+            [disabled]="isSendingEmail || !sendEmailBody.trim()">
+            <span *ngIf="!isSendingEmail">✉ Send</span>
+            <span *ngIf="isSendingEmail">⏳ Sending…</span>
+          </button>
+          <button class="send-clear-btn" (click)="clearSendEmail()" [disabled]="isSendingEmail">
+            Clear
+          </button>
+          <span class="send-reply-note">
+            Sends as a reply from
+            <strong>{{ selectedTask.fromEmail ? 'the monitored mailbox' : '—' }}</strong>
+            and saves to Sent Items.
+          </span>
         </div>
       </div>
 

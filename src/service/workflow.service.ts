@@ -312,4 +312,21 @@ getArmsForProduct(productId: number): Observable<ArmDto[]> {
     console.error('HTTP Error:', errorMessage, error);
     return throwError(() => new Error(errorMessage));
   }
+
+  getInitialEnquiryHistory(
+    workflowId: number,
+    page: number = 1,
+    pageSize: number = 20
+  ): Observable<{ items: any[]; totalCount: number; page: number; pageSize: number; totalPages: number }> {
+    const params = new HttpParams()
+      .set('workflowId', workflowId.toString())
+      .set('page',       page.toString())
+      .set('pageSize',   pageSize.toString());
+
+    return this.http.get<any>(
+      `${this.apiUrl}/EmailTask/audit`,   // adjust base URL if needed
+      { params }
+    );
+  }
+
 }
