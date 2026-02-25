@@ -1,12 +1,12 @@
-import { Component, OnInit, ChangeDetectionStrategy, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import {  EmailTask, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Observable, BehaviorSubject, combineLatest, of } from 'rxjs';
-import { map, switchMap, catchError, shareReplay, tap, take } from 'rxjs/operators';
-import { Router } from '@angular/router';
+import { Observable, BehaviorSubject, combineLatest, of, Subject } from 'rxjs';
+import { map, switchMap, catchError, shareReplay, tap, take, filter, takeUntil } from 'rxjs/operators';
+import { Router, NavigationEnd } from '@angular/router';
 
 export interface EmailAttachment {
   attachmentId: number;
@@ -38,8 +38,12 @@ type WorkflowGuardResult =
   styleUrls: ['./email-task.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EmailTaskComponent implements OnInit {
+export class EmailTaskComponent implements OnInit, OnDestroy {
   private isBrowser: boolean;
+  private destroy$ = new Subject<void>();
+
+  // ── tracks the route we navigated away to so we know when to refresh on return
+  private pendingRefreshOnReturn = false;
 
   // ==================== REACTIVE STATE ====================
   private activeTabSubject       = new BehaviorSubject<'tasks' | 'processed' | 'junk'>('tasks');
@@ -115,12 +119,18 @@ export class EmailTaskComponent implements OnInit {
   showToast(type: 'success' | 'error' | 'warning', message: string, durationMs = 4000): void {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toast = { visible: true, type, message };
-    this.toastTimer = setTimeout(() => { this.toast = { ...this.toast, visible: false }; }, durationMs);
+    // ── OnPush fix: mutations outside zone / after viewer close need explicit marking ──
+    this.cdr.markForCheck();
+    this.toastTimer = setTimeout(() => {
+      this.toast = { ...this.toast, visible: false };
+      this.cdr.markForCheck();
+    }, durationMs);
   }
 
   dismissToast(): void {
     if (this.toastTimer) clearTimeout(this.toastTimer);
     this.toast = { ...this.toast, visible: false };
+    this.cdr.markForCheck();
   }
 
   // ── Category → action permissions ──────────────────────────────────────────
@@ -238,6 +248,7 @@ export class EmailTaskComponent implements OnInit {
     private emailTaskService: EmailTaskService,
     private workflowService:  WorkflowService,
     private router:           Router,
+    private cdr:              ChangeDetectorRef,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
@@ -245,6 +256,29 @@ export class EmailTaskComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeDataStreams();
+
+    // ── Auto-refresh grid when navigating back from /customers or /workflow ──────
+    // This handles: "Customer Created" and "Workflow Created" returning to the task list.
+    this.router.events.pipe(
+      filter(e => e instanceof NavigationEnd),
+      takeUntil(this.destroy$)
+    ).subscribe((e: any) => {
+      const url: string = e.urlAfterRedirects ?? e.url ?? '';
+      // We came back to the tasks page
+      if (url.includes('/email-tasks') || url === '/') {
+        if (this.pendingRefreshOnReturn) {
+          this.pendingRefreshOnReturn = false;
+          this.refreshTrigger.next();
+          this.cdr.markForCheck();
+        }
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    if (this.toastTimer) clearTimeout(this.toastTimer);
   }
 
   private initializeDataStreams(): void {
@@ -401,13 +435,16 @@ export class EmailTaskComponent implements OnInit {
     if (!this.selectedTask) return;
     if (!this.sendEmailBody.trim()) {
       this.sendEmailError = 'Please enter a message body.';
+      this.cdr.markForCheck();
       return;
     }
 
     this.isSendingEmail = true;
     this.sendEmailError   = '';
     this.sendEmailSuccess = '';
+    this.cdr.markForCheck();
 
+    const taskId = this.selectedTask.taskId;
     const payload = {
       toEmail:              this.selectedTask.fromEmail,
       toName:               this.selectedTask.fromName,
@@ -416,13 +453,16 @@ export class EmailTaskComponent implements OnInit {
       originalEmailGraphId: (this.selectedTask as any).emailGraphId ?? null
     };
 
-    this.emailTaskService.sendTaskEmail(this.selectedTask.taskId, payload)
+    this.emailTaskService.sendTaskEmail(taskId, payload)
       .subscribe({
         next: () => {
-          this.isSendingEmail   = false;
-          this.sendEmailSuccess = 'Email sent successfully!';
+          this.isSendingEmail = false;
+          // 1. Close the dialog — clears selectedTask etc.
+          this.closeEmailViewer();
+          // 2. Refresh the grid
+          this.refreshTrigger.next();
+          // 3. Show toast — markForCheck called inside showToast so OnPush picks it up
           this.showToast('success', 'Email sent successfully!');
-          setTimeout(() => { this.sendEmailSuccess = ''; }, 4000);
         },
         error: (err) => {
           this.isSendingEmail = false;
@@ -484,12 +524,14 @@ export class EmailTaskComponent implements OnInit {
       .then(() => {
         if (isAssigning) {
           // Assigning sets status → Processed on the backend.
-          // Close viewer, show success toast, then switch to the Processed tab.
+          // Close viewer, refresh, show toast, then switch tab.
           this.closeEmailViewer();
           this.refreshTrigger.next();
           this.showToast('success', `Task assigned successfully and moved to Processed.`);
-          // Small delay so the toast is visible before the tab switches
-          setTimeout(() => this.setActiveTab('processed'), 600);
+          setTimeout(() => {
+            this.setActiveTab('processed');
+            this.cdr.markForCheck();
+          }, 600);
         } else {
           this.closeEmailViewer();
           this.refreshTrigger.next();
@@ -537,6 +579,7 @@ export class EmailTaskComponent implements OnInit {
 
   /** Navigate to the workflow list so the user can create one. */
   onCreateWorkflowClick(task: EmailTaskExtended): void {
+    this.pendingRefreshOnReturn = true;   // refresh grid when user returns
     this.closeEmailViewer();
     this.router.navigate(['/workflow'], {
       queryParams: {
@@ -691,6 +734,7 @@ export class EmailTaskComponent implements OnInit {
       next: (data) => {
         this.extractedCustomerData = data;
         this.showCustomerModal = true;
+        this.pendingRefreshOnReturn = true;   // refresh grid when user returns
         this.router.navigate(['/customers'], {
           queryParams: { taskId: data.taskId, email: data.email, contactFirstName: data.contactFirstName, mode: 'create' }
         });
