@@ -282,7 +282,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         department: this.registerForm.value.department
       };
 
-      this.authService.register(registerRequest).pipe(
+      this.authService.registerUser(registerRequest).pipe(
         takeUntil(this.destroy$),
         finalize(() => this.isLoading$.next(false))
       ).subscribe({

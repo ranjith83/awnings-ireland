@@ -110,6 +110,18 @@ export class AuthService {
       );
   }
 
+  /**
+   * Register a new user WITHOUT switching the current session.
+   * Used by admins in User Management — the logged-in admin stays logged in.
+   */
+  registerUser(userData: RegisterRequest): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.apiUrl}/register`, userData)
+      .pipe(
+        // deliberately NOT calling setAuthData — admin session is preserved
+        catchError(this.handleError)
+      );
+  }
+
   logout(): void {
     const refreshToken = this.getFromStorage('refreshToken');
     
