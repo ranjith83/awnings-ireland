@@ -429,6 +429,15 @@ export class EmailTaskService {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-customer`, { customerId });
   }
 
+  /**
+   * Links a newly created workflow back to an email task.
+   * POST /api/EmailTask/{taskId}/link-workflow
+   * Updates EmailTask.WorkflowId and writes a history entry.
+   */
+  linkWorkflowToTask(taskId: number, workflowId: number): Observable<EmailTask> {
+    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-workflow`, { workflowId });
+  }
+
   sendTaskEmail(taskId: number, payload: SendTaskEmailPayload): Observable<{ message: string }> {
   return this.http.post<{ message: string }>(
     `${this.apiUrl}/${taskId}/send-email`,

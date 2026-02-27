@@ -45,6 +45,13 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   // ── tracks the route we navigated away to so we know when to refresh on return
   private pendingRefreshOnReturn = false;
 
+  // ── tracks the task that triggered a workflow creation so we can link on return
+  private _pendingWorkflowLinkTask: {
+    taskId: number;
+    category: string;
+    incomingEmailId: number;
+  } | null = null;
+
   // ==================== REACTIVE STATE ====================
   private activeTabSubject       = new BehaviorSubject<'tasks' | 'in-progress' | 'completed' | 'junk'>('tasks');
   private currentPageSubject     = new BehaviorSubject<number>(1);
@@ -287,6 +294,15 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
           this.pendingRefreshOnReturn = false;
           this.refreshTrigger.next();
           this.cdr.markForCheck();
+        }
+
+        // If the user just returned from creating a workflow for an initial_enquiry
+        // task, link the newest workflow for that customer back to the task so
+        // EmailTask.WorkflowId is set. The InitialEnquiry record was already created
+        // on the backend when CreateWorkflow was called with the taskId.
+        if (this._pendingWorkflowLinkTask) {
+          this._tryLinkNewestWorkflowToTask(this._pendingWorkflowLinkTask);
+          this._pendingWorkflowLinkTask = null;
         }
       }
     });
@@ -626,6 +642,12 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   /** Navigate to the workflow list so the user can create one. */
   onCreateWorkflowClick(task: EmailTaskExtended): void {
     this.pendingRefreshOnReturn = true;   // refresh grid when user returns
+    // Remember the task so we can link the new workflow back on return
+    this._pendingWorkflowLinkTask = {
+      taskId:           task.taskId,
+      category:         task.taskType ?? task.category ?? '',
+      incomingEmailId:  task.incomingEmailId
+    };
     this.closeEmailViewer();
     this.router.navigate(['/workflow'], {
       queryParams: {
@@ -880,4 +902,48 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
 
   get sortBy(): string { return this.sortBySubject.value; }
   get sortDirection(): 'ASC' | 'DESC' { return this.sortDirectionSubject.value; }
+
+  // ── Post-workflow-creation: link the new workflow back to the task ──────────
+
+  /**
+   * Called when the user returns from /workflow after creating a new workflow.
+   * Fetches the customer's workflows, finds the newest one, then calls
+   * the backend link-workflow endpoint so EmailTask.WorkflowId is set.
+   *
+   * This is a best-effort call — errors are only logged, never surfaced.
+   */
+  private _tryLinkNewestWorkflowToTask(pending: {
+    taskId: number;
+    category: string;
+    incomingEmailId: number;
+  }): void {
+    // Get the task to find the customerId
+    this.emailTaskService.getTaskById(pending.taskId).pipe(
+      take(1),
+      catchError(err => { console.warn('[EmailTask] getTaskById failed:', err); return of(null); })
+    ).subscribe(task => {
+      if (!task?.customerId) return;
+
+      // Load all workflows for this customer and pick the newest one
+      this.workflowService.getWorkflowsForCustomer(task.customerId).pipe(
+        take(1),
+        catchError(err => { console.warn('[EmailTask] getWorkflowsForCustomer failed:', err); return of([]); })
+      ).subscribe((workflows: WorkflowDto[]) => {
+        if (!workflows?.length) return;
+
+        // Sort by workflowId desc (highest = most recently created)
+        const newest = workflows.reduce((a, b) => a.workflowId > b.workflowId ? a : b);
+
+        // Link the workflow to the task via the existing endpoint
+        this.emailTaskService.linkWorkflowToTask(pending.taskId, newest.workflowId).pipe(
+          take(1),
+          catchError(err => { console.warn('[EmailTask] linkWorkflowToTask failed:', err); return of(null); })
+        ).subscribe(() => {
+          // Refresh to show the updated WorkflowId on the task
+          this.refreshTrigger.next();
+          this.cdr.markForCheck();
+        });
+      });
+    });
+  }
 }

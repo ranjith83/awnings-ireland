@@ -7,7 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { takeUntil, tap, catchError, finalize } from 'rxjs/operators';
 import { SelectedWorkflow, WorkflowStateService } from '../../service/workflow-state.service';
-import { InitialEnquiryDto, WorkflowService } from '../../service/workflow.service';
+import {  WorkflowService } from '../../service/workflow.service';
 import { Customer, CustomerService } from '../../service/customer-service';
 import { environment } from '../../app/environments/environment';
 
@@ -19,6 +19,19 @@ interface EmailTemplate {
 }
 
 /** Shape returned by GET /api/EmailProcessing/emails?category=initial_enquiry */
+/** Extended interface matching the updated InitialEnquiryDto from the API */
+export interface InitialEnquiryDto {
+  enquiryId?: number;
+  workflowId: number;
+  comments: string;
+  email: string;
+  images?: string;
+  taskId?: number | null;
+  incomingEmailId?: number | null;
+  dateCreated?: string | null;
+  createdBy?: string | null;
+}
+
 export interface IncomingEmailDto {
   id: number;
   emailId: string;
@@ -50,7 +63,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   emailForm: FormGroup;
   
   // Observables - BehaviorSubjects for state management
-  enquiries$ = new BehaviorSubject<InitialEnquiryDto[]>([]);
+  enquiries$ = new BehaviorSubject<any[]>([]);
   isLoading$ = new BehaviorSubject<boolean>(false);
   isEditMode$ = new BehaviorSubject<boolean>(false);
   errorMessage$ = new BehaviorSubject<string>('');
@@ -72,6 +85,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   selectedWorkflow: SelectedWorkflow | null = null;
   loggedInUserName: string = 'System';
   
+  // ── Follow-up context (navigated from Follow-Ups screen) ────────────────────
+  fromFollowUpId$        = new BehaviorSubject<number | null>(null);
+  followUpBannerVisible$ = new BehaviorSubject<boolean>(false);
+
   // ── Incoming email grid & viewer ─────────────────────────────────────────────
   incomingEmails$   = new BehaviorSubject<IncomingEmailDto[]>([]);
   isEmailsLoading$  = new BehaviorSubject<boolean>(false);
@@ -114,9 +131,16 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       .subscribe(params => {
         const customerId = params['customerId'] ? +params['customerId'] : null;
         const customerName = params['customerName'] || '';
+        const fromFollowUp = params['fromFollowUp'] ? +params['fromFollowUp'] : null;
         
         this.customerId$.next(customerId);
         this.customerName$.next(customerName);
+        this.fromFollowUpId$.next(fromFollowUp);
+        
+        // If opened from the Follow-Ups screen, show a contextual banner
+        if (fromFollowUp) {
+          this.followUpBannerVisible$.next(true);
+        }
         
         if (customerId) {
           this.loadCustomerContact(customerId);
@@ -150,6 +174,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  dismissFollowUpBanner(): void {
+    this.followUpBannerVisible$.next(false);
   }
 
   private loadCustomerContact(customerId: number): void {

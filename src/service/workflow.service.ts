@@ -21,6 +21,7 @@ export interface WorkflowDto {
   supplierId: number;
   productId: number;
   productTypeId: number;
+  taskId?: number;
 }
 
 export interface CreateWorkflowDto {
@@ -34,6 +35,7 @@ export interface CreateWorkflowDto {
   supplierId: number;
   productId: number;
   productTypeId: number;
+  taskId?: number;
 }
 
 export interface InitialEnquiryDto {
@@ -128,6 +130,15 @@ export class WorkflowService {
    */
   updateWorkflow(workflow: WorkflowDto): Observable<any> {
     return this.http.put(`${this.apiUrl}/UpdateWorkflow`, workflow)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Delete a workflow by ID
+   * Maps to: DELETE /api/workflow/DeleteWorkflow/{workflowId}
+   */
+  deleteWorkflow(workflowId: number): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/DeleteWorkflow/${workflowId}`)
       .pipe(catchError(this.handleError));
   }
 

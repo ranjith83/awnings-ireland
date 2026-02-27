@@ -718,3 +718,174 @@ textarea.form-control {
   }
   .inbox-viewer-pane { flex: 1 1 auto; }
 }
+/* ══════════════════════════════════════════════════════════════════════════════
+   FOLLOW-UP CONTEXT BANNER
+   Shown when the user navigates here from the Follow-Ups screen
+══════════════════════════════════════════════════════════════════════════════ */
+.followup-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid #f97316;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  animation: slideDown .3s ease-out;
+}
+
+.followup-banner-icon {
+  flex-shrink: 0;
+  color: #f97316;
+  margin-top: 1px;
+}
+
+.followup-banner-body {
+  flex: 1;
+  font-size: 14px;
+  color: #7c2d12;
+  line-height: 1.5;
+}
+.followup-banner-body strong { color: #9a3412; }
+
+.followup-banner-close {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #c2410c;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.followup-banner-close:hover { background: rgba(249,115,22,.15); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ENQUIRY HISTORY SECTION
+   Shows DB records with email-linked badges
+══════════════════════════════════════════════════════════════════════════════ */
+.enquiry-history-section {
+  background: white;
+  border-radius: 8px;
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  border: 1px solid #e8eaed;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+.section-header h2 svg { color: #5a9fd4; }
+
+.history-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.history-table thead tr {
+  background: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+.history-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.history-row {
+  border-bottom: 1px solid #f3f4f6;
+  transition: background .12s;
+}
+.history-row:hover { background: #f9fafb; }
+.history-row:last-child { border-bottom: none; }
+
+.history-table td { padding: 12px 14px; vertical-align: middle; }
+
+.hcol-date     { width: 150px; white-space: nowrap; color: #6b7280; font-size: 12px; }
+.hcol-email    { width: 180px; color: #374151; }
+.hcol-comments { }
+.hcol-source   { width: 110px; text-align: center; }
+.hcol-actions  { width: 80px; text-align: right; }
+
+.enq-comments {
+  display: block;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+
+/* ── Source badges ── */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.source-email {
+  background: #dbeafe;
+  color: #1e40af;
+}
+.source-manual {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+/* ── Edit button ── */
+.btn-edit-enq {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.btn-edit-enq:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}

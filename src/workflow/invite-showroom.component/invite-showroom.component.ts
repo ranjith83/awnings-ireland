@@ -114,12 +114,19 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // ✅ Subscribe to calendar events changes to log when they update
+    // Subscribe to calendar events changes and force the calendar grid to
+    // re-render. getEventsForDay() is a plain method called synchronously
+    // in the template — Angular won't re-evaluate it when the BehaviorSubject
+    // updates unless a template-bound property changes. Re-assigning calendarDays
+    // via spread triggers change detection across every calendar cell.
     this.calendarEvents$
       .pipe(takeUntil(this.destroy$))
       .subscribe(events => {
         console.log('📊 Calendar events updated in component:', events.length, 'events');
-        // The template will automatically update via async pipe
+        this.calendarDays = [...this.calendarDays];
+        if (this.selectedDate) {
+          this.loadEventsForSelectedDate();
+        }
       });
     
     this.route.queryParams
@@ -638,6 +645,13 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       endTime: '',
       emailClient: false
     });
+    // Mark the entire form as pristine and untouched so no field appears
+    // invalid after reset — without this, previously-touched fields keep their
+    // invalid state and the save button stays disabled for the next booking.
+    this.bookingForm.markAsPristine();
+    this.bookingForm.markAsUntouched();
+    this.bookingForm.updateValueAndValidity();
+
     this.bookingForm.get('startTime')?.disable();
     this.bookingForm.get('endTime')?.disable();
     this.selectedDate = null;
@@ -682,19 +696,28 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
           tap(response => {
             const eventName = formData.eventName || 'Showroom Visit';
             this.successMessageSubject$.next(`Event "${eventName}" has been successfully created!`);
-            
-            this.loadCalendarEvents();
-            
+
+            // Delay the calendar refresh slightly so Graph has time to index
+            // the new event before we fetch the CalendarView.
+            setTimeout(() => this.loadCalendarEvents(), 800);
+
+            // Keep isLoading = true until onClose() fires so the Save button
+            // stays disabled during the success-message window. The form is
+            // fully reset (markAsPristine/Untouched) inside onClose(), ensuring
+            // the next booking starts with a clean, enabled Save button.
             setTimeout(() => {
+              this.isLoadingSubject$.next(false);
               this.onClose();
             }, 3000);
           }),
           catchError(error => {
             console.error('Error creating showroom invite:', error);
             this.errorMessageSubject$.next('Failed to create showroom invitation. Please try again.');
+            this.isLoadingSubject$.next(false);
             return of(null);
-          }),
-          finalize(() => this.isLoadingSubject$.next(false))
+          })
+          // Note: finalize() removed — loading state is now managed explicitly
+          // above so it stays true until the form reset timeout completes.
         )
         .subscribe();
     } else {

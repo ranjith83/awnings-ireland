@@ -1,0 +1,320 @@
+<div class="followups-container">
+
+  <!-- ── Feedback ── -->
+  <div class="alert alert-success" *ngIf="successMessage$ | async as msg">{{ msg }}</div>
+  <div class="alert alert-error"   *ngIf="errorMessage$   | async as msg">{{ msg }}</div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       HEADER
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div class="header-section">
+    <div class="header-left">
+      <h1 class="page-title">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+          <line x1="6" y1="1" x2="6" y2="4"/>
+          <line x1="10" y1="1" x2="10" y2="4"/>
+          <line x1="14" y1="1" x2="14" y2="4"/>
+        </svg>
+        Follow Ups
+        <span class="badge-count" *ngIf="!showDismissed && followUps.length > 0">{{ followUps.length }}</span>
+      </h1>
+      <p class="page-subtitle">
+        Initial enquiries with no follow-up for more than <strong>3 days</strong>.
+        Click a row to open the enquiry and send a new reply — this resets the timer.
+      </p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-toggle"
+              [class.active]="showDismissed"
+              (click)="toggleShowDismissed()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        {{ showDismissed ? 'Hide Dismissed' : 'Show Dismissed' }}
+      </button>
+      <button class="btn-refresh"
+              (click)="onRefresh()"
+              [disabled]="(isGenerating$ | async) || (isLoading$ | async)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             [class.spinning]="isGenerating$ | async">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        {{ (isGenerating$ | async) ? 'Checking…' : 'Refresh' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       MAIN CONTENT — table left + preview panel right
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div class="content-split" [class.has-preview]="previewFollowUp">
+
+    <!-- ── TABLE CARD ── -->
+    <div class="table-card">
+
+      <!-- Loading -->
+      <div class="state-overlay" *ngIf="(isLoading$ | async) || (isGenerating$ | async)">
+        <div class="spinner"></div>
+        <p>{{ (isGenerating$ | async) ? 'Scanning for overdue enquiries…' : 'Loading follow-ups…' }}</p>
+      </div>
+
+      <!-- Empty -->
+      <div class="empty-state"
+           *ngIf="!(isLoading$ | async) && !(isGenerating$ | async) && followUps.length === 0">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <h3>{{ showDismissed ? 'No follow-ups recorded yet' : 'All caught up!' }}</h3>
+        <p>{{ showDismissed
+             ? 'Follow-ups will appear here once initial enquiries go unanswered for 3 days.'
+             : 'No enquiries have been waiting more than 3 days without a reply.' }}</p>
+      </div>
+
+      <!-- Grid -->
+      <table class="followups-table"
+             *ngIf="!(isLoading$ | async) && !(isGenerating$ | async) && followUps.length > 0">
+        <thead>
+          <tr>
+            <th class="col-company">Company</th>
+            <th class="col-email">Enquiry Email</th>
+            <th class="col-comments">Last Enquiry</th>
+            <th class="col-date">Date</th>
+            <th class="col-overdue">Overdue</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of followUps"
+              class="followup-row"
+              [class.dismissed-row]="f.isDismissed"
+              [class.active-row]="!f.isDismissed"
+              [class.preview-active]="previewFollowUp?.followUpId === f.followUpId"
+              (click)="onRowClick(f)"
+              (mouseenter)="setPreview(f)"
+              (mouseleave)="setPreview(null)">
+
+            <!-- Company -->
+            <td class="col-company">
+              <div class="company-cell">
+                <span class="company-avatar">{{ (f.companyName || '?')[0].toUpperCase() }}</span>
+                <span class="company-name">{{ f.companyName || '—' }}</span>
+              </div>
+            </td>
+
+            <!-- Enquiry email -->
+            <td class="col-email">
+              <span class="email-addr">{{ f.enquiryEmail || '—' }}</span>
+            </td>
+
+            <!-- Comments preview -->
+            <td class="col-comments">
+              <span class="comments-preview" [title]="f.enquiryComments ?? ''">
+                {{ commentsPreview(f.enquiryComments) }}
+              </span>
+            </td>
+
+            <!-- Last enquiry date -->
+            <td class="col-date">
+              <span class="date-text">{{ formatDateShort(f.lastEnquiryDate) }}</span>
+            </td>
+
+            <!-- Overdue badge -->
+            <td class="col-overdue">
+              <span *ngIf="!f.isDismissed"
+                    class="overdue-badge"
+                    [class.overdue-warn]="getDaysOverdue(f.lastEnquiryDate) < 7"
+                    [class.overdue-critical]="getDaysOverdue(f.lastEnquiryDate) >= 7">
+                {{ getDaysOverdue(f.lastEnquiryDate) }} day{{ getDaysOverdue(f.lastEnquiryDate) !== 1 ? 's' : '' }}
+              </span>
+              <span *ngIf="f.isDismissed" class="dismissed-chip">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                {{ f.dismissReason === 'NewEnquiry' ? 'Replied' : 'Dismissed' }}
+              </span>
+            </td>
+
+            <!-- Actions -->
+            <td class="col-actions" (click)="$event.stopPropagation()">
+              <div class="action-row">
+                <!-- Open Enquiry (primary CTA) -->
+                <button *ngIf="!f.isDismissed"
+                        class="btn-act btn-open"
+                        (click)="onRowClick(f)"
+                        title="Open Initial Enquiry to send a reply">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                    <polyline points="15 3 21 3 21 9"/>
+                    <line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  Open Enquiry
+                </button>
+
+                <!-- Dismiss -->
+                <button *ngIf="!f.isDismissed"
+                        class="btn-act btn-dismiss"
+                        (click)="openDismissModal($event, f)"
+                        title="Mark as handled without replying">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Dismiss
+                </button>
+
+                <!-- Resolved info for dismissed rows -->
+                <span *ngIf="f.isDismissed" class="resolved-info">
+                  {{ f.resolvedBy }} · {{ formatDateShort(f.resolvedDate) }}
+                </span>
+              </div>
+            </td>
+
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── PREVIEW PANEL ── -->
+    <div class="preview-panel" *ngIf="previewFollowUp && !previewFollowUp.isDismissed">
+      <div class="preview-header">
+        <h4 class="preview-title">Enquiry Details</h4>
+        <button class="preview-close" (click)="setPreview(null)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Company -->
+      <div class="preview-section">
+        <span class="preview-label">Company</span>
+        <div class="preview-company">
+          <span class="preview-avatar">{{ (previewFollowUp.companyName || '?')[0].toUpperCase() }}</span>
+          <strong>{{ previewFollowUp.companyName || '—' }}</strong>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="preview-section">
+        <span class="preview-label">Enquiry Email</span>
+        <span class="preview-value preview-email">{{ previewFollowUp.enquiryEmail || '—' }}</span>
+      </div>
+
+      <!-- Last enquiry date -->
+      <div class="preview-section">
+        <span class="preview-label">Last Enquiry</span>
+        <span class="preview-value">{{ formatDate(previewFollowUp.lastEnquiryDate) }}</span>
+      </div>
+
+      <!-- Overdue -->
+      <div class="preview-section">
+        <span class="preview-label">Overdue by</span>
+        <span class="overdue-badge overdue-critical">
+          {{ getDaysOverdue(previewFollowUp.lastEnquiryDate) }} day{{ getDaysOverdue(previewFollowUp.lastEnquiryDate) !== 1 ? 's' : '' }}
+        </span>
+      </div>
+
+      <!-- Comments -->
+      <div class="preview-section preview-section--full">
+        <span class="preview-label">Enquiry Comments</span>
+        <div class="preview-comments">{{ previewFollowUp.enquiryComments || 'No comments recorded.' }}</div>
+      </div>
+
+      <!-- CTA -->
+      <button class="btn-preview-cta" (click)="onRowClick(previewFollowUp)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Open Initial Enquiry
+      </button>
+    </div>
+
+  </div><!-- /content-split -->
+
+</div><!-- /followups-container -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     DISMISS MODAL
+══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showDismissModal" (click)="closeDismissModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        Dismiss Follow-Up
+      </h3>
+      <button class="modal-close" (click)="closeDismissModal()">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="dismissingFollowUp">
+      <div class="dismiss-info">
+        <div class="dismiss-info-row">
+          <span class="dismiss-label">Company:</span>
+          <strong>{{ dismissingFollowUp.companyName }}</strong>
+        </div>
+        <div class="dismiss-info-row">
+          <span class="dismiss-label">Email:</span>
+          <span>{{ dismissingFollowUp.enquiryEmail || '—' }}</span>
+        </div>
+        <div class="dismiss-info-row">
+          <span class="dismiss-label">Overdue:</span>
+          <span class="overdue-badge overdue-critical">
+            {{ getDaysOverdue(dismissingFollowUp.lastEnquiryDate) }} days
+          </span>
+        </div>
+      </div>
+
+      <div class="modal-hint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span>Tip: if you replied to this customer, use <em>Open Enquiry</em> instead — adding
+          a new enquiry there automatically resets the 3-day timer.</span>
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label">
+          Resolution Notes <span class="optional">(optional)</span>
+        </label>
+        <textarea class="modal-textarea"
+                  [(ngModel)]="dismissNotes"
+                  placeholder="e.g. Called customer — no longer interested"
+                  rows="3"
+                  maxlength="500"></textarea>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-cancel"
+              (click)="closeDismissModal()"
+              [disabled]="(isDismissing$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-confirm"
+              (click)="confirmDismiss()"
+              [disabled]="(isDismissing$ | async) === true">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             *ngIf="(isDismissing$ | async) === false"
+             style="vertical-align:middle;margin-right:4px">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ (isDismissing$ | async) ? 'Dismissing…' : 'Dismiss Follow-Up' }}
+      </button>
+    </div>
+  </div>
+</div>

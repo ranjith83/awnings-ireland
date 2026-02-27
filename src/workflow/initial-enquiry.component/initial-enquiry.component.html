@@ -1,4 +1,28 @@
 <div class="initial-enquiry-container">
+
+  <!-- ── Follow-Up Context Banner (shown when navigated from Follow-Ups screen) ── -->
+  <div class="followup-banner" *ngIf="followUpBannerVisible$ | async">
+    <div class="followup-banner-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+        <line x1="6" y1="1" x2="6" y2="4"/>
+        <line x1="10" y1="1" x2="10" y2="4"/>
+        <line x1="14" y1="1" x2="14" y2="4"/>
+      </svg>
+    </div>
+    <div class="followup-banner-body">
+      <strong>Follow-up needed.</strong>
+      This enquiry has been waiting for more than 3 days without a reply.
+      Add a new enquiry below (or send an email) — this will automatically reset the follow-up timer.
+    </div>
+    <button class="followup-banner-close" (click)="dismissFollowUpBanner()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
   <!-- Success/Error Messages -->
   <div class="alert alert-success" *ngIf="successMessage$ | async as successMessage">
     {{ successMessage }}
@@ -176,6 +200,74 @@
         </div>
       </form>
     </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       ENQUIRY HISTORY — records saved to the DB for this workflow
+       ═════════════════════════════════════════════════════════════════════ -->
+  <div class="enquiry-history-section" *ngIf="(enquiries$ | async)?.length as enqCount">
+    <div class="section-header">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        Enquiry History
+        <span class="history-count">{{ enqCount }}</span>
+      </h2>
+    </div>
+
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th class="hcol-date">Date</th>
+          <th class="hcol-email">Email</th>
+          <th class="hcol-comments">Comments</th>
+          <th class="hcol-source">Source</th>
+          <th class="hcol-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let enq of enquiries$ | async" class="history-row">
+          <td class="hcol-date">{{ formatDate(enq.dateCreated) }}</td>
+          <td class="hcol-email">{{ enq.email }}</td>
+          <td class="hcol-comments">
+            <span class="enq-comments" [title]="enq.comments">{{ enq.comments }}</span>
+          </td>
+          <td class="hcol-source">
+            <!-- Email-linked badge: shown when this record was created from an inbound email -->
+            <span class="source-badge source-email" *ngIf="enq.incomingEmailId || enq.taskId"
+                  title="Created automatically from an inbound email">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Email
+            </span>
+            <!-- Manual badge: shown when entered by a user -->
+            <span class="source-badge source-manual" *ngIf="!enq.incomingEmailId && !enq.taskId"
+                  title="Entered manually">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+              Manual
+            </span>
+          </td>
+          <td class="hcol-actions">
+            <button class="btn-edit-enq" (click)="editEnquiry(enq)" title="Edit this enquiry">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 
   <!-- ═══════════════════════════════════════════════════════════════════════

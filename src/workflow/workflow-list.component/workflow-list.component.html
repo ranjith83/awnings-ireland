@@ -1,74 +1,87 @@
 <div class="workflow-list-container">
-  <!-- Success/Error Messages -->
-  <div class="alert alert-success" *ngIf="successMessage$ | async as successMessage">
-    {{ successMessage }}
-  </div>
-  <div class="alert alert-error" *ngIf="errorMessage$ | async as errorMessage">
-    {{ errorMessage }}
-  </div>
 
-  <!-- Select Product Section -->
+  <!-- Alert Messages -->
+  <div class="alert alert-success" *ngIf="successMessage$ | async as msg">{{ msg }}</div>
+  <div class="alert alert-error"   *ngIf="errorMessage$   | async as msg">{{ msg }}</div>
+
+  <!-- ══════════════ ADD WORKFLOW CARD ══════════════ -->
   <div class="select-product-card">
-    <h3 class="card-title">Select Product</h3>
-    
+    <h3 class="card-title">Add New Workflow</h3>
+
+    <!-- Row 1 — Cascade selects -->
     <div class="select-row">
       <div class="select-group">
-        <label class="select-label">Select Supplier</label>
-        <select 
-          class="select-input"
+        <label class="select-label">Supplier <span class="required">*</span></label>
+        <select class="select-input"
           [(ngModel)]="selectedSupplier"
           (ngModelChange)="onSupplierChange($event)"
           [disabled]="(isLoading$ | async) === true">
           <option [ngValue]="null" disabled>Choose a supplier</option>
-          <option *ngFor="let supplier of suppliers$ | async" [ngValue]="supplier.supplierId">
-            {{ supplier.supplierName }}
-          </option>
+          <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
         </select>
       </div>
 
       <div class="select-group">
-        <label class="select-label">Select Product Type</label>
-        <select 
-          class="select-input" 
+        <label class="select-label">Product Type <span class="required">*</span></label>
+        <select class="select-input"
           [(ngModel)]="selectedProductType"
           (ngModelChange)="onProductTypeChange($event)"
           [disabled]="!selectedSupplier || (isLoading$ | async) === true">
-          <option [value]="null" disabled selected>Choose a product type</option>
-          <option *ngFor="let type of productTypes$ | async" [ngValue]="type.productTypeId">
-            {{ type.description }}
-          </option>
+          <option [ngValue]="null" disabled selected>Choose a product type</option>
+          <option *ngFor="let t of productTypes$ | async" [ngValue]="t.productTypeId">{{ t.description }}</option>
         </select>
       </div>
 
       <div class="select-group">
-        <label class="select-label">Select Product</label>
-        <select 
-          class="select-input" 
+        <label class="select-label">Product <span class="required">*</span></label>
+        <select class="select-input"
           [(ngModel)]="selectedProduct"
           (ngModelChange)="onProductChange($event)"
           [disabled]="!selectedProductType || (isLoading$ | async) === true">
-          <option [value]="null" disabled selected>Choose a product</option>
-          <option *ngFor="let product of products$ | async" [ngValue]="product.productId">
-            {{ product.productName }}
-          </option>
+          <option [ngValue]="null" disabled selected>Choose a product</option>
+          <option *ngFor="let p of products$ | async" [ngValue]="p.productId">{{ p.productName }}</option>
         </select>
       </div>
+    </div>
 
-      <button 
-        class="btn-add-workflow" 
+    <!-- Row 2 — Name, Description, Add button -->
+    <div class="text-fields-row">
+      <div class="text-field-group">
+        <label class="select-label">Workflow Name <span class="required">*</span></label>
+        <input type="text" class="select-input"
+          [(ngModel)]="newWorkflowName"
+          placeholder="e.g. Pergola Installation — Smith"
+          maxlength="150"
+          [disabled]="(isLoading$ | async) === true" />
+      </div>
+
+      <div class="text-field-group text-field-group--wide">
+        <label class="select-label">Description <span class="optional">(optional)</span></label>
+        <input type="text" class="select-input"
+          [(ngModel)]="newWorkflowDescription"
+          placeholder="Defaults to Supplier – Type – Product if blank"
+          maxlength="300"
+          [disabled]="(isLoading$ | async) === true" />
+      </div>
+
+      <button class="btn-add-workflow"
         (click)="addNewWorkflow()"
-        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || (isLoading$ | async) === true">
-        <span *ngIf="(isLoading$ | async) === false">Add New Workflow</span>
-        <span *ngIf="(isLoading$ | async) === true">Creating...</span>
+        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || !newWorkflowName.trim() || (isLoading$ | async) === true">
+        <svg *ngIf="(isLoading$ | async) === false" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
+          <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
+        </svg>
+        <span *ngIf="(isLoading$ | async) === false">Add Workflow</span>
+        <span *ngIf="(isLoading$ | async) === true">Creating…</span>
       </button>
     </div>
   </div>
 
-  <!-- Workflow Table -->
+  <!-- ══════════════ WORKFLOW TABLE ══════════════ -->
   <div class="table-container">
     <table class="workflow-table">
       <thead>
         <tr>
+          <th>NAME</th>
           <th>PRODUCT</th>
           <th>DESCRIPTION</th>
           <th class="stage-header">INITIAL<br>ENQUIRY</th>
@@ -78,85 +91,100 @@
           <th class="stage-header">INVOICE</th>
           <th>DATE<br>ADDED</th>
           <th>ADDED<br>BY</th>
+          <th class="actions-header">ACTIONS</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let workflow of paginatedWorkflows$ | async" 
-            (click)="selectWorkflow(workflow)" 
+        <tr *ngFor="let workflow of paginatedWorkflows$ | async"
             class="workflow-row"
-            [class.loading-row]="(isLoading$ | async) === true">
+            [class.loading-row]="(isLoading$ | async) === true"
+            (click)="selectWorkflow(workflow)">
+
+          <td class="name-cell">{{ workflow.workflowName || '—' }}</td>
           <td class="product-cell">{{ workflow.productName }}</td>
-          <td class="description-cell">{{ workflow.description }}</td>
+          <td class="description-cell" [title]="workflow.description">{{ workflow.description }}</td>
+
           <td class="stage-cell">
-            <button 
-              class="stage-btn" 
-              [class.active]="workflow.initialEnquiry"
+            <button class="stage-btn" [class.active]="workflow.initialEnquiry"
               (click)="toggleStage(workflow, 'initialEnquiry', $event)"
               [disabled]="(isLoading$ | async) === true"
-              title="{{ workflow.initialEnquiry ? 'Enabled' : 'Disabled' }}">
-            </button>
+              [title]="workflow.initialEnquiry ? 'Enabled' : 'Disabled'"></button>
           </td>
           <td class="stage-cell">
-            <button 
-              class="stage-btn" 
-              [class.active]="workflow.createQuotation"
+            <button class="stage-btn" [class.active]="workflow.createQuotation"
               (click)="toggleStage(workflow, 'createQuote', $event)"
               [disabled]="(isLoading$ | async) === true"
-              title="{{ workflow.createQuotation ? 'Enabled' : 'Disabled' }}">
-            </button>
+              [title]="workflow.createQuotation ? 'Enabled' : 'Disabled'"></button>
           </td>
           <td class="stage-cell">
-            <button 
-              class="stage-btn" 
-              [class.active]="workflow.inviteShowRoomVisit"
+            <button class="stage-btn" [class.active]="workflow.inviteShowRoomVisit"
               (click)="toggleStage(workflow, 'inviteShowroom', $event)"
               [disabled]="(isLoading$ | async) === true"
-              title="{{ workflow.inviteShowRoomVisit ? 'Enabled' : 'Disabled' }}">
-            </button>
+              [title]="workflow.inviteShowRoomVisit ? 'Enabled' : 'Disabled'"></button>
           </td>
           <td class="stage-cell">
-            <button 
-              class="stage-btn" 
-              [class.active]="workflow.setupSiteVisit"
+            <button class="stage-btn" [class.active]="workflow.setupSiteVisit"
               (click)="toggleStage(workflow, 'setupSiteVisit', $event)"
               [disabled]="(isLoading$ | async) === true"
-              title="{{ workflow.setupSiteVisit ? 'Enabled' : 'Disabled' }}">
-            </button>
+              [title]="workflow.setupSiteVisit ? 'Enabled' : 'Disabled'"></button>
           </td>
           <td class="stage-cell">
-            <button 
-              class="stage-btn" 
-              [class.active]="workflow.invoiceSent"
+            <button class="stage-btn" [class.active]="workflow.invoiceSent"
               (click)="toggleStage(workflow, 'invoice', $event)"
               [disabled]="(isLoading$ | async) === true"
-              title="{{ workflow.invoiceSent ? 'Enabled' : 'Disabled' }}">
-            </button>
+              [title]="workflow.invoiceSent ? 'Enabled' : 'Disabled'"></button>
           </td>
+
           <td class="date-cell">{{ workflow.dateAdded | date:'dd MMM yyyy' }}</td>
           <td class="user-cell">{{ workflow.addedBy }}</td>
+
+          <!-- Actions — stopPropagation prevents row-click navigation -->
+          <td class="actions-cell" (click)="$event.stopPropagation()">
+            <button class="btn-action btn-edit"
+              (click)="openEditModal(workflow, $event)"
+              [disabled]="(isDeleting$ | async) === true"
+              title="Edit workflow">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
+              </svg>
+              Edit
+            </button>
+            <button class="btn-action btn-delete"
+              (click)="openDeleteConfirm(workflow, $event)"
+              [disabled]="(isDeleting$ | async) === true"
+              title="Delete workflow">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="2,4 14,4"/>
+                <path d="M6 4V2h4v2"/>
+                <rect x="3" y="4" width="10" height="10" rx="1"/>
+                <line x1="6" y1="7" x2="6" y2="11"/>
+                <line x1="10" y1="7" x2="10" y2="11"/>
+              </svg>
+              Delete
+            </button>
+          </td>
         </tr>
-        
-        <!-- Loading State -->
+
+        <!-- Loading -->
         <ng-container *ngIf="workflows$ | async as workflows">
           <tr *ngIf="(isLoading$ | async) === true && workflows.length === 0">
-            <td colspan="9" class="loading-cell">
+            <td colspan="11" class="loading-cell">
               <div class="loading-spinner-container">
                 <div class="spinner"></div>
                 <p>Loading workflows...</p>
               </div>
             </td>
           </tr>
-          
-          <!-- Empty State -->
+          <!-- Empty -->
           <tr *ngIf="(isLoading$ | async) === false && workflows.length === 0">
-            <td colspan="9" class="empty-cell">
+            <td colspan="11" class="empty-cell">
               <div class="empty-state">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9 11l3 3L22 4"></path>
-                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                  <path d="M9 11l3 3L22 4"/>
+                  <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
                 </svg>
                 <h3>No Workflows Found</h3>
-                <p>Create your first workflow by selecting a supplier and model above.</p>
+                <p>Create your first workflow using the form above.</p>
               </div>
             </td>
           </tr>
@@ -166,39 +194,115 @@
   </div>
 
   <!-- Pagination -->
-  <ng-container *ngIf="{ workflows: workflows$ | async, currentPage: currentPage$ | async, totalPages: totalPages$ | async, isLoading: isLoading$ | async } as data">
-    <div class="pagination" *ngIf="data.isLoading === false && (data.workflows?.length || 0) > pageSize">
-      <button 
-        class="page-btn" 
-        (click)="goToPage(1)"
-        [disabled]="data.currentPage === 1"
-        title="First Page">
-        «
-      </button>
-      <button 
-        class="page-btn" 
-        (click)="previousPage()"
-        [disabled]="data.currentPage === 1"
-        title="Previous Page">
-        ‹
-      </button>
-      <span class="page-info">
-        Page {{ data.currentPage }} of {{ data.totalPages }}
-      </span>
-      <button 
-        class="page-btn" 
-        (click)="nextPage()"
-        [disabled]="data.currentPage === data.totalPages"
-        title="Next Page">
-        ›
-      </button>
-      <button 
-        class="page-btn" 
-        (click)="goToLastPage()"
-        [disabled]="data.currentPage === data.totalPages"
-        title="Last Page">
-        »
-      </button>
+  <ng-container *ngIf="{ w: workflows$ | async, cp: currentPage$ | async, tp: totalPages$ | async, l: isLoading$ | async } as d">
+    <div class="pagination" *ngIf="d.l === false && (d.w?.length || 0) > pageSize">
+      <button class="page-btn" (click)="goToPage(1)"       [disabled]="d.cp === 1"    title="First">«</button>
+      <button class="page-btn" (click)="previousPage()"    [disabled]="d.cp === 1"    title="Previous">‹</button>
+      <span class="page-info">Page {{ d.cp }} of {{ d.tp }}</span>
+      <button class="page-btn" (click)="nextPage()"        [disabled]="d.cp === d.tp" title="Next">›</button>
+      <button class="page-btn" (click)="goToLastPage()"    [disabled]="d.cp === d.tp" title="Last">»</button>
     </div>
   </ng-container>
+</div>
+
+<!-- ══════════════════════════ EDIT MODAL ══════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
+        </svg>
+        Edit Workflow
+      </h3>
+      <button class="modal-close" (click)="closeEditModal()">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="editingWorkflow">
+      <div class="modal-meta-row">
+        <span class="modal-meta-label">Product:</span>
+        <span class="modal-meta-value">{{ editingWorkflow.productName }}</span>
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label">Workflow Name <span class="required">*</span></label>
+        <input type="text" class="modal-input"
+          [(ngModel)]="editWorkflowName"
+          placeholder="Enter workflow name"
+          maxlength="150" />
+      </div>
+
+      <div class="modal-field">
+        <label class="modal-label">Description</label>
+        <textarea class="modal-input modal-textarea"
+          [(ngModel)]="editWorkflowDescription"
+          placeholder="Enter description"
+          rows="3"
+          maxlength="300"></textarea>
+        <span class="char-count">{{ editWorkflowDescription.length }}/300</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-cancel"
+        (click)="closeEditModal()"
+        [disabled]="(isSavingEdit$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-save"
+        (click)="saveEdit()"
+        [disabled]="!editWorkflowName.trim() || (isSavingEdit$ | async) === true">
+        <span *ngIf="(isSavingEdit$ | async) === false">Save Changes</span>
+        <span *ngIf="(isSavingEdit$ | async) === true">Saving…</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ DELETE CONFIRMATION ══════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
+  <div class="modal-card modal-card--danger" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3 class="modal-title modal-title--danger">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="#dc2626">
+          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>
+        Delete Workflow
+      </h3>
+      <button class="modal-close" (click)="cancelDelete()">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body" *ngIf="deletingWorkflow">
+      <p class="delete-warning-text">Are you sure you want to delete this workflow? This action cannot be undone.</p>
+      <div class="delete-preview">
+        <strong>{{ deletingWorkflow.workflowName || 'Unnamed Workflow' }}</strong>
+        <span *ngIf="deletingWorkflow.description" class="delete-preview-desc">{{ deletingWorkflow.description }}</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-cancel"
+        (click)="cancelDelete()"
+        [disabled]="(isDeleting$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-delete"
+        (click)="confirmDelete()"
+        [disabled]="(isDeleting$ | async) === true">
+        <span *ngIf="(isDeleting$ | async) === false">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:middle;margin-right:3px">
+            <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/>
+          </svg>
+          Delete
+        </span>
+        <span *ngIf="(isDeleting$ | async) === true">Deleting…</span>
+      </button>
+    </div>
+  </div>
 </div>

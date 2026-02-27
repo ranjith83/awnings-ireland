@@ -23,7 +23,7 @@
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
             <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
-              {{ workflow.description }}
+              {{ workflow.productName }} - {{ workflow.dateAdded | date:'mediumDate' }}
             </option>
           </select>
         </div>
