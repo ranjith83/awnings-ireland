@@ -1,424 +1,390 @@
-<div class="initial-enquiry-container">
+<div class="ie-container">
 
-  <!-- ── Follow-Up Context Banner (shown when navigated from Follow-Ups screen) ── -->
-  <div class="followup-banner" *ngIf="followUpBannerVisible$ | async">
-    <div class="followup-banner-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
-        <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
-        <line x1="6" y1="1" x2="6" y2="4"/>
-        <line x1="10" y1="1" x2="10" y2="4"/>
-        <line x1="14" y1="1" x2="14" y2="4"/>
-      </svg>
-    </div>
-    <div class="followup-banner-body">
-      <strong>Follow-up needed.</strong>
-      This enquiry has been waiting for more than 3 days without a reply.
-      Add a new enquiry below (or send an email) — this will automatically reset the follow-up timer.
-    </div>
-    <button class="followup-banner-close" (click)="dismissFollowUpBanner()">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-      </svg>
-    </button>
-  </div>
-
-  <!-- Success/Error Messages -->
-  <div class="alert alert-success" *ngIf="successMessage$ | async as successMessage">
-    {{ successMessage }}
-  </div>
-  <div class="alert alert-error" *ngIf="errorMessage$ | async as errorMessage">
-    {{ errorMessage }}
-  </div>
-
-  <!-- Form Section with Tabs -->
-  <div class="enquiry-form-section">
-    <h2>{{ (isEditMode$ | async) ? 'Edit Initial Enquiry' : 'Add Initial Enquiry' }}</h2>
-    
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-      <button 
-        type="button"
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'comments'"
-        (click)="switchTab('comments')">
-        Comments
-      </button>
-      <button 
-        type="button"
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'email'"
-        (click)="switchTab('email')">
-        Email
-      </button>
-      <button 
-        type="button"
-        class="tab-button" 
-        [class.active]="(activeTab$ | async) === 'images'"
-        (click)="switchTab('images')">
-        Images
-      </button>
-    </div>
-
-    <!-- Comments Tab -->
-    <div class="tab-content" *ngIf="(activeTab$ | async) === 'comments'">
-      <form [formGroup]="enquiryForm" (ngSubmit)="onSubmit()">
-        <div class="form-group">
-          <label for="email">Email Address <span class="required">*</span></label>
-          <input 
-            type="email" 
-            id="email" 
-            formControlName="email" 
-            class="form-control"
-            [class.invalid]="email?.invalid && email?.touched"
-            placeholder="customer@example.com"
-          />
-          <div class="error-message" *ngIf="email?.invalid && email?.touched">
-            <span *ngIf="email?.errors?.['required']">Email is required</span>
-            <span *ngIf="email?.errors?.['email']">Please enter a valid email address</span>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="comments">Comments <span class="required">*</span></label>
-          <textarea 
-            id="comments" 
-            formControlName="comments" 
-            class="form-control"
-            [class.invalid]="comments?.invalid && comments?.touched"
-            rows="5"
-            placeholder="Enter enquiry details, requirements, or any specific questions..."
-          ></textarea>
-          <div class="error-message" *ngIf="comments?.invalid && comments?.touched">
-            <span *ngIf="comments?.errors?.['required']">Comments are required</span>
-            <span *ngIf="comments?.errors?.['minlength']">Comments must be at least 10 characters</span>
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button 
-            type="submit" 
-            class="btn btn-primary" 
-            [disabled]="(isLoading$ | async) === true"
-          >
-            <span *ngIf="!(isLoading$ | async)">{{ (isEditMode$ | async) ? 'Update Enquiry' : 'Add Enquiry' }}</span>
-            <span *ngIf="isLoading$ | async">Processing...</span>
-          </button>
-          <button 
-            type="button" 
-            class="btn btn-secondary" 
-            (click)="cancelEdit()"
-            *ngIf="isEditMode$ | async"
-            [disabled]="(isLoading$ | async) === true"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Email Tab -->
-    <div class="tab-content" *ngIf="(activeTab$ | async) === 'email'">
-      <form [formGroup]="emailForm">
-        <div class="form-group">
-          <label for="emailTemplate">Choose Email Template</label>
-          <select 
-            id="emailTemplate" 
-            class="form-control"
-            formControlName="template"
-            (change)="onTemplateSelect($event)">
-            <option value="">Select a template...</option>
-            <option *ngFor="let template of emailTemplates$ | async" [value]="template.id">
-              {{ template.name }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group" *ngIf="emailSubject$ | async as emailSubject">
-          <label for="emailSubject">Subject</label>
-          <input 
-            type="text" 
-            id="emailSubject" 
-            class="form-control"
-            formControlName="subject"
-            [value]="emailSubject"
-            readonly
-          />
-        </div>
-
-        <div class="form-group" *ngIf="emailContent$ | async as emailContent">
-          <label for="emailBody">Email Content</label>
-          <textarea 
-            id="emailBody" 
-            class="form-control email-template-body"
-            formControlName="body"
-            rows="15"
-            placeholder="Email template will appear here"
-            [value]="emailContent"
-          ></textarea>
-        </div>
-
-        <div class="form-actions" *ngIf="emailContent$ | async">
-          <button 
-            type="button" 
-            class="btn btn-primary" 
-            (click)="sendEmail()"
-            [disabled]="(isLoading$ | async) === true">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-              <polyline points="22,6 12,13 2,6"></polyline>
-            </svg>
-            Send Email
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Images Tab -->
-    <div class="tab-content" *ngIf="(activeTab$ | async) === 'images'">
-      <form [formGroup]="enquiryForm">
-        <div class="form-group">
-          <label for="images">Images (URLs or file references)</label>
-          <input 
-            type="text" 
-            id="images" 
-            formControlName="images" 
-            class="form-control"
-            placeholder="Enter image URLs or file paths"
-          />
-          <small class="form-hint">Optional: Add references to related images or documents</small>
-        </div>
-
-        <div class="form-actions">
-          <button 
-            type="button" 
-            class="btn btn-primary" 
-            (click)="onSubmit()"
-            [disabled]="(isLoading$ | async) === true">
-            Save Images
-          </button>
-        </div>
-      </form>
+  <!-- ── Contextual source banners ──────────────────────────────────── -->
+  <div class="context-banner context-banner--followup" *ngIf="fromFollowUp">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
+      <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+    <div>
+      <strong>Opened from Follow-Up</strong> — this enquiry has been overdue for more than 3 days.
+      Adding a new enquiry below will reset the follow-up timer automatically.
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       ENQUIRY HISTORY — records saved to the DB for this workflow
-       ═════════════════════════════════════════════════════════════════════ -->
-  <div class="enquiry-history-section" *ngIf="(enquiries$ | async)?.length as enqCount">
+  <div class="context-banner context-banner--task" *ngIf="fromTask && !fromFollowUp">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+      <polyline points="22,6 12,13 2,6"/>
+    </svg>
+    <div>
+      <strong>Opened from Email Task</strong> — the customer email below is pre-filled from the task sender address.
+    </div>
+  </div>
+
+  <!-- ── Alerts ──────────────────────────────────────────────────────── -->
+  <div class="alert alert-success" *ngIf="successMessage$ | async as msg">{{ msg }}</div>
+  <div class="alert alert-error"   *ngIf="errorMessage$   | async as msg">{{ msg }}</div>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       SECTION 1 — CUSTOMER EMAILS
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-card">
     <div class="section-header">
-      <h2>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/>
-          <line x1="16" y1="17" x2="8" y2="17"/>
+      <div class="section-title-row">
+        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
         </svg>
-        Enquiry History
-        <span class="history-count">{{ enqCount }}</span>
-      </h2>
+        <h3 class="section-title">Customer Emails</h3>
+        <span class="badge-count">{{ customerEmails.length }}</span>
+      </div>
+      <p class="section-subtitle">Emails linked to <strong>{{ customerName || 'this customer' }}</strong></p>
     </div>
 
-    <table class="history-table">
-      <thead>
-        <tr>
-          <th class="hcol-date">Date</th>
-          <th class="hcol-email">Email</th>
-          <th class="hcol-comments">Comments</th>
-          <th class="hcol-source">Source</th>
-          <th class="hcol-actions">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let enq of enquiries$ | async" class="history-row">
-          <td class="hcol-date">{{ formatDate(enq.dateCreated) }}</td>
-          <td class="hcol-email">{{ enq.email }}</td>
-          <td class="hcol-comments">
-            <span class="enq-comments" [title]="enq.comments">{{ enq.comments }}</span>
-          </td>
-          <td class="hcol-source">
-            <!-- Email-linked badge: shown when this record was created from an inbound email -->
-            <span class="source-badge source-email" *ngIf="enq.incomingEmailId || enq.taskId"
-                  title="Created automatically from an inbound email">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              Email
-            </span>
-            <!-- Manual badge: shown when entered by a user -->
-            <span class="source-badge source-manual" *ngIf="!enq.incomingEmailId && !enq.taskId"
-                  title="Entered manually">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-              </svg>
-              Manual
-            </span>
-          </td>
-          <td class="hcol-actions">
-            <button class="btn-edit-enq" (click)="editEnquiry(enq)" title="Edit this enquiry">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              Edit
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="loading-row" *ngIf="isLoadingEmails$ | async">
+      <div class="spinner"></div><span>Loading emails…</span>
+    </div>
+
+    <div class="table-wrapper" *ngIf="(isLoadingEmails$ | async) === false">
+      <table class="data-table" *ngIf="customerEmails.length; else noEmails">
+        <thead>
+          <tr>
+            <th>SUBJECT</th>
+            <th>FROM</th>
+            <th>TYPE</th>
+            <th>PRIORITY</th>
+            <th>STATUS</th>
+            <th>DATE</th>
+            <th class="col-actions">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of customerEmails; trackBy: trackByEmail">
+            <td class="col-subject" [title]="row.subject">{{ row.subject }}</td>
+            <td class="col-from">
+              <div class="from-name">{{ row.fromName }}</div>
+              <div class="from-email">{{ row.fromEmail }}</div>
+            </td>
+            <td><span class="type-chip">{{ row.taskType || row.category }}</span></td>
+            <td><span [class]="getPriorityClass(row.priority)">{{ row.priority }}</span></td>
+            <td><span [class]="getStatusClass(row.status)">{{ row.status }}</span></td>
+            <td class="col-date">{{ row.dateAdded | date:'dd MMM yyyy' }}</td>
+            <td class="col-actions">
+              <button class="btn-icon btn-view" title="View email" (click)="openEmailPreview(row)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/>
+                </svg>View
+              </button>
+              <button class="btn-icon btn-reply" title="Reply" (click)="openSendModal(row)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/>
+                </svg>Reply
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #noEmails>
+        <div class="empty-state">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M8 12h48c2.2 0 4 1.8 4 4v32c0 2.2-1.8 4-4 4H8c-2.2 0-4-1.8-4-4V16c0-2.2 1.8-4 4-4z"/>
+            <polyline points="60,16 32,36 4,16"/>
+          </svg>
+          <p>No emails found for this customer.</p>
+        </div>
+      </ng-template>
+    </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       INCOMING INITIAL ENQUIRY EMAILS — split-pane: grid left, viewer right
-       ═════════════════════════════════════════════════════════════════════ -->
-  <div class="email-inbox-section">
 
-    <!-- Section header -->
-    <div class="inbox-header">
-      <h2>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-          <polyline points="22,6 12,13 2,6"></polyline>
+  <!-- ════════════════════════════════════════════════════════════════════
+       SECTION 2 — ADD NEW ENQUIRY  (email field FIRST, then comments)
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-card">
+    <div class="section-header">
+      <div class="section-title-row">
+        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
         </svg>
-        Initial Enquiry Emails
-        <span class="inbox-count" *ngIf="(incomingEmails$ | async)?.length as n">{{ n }}</span>
-      </h2>
-      <button class="btn-refresh" (click)="loadIncomingEmails()" [disabled]="isEmailsLoading$ | async">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          [class.spinning]="isEmailsLoading$ | async">
-          <polyline points="23 4 23 10 17 10"></polyline>
-          <polyline points="1 20 1 14 7 14"></polyline>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        <h3 class="section-title">Add Enquiry</h3>
+      </div>
+    </div>
+
+    <div class="add-form">
+      <!-- Row 1: email first -->
+      <div class="form-group">
+        <label class="form-label">Customer Email</label>
+        <input type="email" class="form-input"
+          [(ngModel)]="newEmail"
+          placeholder="customer@example.com"
+          [disabled]="(isSaving$ | async) === true" />
+      </div>
+
+      <!-- Row 2: comments -->
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Comments <span class="required">*</span></label>
+        <textarea class="form-input form-textarea"
+          [(ngModel)]="newComments"
+          placeholder="Enter enquiry details…"
+          rows="4"
+          maxlength="2000"
+          [disabled]="(isSaving$ | async) === true">
+        </textarea>
+        <span class="char-hint">{{ newComments.length }}/2000</span>
+      </div>
+
+      <div class="form-footer">
+        <label class="checkbox-label">
+          <input type="checkbox"
+            [(ngModel)]="sendEmailOnAdd"
+            [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
+          <span>Send email notification to customer on save</span>
+        </label>
+        <button class="btn-primary"
+          (click)="addEnquiry()"
+          [disabled]="!newComments.trim() || (isSaving$ | async) === true">
+          <svg *ngIf="(isSaving$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/>
+          </svg>
+          <span *ngIf="(isSaving$ | async) === false">Add Enquiry</span>
+          <span *ngIf="(isSaving$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       SECTION 3 — ENQUIRY HISTORY
+  ════════════════════════════════════════════════════════════════════════ -->
+  <div class="section-card">
+    <div class="section-header">
+      <div class="section-title-row">
+        <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
-        Refresh
+        <h3 class="section-title">Enquiry History</h3>
+        <span class="badge-count">{{ enquiries.length }}</span>
+      </div>
+    </div>
+
+    <div class="loading-row" *ngIf="isLoadingEnquiries$ | async">
+      <div class="spinner"></div><span>Loading enquiries…</span>
+    </div>
+
+    <div class="table-wrapper" *ngIf="(isLoadingEnquiries$ | async) === false">
+      <table class="data-table" *ngIf="enquiries.length; else noEnquiries">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>EMAIL</th>
+            <th>COMMENTS</th>
+            <th>DATE ADDED</th>
+            <th>ADDED BY</th>
+            <th class="col-actions">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let enq of enquiries; let i = index; trackBy: trackByEnquiry">
+            <td class="col-index">{{ i + 1 }}</td>
+            <td class="col-email-small">{{ enq.email }}</td>
+            <td class="col-comments" [title]="enq.comments">{{ enq.comments }}</td>
+            <td class="col-date">{{ enq.dateCreated | date:'dd MMM yyyy, HH:mm' }}</td>
+            <td class="col-user">{{ enq.createdBy || '—' }}</td>
+            <td class="col-actions">
+              <button class="btn-icon btn-edit" title="Edit enquiry" (click)="openEditModal(enq)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
+                </svg>Edit
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #noEnquiries>
+        <div class="empty-state">
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M12 8h40a4 4 0 014 4v32a4 4 0 01-4 4H12a4 4 0 01-4-4V12a4 4 0 014-4z"/>
+            <line x1="20" y1="24" x2="44" y2="24"/><line x1="20" y1="32" x2="44" y2="32"/>
+            <line x1="20" y1="40" x2="32" y2="40"/>
+          </svg>
+          <p>No enquiries recorded yet. Add one above.</p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+</div><!-- /ie-container -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL — EMAIL PREVIEW
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showEmailModal" (click)="closeEmailPreview()">
+  <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
+          <path d="M3 4h14c.6 0 1 .4 1 1v10c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1z"/>
+        </svg>Email Detail
+      </h3>
+      <button class="modal-close" (click)="closeEmailPreview()">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body" *ngIf="emailModalTask">
+      <div class="email-meta-grid">
+        <div class="email-meta-item">
+          <span class="meta-label">From</span>
+          <span class="meta-value">{{ emailModalTask.fromName }} &lt;{{ emailModalTask.fromEmail }}&gt;</span>
+        </div>
+        <div class="email-meta-item">
+          <span class="meta-label">Subject</span>
+          <span class="meta-value">{{ emailModalTask.subject }}</span>
+        </div>
+        <div class="email-meta-item">
+          <span class="meta-label">Date</span>
+          <span class="meta-value">{{ emailModalTask.dateAdded | date:'dd MMM yyyy, HH:mm' }}</span>
+        </div>
+        <div class="email-meta-item">
+          <span class="meta-label">Type</span>
+          <span class="meta-value">{{ emailModalTask.taskType || emailModalTask.category }}</span>
+        </div>
+      </div>
+      <div class="email-body-box">
+        <p class="email-body-label">Message</p>
+        <div class="email-body-content">{{ emailModalTask.emailBody || '(No body content)' }}</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" (click)="closeEmailPreview()">Close</button>
+      <button class="btn-modal btn-modal-primary" (click)="closeEmailPreview(); openSendModal(emailModalTask!)">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+          <polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/>
+        </svg>Reply
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL — SEND EMAIL
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showSendModal" (click)="closeSendModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
+          <line x1="2" y1="3" x2="13" y2="12"/><line x1="2" y1="17" x2="13" y2="12"/>
+          <polyline points="5,3 18,3 18,17 5,17"/>
+        </svg>Send Email
+      </h3>
+      <button class="modal-close" (click)="closeSendModal()">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-field">
+        <label class="modal-label">To</label>
+        <input type="email" class="modal-input" [(ngModel)]="sendToEmail"
+          placeholder="recipient@example.com" [disabled]="(isSendingEmail$ | async) === true" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Subject</label>
+        <input type="text" class="modal-input" [(ngModel)]="sendSubject"
+          placeholder="Subject…" [disabled]="(isSendingEmail$ | async) === true" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-label">Message <span class="required">*</span></label>
+        <textarea class="modal-input modal-textarea" [(ngModel)]="sendBody"
+          placeholder="Type your message…" rows="6" [disabled]="(isSendingEmail$ | async) === true"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" (click)="closeSendModal()"
+        [disabled]="(isSendingEmail$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="sendEmail()"
+        [disabled]="!sendBody.trim() || (isSendingEmail$ | async) === true">
+        <span *ngIf="(isSendingEmail$ | async) === false">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:4px">
+            <line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/>
+          </svg>Send Email
+        </span>
+        <span *ngIf="(isSendingEmail$ | async) === true"><span class="spinner-inline"></span> Sending…</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     MODAL — EDIT ENQUIRY  (email FIRST, then comments + send-on-update)
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+          <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
+        </svg>Edit Enquiry
+      </h3>
+      <button class="modal-close" (click)="closeEditModal()">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
       </button>
     </div>
 
-    <!-- Split pane wrapper -->
-    <div class="inbox-split" [class.has-viewer]="selectedEmail$ | async">
-
-      <!-- ── LEFT: Email list ── -->
-      <div class="inbox-list-pane">
-
-        <!-- Loading -->
-        <div *ngIf="isEmailsLoading$ | async" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading emails...</p>
-        </div>
-
-        <!-- Empty -->
-        <div *ngIf="!(isEmailsLoading$ | async) && (incomingEmails$ | async)?.length === 0" class="empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-            <polyline points="22,6 12,13 2,6"></polyline>
-          </svg>
-          <h3>No Enquiry Emails</h3>
-          <p>Emails categorised as Initial Enquiry will appear here.</p>
-        </div>
-
-        <!-- Grid table -->
-        <table class="email-grid" *ngIf="!(isEmailsLoading$ | async) && (incomingEmails$ | async)?.length! > 0">
-          <thead>
-            <tr>
-              <th class="col-from">From</th>
-              <th class="col-subject">Subject</th>
-              <th class="col-date">Received</th>
-              <th class="col-status">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let email of incomingEmails$ | async"
-              class="email-row"
-              [class.selected]="(selectedEmail$ | async)?.id === email.id"
-              (click)="selectEmail(email)">
-
-              <!-- From -->
-              <td class="col-from">
-                <div class="sender-avatar">{{ (email.fromName || email.fromEmail)[0].toUpperCase() }}</div>
-                <div class="sender-info">
-                  <span class="sender-name">{{ email.fromName || email.fromEmail }}</span>
-                  <span class="sender-email">{{ email.fromEmail }}</span>
-                </div>
-              </td>
-
-              <!-- Subject + preview -->
-              <td class="col-subject">
-                <span class="email-subject">{{ email.subject }}</span>
-                <span class="email-preview">{{ stripHtml(email.bodyPreview) }}</span>
-              </td>
-
-              <!-- Date -->
-              <td class="col-date">{{ formatDate(email.receivedDateTime) }}</td>
-
-              <!-- Status -->
-              <td class="col-status">
-                <span class="status-pill"
-                  [class.pill-completed]="email.processingStatus === 'Completed'"
-                  [class.pill-pending]="email.processingStatus === 'Pending'"
-                  [class.pill-failed]="email.processingStatus === 'Failed'">
-                  {{ email.processingStatus }}
-                </span>
-                <span class="attach-icon" *ngIf="email.hasAttachments" title="Has attachments">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                  </svg>
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <div class="modal-body" *ngIf="editingEnquiry">
+      <!-- Email FIRST -->
+      <div class="modal-field">
+        <label class="modal-label">Customer Email</label>
+        <input type="email" class="modal-input"
+          [(ngModel)]="editEmail"
+          placeholder="customer@example.com"
+          [disabled]="(isSaving$ | async) === true" />
       </div>
 
-      <!-- ── RIGHT: Email viewer ── -->
-      <div class="inbox-viewer-pane" *ngIf="selectedEmail$ | async as selected">
-
-        <!-- Viewer header -->
-        <div class="viewer-header">
-          <div class="viewer-meta">
-            <h3 class="viewer-subject">{{ selected.subject }}</h3>
-            <div class="viewer-from">
-              <strong>From:</strong> {{ selected.fromName }} &lt;{{ selected.fromEmail }}&gt;
-            </div>
-            <div class="viewer-date">
-              <strong>Received:</strong> {{ formatDate(selected.receivedDateTime) }}
-            </div>
-            <div class="viewer-status">
-              <strong>Status:</strong>
-              <span class="status-pill"
-                [class.pill-completed]="selected.processingStatus === 'Completed'"
-                [class.pill-pending]="selected.processingStatus === 'Pending'"
-                [class.pill-failed]="selected.processingStatus === 'Failed'">
-                {{ selected.processingStatus }}
-              </span>
-              <span class="attach-badge" *ngIf="selected.hasAttachments">
-                📎 {{ selected.attachmentCount }} attachment{{ selected.attachmentCount !== 1 ? 's' : '' }}
-              </span>
-            </div>
-          </div>
-          <button class="btn-close-viewer" (click)="closeEmailViewer()" title="Close">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Body loading -->
-        <div *ngIf="isEmailDetailLoading$ | async" class="loading-state viewer-loading">
-          <div class="spinner"></div>
-          <p>Loading email content...</p>
-        </div>
-
-        <!-- Rendered HTML body -->
-        <div class="viewer-body" *ngIf="!(isEmailDetailLoading$ | async) && (selectedEmailHtml$ | async) as safeHtml">
-          <div class="email-html-frame" [innerHTML]="safeHtml"></div>
-        </div>
+      <!-- Comments second -->
+      <div class="modal-field">
+        <label class="modal-label">Comments <span class="required">*</span></label>
+        <textarea class="modal-input modal-textarea"
+          [(ngModel)]="editComments"
+          rows="5"
+          maxlength="2000"
+          [disabled]="(isSaving$ | async) === true">
+        </textarea>
+        <span class="char-hint">{{ editComments.length }}/2000</span>
       </div>
 
-    </div><!-- /inbox-split -->
-  </div><!-- /email-inbox-section -->
+      <!-- Send-on-update checkbox -->
+      <div class="send-update-row">
+        <label class="checkbox-label">
+          <input type="checkbox"
+            [(ngModel)]="sendEmailOnUpdate"
+            [disabled]="!editEmail.trim() || (isSaving$ | async) === true" />
+          <span>Send email notification to customer on update</span>
+        </label>
+      </div>
+    </div>
 
-</div><!-- /initial-enquiry-container -->
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" (click)="closeEditModal()"
+        [disabled]="(isSaving$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="saveEdit()"
+        [disabled]="!editComments.trim() || (isSaving$ | async) === true">
+        <span *ngIf="(isSaving$ | async) === false">Save Changes</span>
+        <span *ngIf="(isSaving$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
+      </button>
+    </div>
+  </div>
+</div>

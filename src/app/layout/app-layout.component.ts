@@ -38,11 +38,11 @@ export class AppLayoutComponent {
   menuItems: MenuItem[] = [
     { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
     { icon: faUsers, label: 'Customers', route: '/customers' },
-    { icon: faProjectDiagram, label: 'Workflow', route: '/workflow', badge: 5 },
-    { icon: faBell, label: 'Follow Ups', route: '/followups' },
+    { icon: faProjectDiagram, label: 'Workflow', route: '/workflow' },
     { icon: faFileAlt, label: 'Reports', route: '/reports' },
    // { icon: faCog, label: 'Settings', route: '/settings' },
     { icon: faCog, label: 'Task', route: '/task' },
+    { icon: faBell, label: 'Follow Ups', route: '/followups' },
     { icon: faUserPlus, label: 'User Register', route: '/user-management' },
     { icon: faFileSignature, label: 'Audit', route: '/audit' }
   ];

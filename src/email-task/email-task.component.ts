@@ -131,8 +131,9 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   workflowMissingForAction: string        = '';
 
   // Populated eagerly when the viewer opens — null = not yet checked
-  workflowExists:     boolean | null = null;
-  existingWorkflowId: number  | null = null;
+  workflowExists:      boolean | null = null;
+  existingWorkflowId:  number  | null = null;
+  existingWorkflowName: string | null = null;   // ← shown as link when workflow already exists
 
   // ── Toast notification ─────────────────────────────────────────────────────
   toast: { visible: boolean; type: 'success' | 'error' | 'warning'; message: string } = {
@@ -413,8 +414,18 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.selectedStatus          = task.status ?? 'New';
     this.showNoWorkflowBanner    = false;
     this.workflowMissingForAction = '';
-    this.workflowExists          = null;       // reset — will be checked below
-    this.existingWorkflowId      = null;
+
+    // Pre-set from task data so the button state is correct before the API responds.
+    // loadWorkflowStatus() will refine these values asynchronously.
+    if (task.workflowId) {
+      this.workflowExists     = true;
+      this.existingWorkflowId = task.workflowId;
+      this.existingWorkflowName = null;   // name resolved async by loadWorkflowStatus
+    } else {
+      this.workflowExists     = null;   // unknown — will be set by loadWorkflowStatus
+      this.existingWorkflowId = null;
+      this.existingWorkflowName = null;
+    }
 
     // Eagerly check workflow existence so buttons reflect real state immediately
     this.loadWorkflowStatus(task);
@@ -423,14 +434,29 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   /**
    * Checks whether this customer has any workflow and caches the result.
    * Called automatically when the viewer opens — no spinner needed (silent check).
+   *
+   * Fast path: if the task already has a workflowId we set workflowExists = true
+   * immediately so the "Create Workflow" button is disabled without waiting for
+   * the API response. The async call still runs to populate existingWorkflowName.
    */
   private loadWorkflowStatus(task: EmailTaskExtended): void {
     if (!task.customerId) {
       this.workflowExists    = false;
       this.existingWorkflowId = null;
+      this.cdr.markForCheck();
       return;
     }
 
+    // ── Fast-path: task already has a linked workflowId ────────────────────
+    // Disable the button immediately — don't wait for the API round-trip.
+    if (task.workflowId) {
+      this.workflowExists     = true;
+      this.existingWorkflowId = task.workflowId;
+      this.cdr.markForCheck();  // re-render NOW so button disables instantly
+    }
+
+    // Still fetch from API to get the workflow name (for the clickable link)
+    // and to verify / correct the cached value.
     this.workflowService.getWorkflowsForCustomer(task.customerId).pipe(
       take(1),
       catchError(() => of([] as WorkflowDto[]))
@@ -438,13 +464,17 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       if (!workflows || workflows.length === 0) {
         this.workflowExists     = false;
         this.existingWorkflowId = null;
-        return;
+        this.existingWorkflowName = null;
+      } else {
+        const matched = task.workflowId
+          ? workflows.find(w => w.workflowId === task.workflowId) ?? workflows[0]
+          : workflows[0];
+        this.workflowExists       = true;
+        this.existingWorkflowId   = matched.workflowId;
+        this.existingWorkflowName = matched.workflowName || matched.productName || `Workflow #${matched.workflowId}`;
       }
-      const matched = task.workflowId
-        ? workflows.find(w => w.workflowId === task.workflowId) ?? workflows[0]
-        : workflows[0];
-      this.workflowExists     = true;
-      this.existingWorkflowId = matched.workflowId;
+      // ── Critical for OnPush: tell Angular this component has changed ──────
+      this.cdr.markForCheck();
     });
   }
 
@@ -458,6 +488,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.workflowMissingForAction = '';
     this.workflowExists           = null;
     this.existingWorkflowId       = null;
+    this.existingWorkflowName     = null;
     this.clearSendEmail();
   }
 
@@ -651,10 +682,44 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.closeEmailViewer();
     this.router.navigate(['/workflow'], {
       queryParams: {
-        customerId:   task.customerId   ?? null,
+        customerId:    task.customerId   ?? null,
+        customerName:  task.customerName ?? '',
+        customerEmail: task.fromEmail    ?? '',   // ← pass sender email for Initial Enquiry pre-fill
+        taskId:        task.taskId,
+        mode:          'create'
+      }
+    });
+  }
+
+  /**
+   * Navigate from the "Initial Enquiry" quick-action button to the
+   * initial-enquiry screen for this task, pre-populating the customer email.
+   */
+  onInitialEnquiryClick(task: EmailTaskExtended): void {
+    if (!task.customerId) { alert('Please create a customer first.'); return; }
+    if (!this.existingWorkflowId) { this.workflowMissingForAction = 'initial_enquiry'; this.showNoWorkflowBanner = true; return; }
+    this.closeEmailViewer();
+    this.router.navigate(['/workflow/initial-enquiry'], {
+      queryParams: {
+        workflowId:    this.existingWorkflowId,
+        customerId:    task.customerId,
+        customerName:  task.customerName ?? '',
+        customerEmail: task.fromEmail    ?? '',   // ← the task sender email
+        taskId:        task.taskId,
+        fromTask:      task.taskId               // breadcrumb hint
+      }
+    });
+  }
+
+  /** Navigate to the existing workflow page when the workflow name link is clicked. */
+  navigateToExistingWorkflow(task: EmailTaskExtended): void {
+    if (!task.customerId || !this.existingWorkflowId) return;
+    this.closeEmailViewer();
+    this.router.navigate(['/workflow'], {
+      queryParams: {
+        customerId:   task.customerId,
         customerName: task.customerName ?? '',
-        taskId:       task.taskId,
-        mode:         'create'
+        workflowId:   this.existingWorkflowId
       }
     });
   }

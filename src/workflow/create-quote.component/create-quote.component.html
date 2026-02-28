@@ -1,46 +1,40 @@
 <div class="create-quote-container">
+
   <!-- Loading & Messages -->
   <div *ngIf="isLoading$ | async" class="loading-overlay">
     <div class="spinner"></div>
     <p>Loading...</p>
   </div>
 
-  <div *ngIf="errorMessage$ | async as errorMessage" class="alert alert-error">
-    {{ errorMessage }}
-  </div>
-
-  <div *ngIf="successMessage$ | async as successMessage" class="alert alert-success">
-    {{ successMessage }}
-  </div>
+  <div *ngIf="errorMessage$ | async as errorMessage" class="alert alert-error">{{ errorMessage }}</div>
+  <div *ngIf="successMessage$ | async as successMessage" class="alert alert-success">{{ successMessage }}</div>
 
   <div class="quote-content">
-    <!-- Select Workflow and Product Model -->
+
+    <!-- ══════════════════════ WORKFLOW & PRODUCT ══════════════════════ -->
     <div class="form-section">
-      <h3 class="section-title">Select Workflow & Product</h3>
+      <h3 class="section-title">Select Workflow &amp; Product</h3>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Select Workflow</label>
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
             <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
-              {{ workflow.productName }} - {{ workflow.dateAdded | date:'mediumDate' }}
+              {{ workflow.workflowName }}
             </option>
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Product Model</label>
-          <input 
-            type="text" 
-            class="form-input" 
-            [(ngModel)]="selectedProductName" 
-            readonly
+          <input type="text" class="form-input"
+            [(ngModel)]="selectedProductName" readonly
             placeholder="Product will be displayed here">
         </div>
       </div>
     </div>
 
-    <!-- Select Dimensions -->
+    <!-- ══════════════════════ DIMENSIONS ══════════════════════════════ -->
     <div class="form-section">
       <h3 class="section-title">Select Dimensions</h3>
       <div class="form-row">
@@ -48,9 +42,7 @@
           <label class="form-label">Widths in cm</label>
           <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let width of availableWidths$ | async" [value]="width">
-              {{ width }}
-            </option>
+            <option *ngFor="let width of availableWidths$ | async" [value]="width">{{ width }}</option>
           </select>
         </div>
 
@@ -58,15 +50,13 @@
           <label class="form-label">Select Awning (Projection)</label>
           <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let projection of availableProjections$ | async" [value]="projection">
-              {{ projection }}
-            </option>
+            <option *ngFor="let projection of availableProjections$ | async" [value]="projection">{{ projection }}</option>
           </select>
         </div>
       </div>
     </div>
 
-    <!-- Additional Addons -->
+    <!-- ══════════════════════ ADDONS ══════════════════════════════════ -->
     <div class="form-section">
       <h3 class="section-title">Additional Addons</h3>
       <div class="form-row">
@@ -111,31 +101,25 @@
         </div>
       </div>
 
-      <!-- Electrician Checkbox -->
-      <div class="form-row" style="margin-top: 15px;">
+      <div class="form-row" style="margin-top:15px;">
         <div class="form-group">
           <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              class="checkbox-input" 
-              [(ngModel)]="includeElectrician"
-              (change)="onElectricianChange()">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
             <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
           </label>
         </div>
       </div>
     </div>
 
-    <!-- Supply and Fit -->
+    <!-- ══════════════════════ SUPPLY AND FIT ══════════════════════════ -->
     <div class="form-section">
       <h3 class="section-title">Supply and Fit</h3>
       <div class="form-row installation-row">
         <div class="form-group small">
           <label class="form-label">Fee</label>
-          <input 
-            type="number" 
-            class="form-input" 
-            [(ngModel)]="installationFee" 
+          <input type="number" class="form-input"
+            [(ngModel)]="installationFee"
             (ngModelChange)="onInstallationFeeChange()"
             placeholder="0.00">
         </div>
@@ -143,7 +127,7 @@
       </div>
     </div>
 
-    <!-- Quote Items Table -->
+    <!-- ══════════════════════ QUOTE ITEMS ══════════════════════════════ -->
     <div class="table-section">
       <div class="table-header">
         <h3>Quote Items</h3>
@@ -164,51 +148,38 @@
           <tr *ngFor="let item of quoteItems$ | async; let i = index; let even = even" [class.even-row]="even">
             <td>{{ item.description }}</td>
             <td>
-              <input 
-                type="number" 
-                class="qty-input" 
-                [(ngModel)]="item.quantity"
-                (ngModelChange)="onQuantityChange(item)"
-                min="1">
+              <input type="number" class="qty-input"
+                [(ngModel)]="item.quantity" (ngModelChange)="onQuantityChange(item)" min="1">
             </td>
             <td>
-              <input 
-                type="number" 
-                class="price-input" 
-                [(ngModel)]="item.unitPrice"
-                (ngModelChange)="onItemChange(item)"
-                min="0"
-                step="0.01">
+              <input type="number" class="price-input"
+                [(ngModel)]="item.unitPrice" (ngModelChange)="onItemChange(item)" min="0" step="0.01">
             </td>
             <td>
-              <input 
-                type="number" 
-                class="tax-input" 
-                [(ngModel)]="item.taxRate"
-                (ngModelChange)="onItemChange(item)"
-                min="0"
-                max="100"
-                step="0.5">
+              <input type="number" class="tax-input"
+                [(ngModel)]="item.taxRate" (ngModelChange)="onItemChange(item)" min="0" max="100" step="0.5">
             </td>
             <td>€{{ item.amount | number:'1.2-2' }}</td>
             <td>
-              <button class="btn-remove" (click)="removeQuoteItem(i)" *ngIf="(quoteItems$ | async)?.length || 0 > 1">
-                Remove
-              </button>
+              <button class="btn-remove" (click)="removeQuoteItem(i)"
+                *ngIf="(quoteItems$ | async)?.length || 0 > 1">Remove</button>
             </td>
           </tr>
           <tr *ngIf="(quoteItems$ | async)?.length === 0">
-            <td colspan="6" class="text-center">
-              Select width and awning to generate first line item
-            </td>
+            <td colspan="6" class="text-center">Select width and awning to generate first line item</td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <!-- Discount Section -->
+    <!-- ══════════════════════ DISCOUNT (OPTIONAL) ══════════════════════ -->
     <div class="form-section">
-      <h3 class="section-title">Quote Discount (Optional)</h3>
+      <h3 class="section-title">
+        Quote Discount
+        <span class="optional-tag">Optional</span>
+      </h3>
+      <p class="section-hint">Leave the discount type as "No Discount" to skip this section.</p>
+
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Discount Type</label>
@@ -219,30 +190,54 @@
           </select>
         </div>
 
+        <!-- Only show value input when a discount type is chosen -->
         <div class="form-group" *ngIf="discountType">
           <label class="form-label">
-            {{ discountType === 'Percentage' ? 'Discount Percentage' : 'Discount Amount' }}
+            {{ discountType === 'Percentage' ? 'Discount Percentage (%)' : 'Discount Amount (€)' }}
           </label>
-          <input 
-            type="number" 
-            class="form-input" 
-            [(ngModel)]="discountValue" 
+          <input type="number" class="form-input"
+            [(ngModel)]="discountValue"
             (ngModelChange)="onDiscountChange()"
-            [placeholder]="discountType === 'Percentage' ? '0.00%' : '€0.00'"
+            [placeholder]="discountType === 'Percentage' ? 'e.g. 10' : 'e.g. 50.00'"
             min="0"
             [max]="discountType === 'Percentage' ? 100 : 999999"
             step="0.01">
         </div>
+
+        <!-- Preview discount amount when both are set -->
+        <div class="discount-preview" *ngIf="discountType && discountValue > 0">
+          <span class="discount-preview-label">Discount Amount</span>
+          <span class="discount-preview-value">-€{{ quoteDiscount$ | async | number:'1.2-2' }}</span>
+        </div>
       </div>
     </div>
 
-    <!-- Summary Section -->
+    <!-- ══════════════════════ SUMMARY ══════════════════════════════════ -->
     <div class="summary-section">
       <div class="summary-left">
-        <label class="checkbox-label large">
-          <input type="checkbox" class="checkbox-input" [(ngModel)]="emailToCustomer">
-          <span>Email Quote to customer</span>
-        </label>
+
+        <!-- Email to customer — shows actual email address -->
+        <div class="email-customer-block">
+          <label class="checkbox-label large">
+            <input type="checkbox" class="checkbox-input" [(ngModel)]="emailToCustomer">
+            <span>Email Quote to customer</span>
+          </label>
+
+          <div class="email-address-row" *ngIf="emailToCustomer">
+            
+            <span class="email-address-text" *ngIf="customerEmail; else noEmail">
+              {{ customerEmail }}
+            </span>
+            <ng-template #noEmail>
+              <span class="email-address-missing">No email address on record</span>
+            </ng-template>
+
+            <span class="sending-indicator" *ngIf="isSendingEmail$ | async">
+              <span class="spinner-tiny"></span> Sending…
+            </span>
+          </div>
+        </div>
+
         <button class="attach-btn">Attach Brochure with email</button>
       </div>
 
@@ -251,9 +246,9 @@
           <span class="summary-label">Sub Total</span>
           <span class="summary-value">€{{ subtotal$ | async | number:'1.2-2' }}</span>
         </div>
-        <div class="summary-row" *ngIf="(quoteDiscount$ | async) && (quoteDiscount$ | async)! > 0">
+        <div class="summary-row" *ngIf="(quoteDiscount$ | async)! > 0">
           <span class="summary-label">
-            Discount {{ discountType === 'Percentage' ? '(' + discountValue + '%)' : '' }}
+            Discount{{ discountType === 'Percentage' ? ' (' + discountValue + '%)' : '' }}
           </span>
           <span class="summary-value discount-value">-€{{ quoteDiscount$ | async | number:'1.2-2' }}</span>
         </div>
@@ -268,16 +263,21 @@
       </div>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- ══════════════════════ ACTION BUTTONS ══════════════════════════ -->
     <div class="action-buttons">
       <button class="btn-close" (click)="close()">
         <span class="close-icon">✕</span>
         Close
       </button>
-      <button class="btn-generate" (click)="generateQuote()" [disabled]="(isFormValid$ | async) === false">
-        <span class="generate-icon">📄</span>
-        Generate Quote
+      <button class="btn-generate" (click)="generateQuote()"
+        [disabled]="(isFormValid$ | async) === false || (isLoading$ | async) === true">
+        <span class="generate-icon"
+          *ngIf="(isLoading$ | async) === false && (isSendingEmail$ | async) === false">📄</span>
+        <span class="spinner-btn"
+          *ngIf="(isLoading$ | async) === true || (isSendingEmail$ | async) === true"></span>
+        {{ (isLoading$ | async) ? 'Creating…' : (isSendingEmail$ | async) ? 'Emailing…' : 'Generate Quote' }}
       </button>
     </div>
+
   </div>
 </div>

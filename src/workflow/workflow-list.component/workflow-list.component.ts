@@ -67,7 +67,10 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   customerId: number | null = null;
   customerName: string = '';
+  customerEmail: string = '';    // ← preserved through workflow selection
   taskId: number | null = null;
+  fromFollowUp: number | null = null;
+  fromTask: number | null = null;
   private destroy$ = new Subject<void>();
   private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
 
@@ -80,9 +83,12 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      this.customerId = params['customerId'] ? +params['customerId'] : null;
-      this.customerName = params['customerName'] || '';
-      this.taskId = params['taskId'] ? +params['taskId'] : null;
+      this.customerId   = params['customerId']   ? +params['customerId']   : null;
+      this.customerName  = params['customerName']  || '';
+      this.customerEmail = params['customerEmail'] || '';   // ← capture email
+      this.taskId        = params['taskId']        ? +params['taskId']        : null;
+      this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
+      this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
       if (this.customerId) this.loadWorkflows(this.customerId);
     });
 
@@ -367,9 +373,19 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     this.workflowStateService.setSelectedWorkflow(selected);
     const enabledStages = this.workflowStateService.getEnabledStages();
     if (enabledStages.length > 0) {
-      this.router.navigate([`/workflow/${enabledStages[0]}`], {
-        queryParams: { customerId: this.customerId, customerName: this.customerName, workflowId: workflow.workflowId }
-      });
+      // Build query params — include ALL values so downstream screens never lose context
+      const qp: Record<string, any> = {
+        customerId:    this.customerId,
+        customerName:  this.customerName,
+        workflowId:    workflow.workflowId
+      };
+      // Only add optional params when they carry a value
+      if (this.customerEmail) qp['customerEmail'] = this.customerEmail;
+      if (this.taskId)        qp['taskId']        = this.taskId;
+      if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
+      if (this.fromTask)      qp['fromTask']      = this.fromTask;
+
+      this.router.navigate([`/workflow/${enabledStages[0]}`], { queryParams: qp });
     } else {
       this.errorMessage$.next('Please enable at least one stage for this workflow');
       this.clearMessagesAfterDelay();

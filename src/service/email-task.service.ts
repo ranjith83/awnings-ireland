@@ -102,6 +102,14 @@ export interface SendTaskEmailPayload {
   originalEmailGraphId?:  string | null;
 }
 
+/** Payload for POST /api/EmailTask/send-direct — no task context required. */
+export interface SendDirectEmailPayload {
+  toEmail:  string;
+  toName?:  string;
+  subject:  string;
+  body:     string;
+}
+
 // ==================== PAGINATION INTERFACES ====================
 
 export interface TaskFilterParams {
@@ -138,7 +146,6 @@ export interface PageInfo {
   hasPreviousPage: boolean;
 }
 
-// Add to interfaces
 export interface ExtractedCustomerData {
   taskId: number;
   email?: string;
@@ -173,36 +180,24 @@ export class EmailTaskService {
 
   /**
    * Get tasks with pagination and filtering
-   * FIXED: Sends proper request body with all fields having explicit defaults
    */
   getTasksPaginated(filters: Partial<TaskFilterParams>): Observable<PaginatedResponse<EmailTask>> {
-    // Build request body matching backend TaskFilterDto exactly
-    // Backend expects empty strings for string fields, NOT null
     const requestBody = {
-      // Required pagination fields
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 20,
-      
-      // String fields - MUST BE EMPTY STRING (not null) if not provided
       status: filters.status ?? '',
       taskType: filters.taskType ?? '',
       priority: filters.priority ?? '',
       searchTerm: filters.searchTerm ?? '',
       sortBy: filters.sortBy ?? 'DateAdded',
       sortDirection: filters.sortDirection ?? 'DESC',
-      
-      // Nullable int fields - can be null
       assignedToUserId: filters.assignedToUserId ?? null,
       customerId: filters.customerId ?? null,
-      
-      // Nullable DateTime fields - can be null
       dueDateFrom: filters.dueDateFrom ? filters.dueDateFrom.toISOString() : null,
       dueDateTo: filters.dueDateTo ? filters.dueDateTo.toISOString() : null,
       createdDateFrom: filters.createdDateFrom ? filters.createdDateFrom.toISOString() : null,
       createdDateTo: filters.createdDateTo ? filters.createdDateTo.toISOString() : null
     };
-
-    console.log('📤 Sending pagination request:', requestBody);
 
     return this.http.post<PaginatedResponse<EmailTask>>(
       `${this.apiUrl}/search`,
@@ -210,57 +205,22 @@ export class EmailTaskService {
     );
   }
 
-  /**
-   * Get tasks by status with pagination
-   */
   getTasksByStatusPaginated(
     status: string,
-    page: number = 1,
-    pageSize: number = 20,
-    sortBy: string = 'DateAdded',
+    page = 1,
+    pageSize = 20,
+    sortBy = 'DateAdded',
     sortDirection: 'ASC' | 'DESC' = 'DESC'
   ): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({
-      status,
-      page,
-      pageSize,
-      sortBy,
-      sortDirection
-    });
+    return this.getTasksPaginated({ status, page, pageSize, sortBy, sortDirection });
   }
 
-  /**
-   * Get tasks assigned to user with pagination
-   */
-  getTasksByUserPaginated(
-    userId: number,
-    page: number = 1,
-    pageSize: number = 20
-  ): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({
-      assignedToUserId: userId,
-      page,
-      pageSize,
-      sortBy: 'DateAdded',
-      sortDirection: 'DESC'
-    });
+  getTasksByUserPaginated(userId: number, page = 1, pageSize = 20): Observable<PaginatedResponse<EmailTask>> {
+    return this.getTasksPaginated({ assignedToUserId: userId, page, pageSize, sortBy: 'DateAdded', sortDirection: 'DESC' });
   }
 
-  /**
-   * Search tasks with pagination
-   */
-  searchTasks(
-    searchTerm: string,
-    page: number = 1,
-    pageSize: number = 20
-  ): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({
-      searchTerm,
-      page,
-      pageSize,
-      sortBy: 'DateAdded',
-      sortDirection: 'DESC'
-    });
+  searchTasks(searchTerm: string, page = 1, pageSize = 20): Observable<PaginatedResponse<EmailTask>> {
+    return this.getTasksPaginated({ searchTerm, page, pageSize, sortBy: 'DateAdded', sortDirection: 'DESC' });
   }
 
   // ==================== ORIGINAL METHODS (Non-Paginated) ====================
@@ -281,6 +241,23 @@ export class EmailTaskService {
     return this.http.get<EmailTask[]>(`${this.apiUrl}/category/${category}`);
   }
 
+  /**
+   * Get all email tasks for a specific customer.
+   * Maps to: GET /api/EmailTask/customer/{customerId}
+   */
+  getTasksByCustomer(customerId: number): Observable<EmailTask[]> {
+    return this.http.get<EmailTask[]>(`${this.apiUrl}/customer/${customerId}`);
+  }
+
+  /**
+   * Convenience wrapper – same as getTasksByCustomer but named
+   * to make the intent clear when used in the Initial Enquiry component.
+   * Returns the raw EmailTask[] which the component maps to CustomerEmailRow[].
+   */
+  getTasksByCustomer_AsRows(customerId: number): Observable<EmailTask[]> {
+    return this.getTasksByCustomer(customerId);
+  }
+
   getOverdueTasks(): Observable<EmailTask[]> {
     return this.http.get<EmailTask[]>(`${this.apiUrl}/overdue`);
   }
@@ -292,10 +269,7 @@ export class EmailTaskService {
   // ==================== TASK ACTIONS ====================
 
   assignTask(taskId: number, userId: number, notes?: string): Observable<EmailTask> {
-    return this.http.put<EmailTask>(`${this.apiUrl}/${taskId}/assign`, {
-      assignedToUserId: userId,
-      notes
-    });
+    return this.http.put<EmailTask>(`${this.apiUrl}/${taskId}/assign`, { assignedToUserId: userId, notes });
   }
 
   unassignTask(taskId: number): Observable<EmailTask> {
@@ -303,16 +277,11 @@ export class EmailTaskService {
   }
 
   updateTaskStatus(taskId: number, status: string, completionNotes?: string): Observable<EmailTask> {
-    return this.http.patch<EmailTask>(`${this.apiUrl}/${taskId}/status`, {
-      status,
-      completionNotes
-    });
+    return this.http.patch<EmailTask>(`${this.apiUrl}/${taskId}/status`, { status, completionNotes });
   }
 
   completeTask(taskId: number, completionNotes?: string): Observable<EmailTask> {
-    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/complete`, {
-      completionNotes
-    });
+    return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/complete`, { completionNotes });
   }
 
   updateTask(taskId: number, updateData: any): Observable<EmailTask> {
@@ -332,10 +301,7 @@ export class EmailTaskService {
   }
 
   executeAction(taskId: number, action: string, data?: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/${taskId}/action/${action}`, {
-      action,
-      data
-    });
+    return this.http.post(`${this.apiUrl}/${taskId}/action/${action}`, { action, data });
   }
 
   // ==================== COMMENTS ====================
@@ -345,9 +311,7 @@ export class EmailTaskService {
   }
 
   addComment(taskId: number, comment: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/${taskId}/comments`, {
-      commentText: comment
-    });
+    return this.http.post(`${this.apiUrl}/${taskId}/comments`, { commentText: comment });
   }
 
   deleteComment(commentId: number): Observable<any> {
@@ -397,26 +361,21 @@ export class EmailTaskService {
     };
   }
 
+  // ==================== TASK AUDIT ====================
 
-// ==================== TASK AUDIT ====================
-
-  /**
-   * Get paginated task audit history from TaskHistories table.
-   * Filtered to: Created | Assigned | Unassigned
-   * GET /api/EmailTask/audit?page=1&pageSize=20&action=Assigned
-   */
-  getTaskAuditHistory(page: number = 1, pageSize: number = 20, action?: string): Observable<any> {
+  getTaskAuditHistory(page = 1, pageSize = 20, action?: string): Observable<any> {
     let url = `${this.apiUrl}/audit?page=${page}&pageSize=${pageSize}`;
     if (action) url += `&action=${encodeURIComponent(action)}`;
     return this.http.get<any>(url);
   }
 
   /** @deprecated Use getTaskAuditHistory instead */
-  getTaskAuditLogs(page: number = 1, pageSize: number = 20, action?: string): Observable<any> {
+  getTaskAuditLogs(page = 1, pageSize = 20, action?: string): Observable<any> {
     return this.getTaskAuditHistory(page, pageSize, action);
   }
 
-// Add to service methods
+  // ==================== CUSTOMER LINKAGE ====================
+
   getExtractedCustomerData(taskId: number): Observable<ExtractedCustomerData> {
     return this.http.get<ExtractedCustomerData>(`${this.apiUrl}/${taskId}/extracted-customer-data`);
   }
@@ -432,16 +391,31 @@ export class EmailTaskService {
   /**
    * Links a newly created workflow back to an email task.
    * POST /api/EmailTask/{taskId}/link-workflow
-   * Updates EmailTask.WorkflowId and writes a history entry.
    */
   linkWorkflowToTask(taskId: number, workflowId: number): Observable<EmailTask> {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-workflow`, { workflowId });
   }
 
+  /**
+   * Send an email from within a task context.
+   * POST /api/EmailTask/{taskId}/send-email
+   */
   sendTaskEmail(taskId: number, payload: SendTaskEmailPayload): Observable<{ message: string }> {
-  return this.http.post<{ message: string }>(
-    `${this.apiUrl}/${taskId}/send-email`,
-    payload
-  );
-}
+    return this.http.post<{ message: string }>(
+      `${this.apiUrl}/${taskId}/send-email`,
+      payload
+    );
+  }
+
+  /**
+   * Send a fresh outbound email with no task context.
+   * Uses POST /api/EmailTask/send-direct — taskId not required.
+   * Always sends as a new email (never threaded).
+   */
+  sendDirectEmail(payload: SendDirectEmailPayload): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(
+      `${this.apiUrl}/send-direct`,
+      payload
+    );
+  }
 }

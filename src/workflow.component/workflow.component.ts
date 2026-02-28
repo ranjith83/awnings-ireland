@@ -22,6 +22,9 @@ export class WorkflowComponent implements OnInit {
   customerName: string = '';
   customerId: number | null = null;
 
+  // ── All params preserved so tab navigation never loses context ──────────
+  private _allParams: Record<string, any> = {};
+
   tabs: WorkflowTab[] = [
     { label: 'Workflow', route: '/workflow/list', path: 'list' },
     { label: 'Initial Enquiry', route: '/workflow/initial-enquiry', path: 'initial-enquiry' },
@@ -38,19 +41,31 @@ export class WorkflowComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Get customer information from query params
+    // Capture ALL query params from child routes via the router URL
+    // We subscribe to the root route's queryParams via Router so we catch
+    // params set by child components (e.g. workflowId added by workflow-list).
     this.route.queryParams.subscribe(params => {
-      this.customerId = params['customerId'] ? +params['customerId'] : null;
-      this.customerName = params['customerName'] || 'Customers';
+      // Merge new params into our store (child screens may add workflowId etc.)
+      this._allParams = { ...this._allParams, ...params };
+      this.customerId   = params['customerId']   ? +params['customerId']   : this.customerId;
+      this.customerName = params['customerName'] || this.customerName || 'Customers';
     });
 
-    // Set active tab based on current route
+    // Also keep _allParams up-to-date after each child navigation
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe(() => {
+      // Parse query string from current URL
+      const urlTree   = this.router.parseUrl(this.router.url);
+      const qp        = urlTree.queryParams;
+      if (Object.keys(qp).length) {
+        this._allParams = { ...this._allParams, ...qp };
+        if (qp['customerId'])   this.customerId   = +qp['customerId'];
+        if (qp['customerName']) this.customerName = qp['customerName'];
+      }
       this.updateActiveTab();
     });
-    
+
     this.updateActiveTab();
   }
 
@@ -64,12 +79,9 @@ export class WorkflowComponent implements OnInit {
 
   navigateToTab(tab: WorkflowTab) {
     this.activeTab = tab.path;
-    // Pass customer info when navigating between tabs
+    // Forward ALL captured params so no context is lost between tabs
     this.router.navigate([tab.route], {
-      queryParams: {
-        customerId: this.customerId,
-        customerName: this.customerName
-      }
+      queryParams: this._allParams
     });
   }
 

@@ -559,6 +559,78 @@
 }
 .btn-confirm:hover:not(:disabled) { background: #c2410c; transform: translateY(-1px); }
 
+/* ── Added: View button in actions column ───────────────────────── */
+.btn-view-detail {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 9px; border-radius:5px; font-size:11.5px; font-weight:500;
+  cursor:pointer; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8;
+  transition:background .15s, color .15s;
+}
+.btn-view-detail:hover { background:#1d4ed8; color:white; border-color:#1d4ed8; }
+
+/* ── Added: View Email Details button in hover panel ────────────── */
+.btn-view-email {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:7px 16px; border-radius:6px; font-size:13px; font-weight:500;
+  cursor:pointer; border:1px solid #bfdbfe; background:#eff6ff; color:#1d4ed8;
+  transition:background .15s, color .15s; width:100%;
+}
+.btn-view-email:hover { background:#1d4ed8; color:white; border-color:#1d4ed8; }
+
+/* ── Added: email preview modal styles ──────────────────────────── */
+.modal-card--lg { max-width:680px; }
+
+.enquiry-meta-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;
+}
+.enquiry-meta-item {
+  display:flex; flex-direction:column; gap:3px;
+  background:#f8fafc; border:1px solid #e5e7eb;
+  border-radius:6px; padding:9px 12px;
+}
+.meta-label {
+  font-size:11px; font-weight:600; color:#9ca3af;
+  text-transform:uppercase; letter-spacing:.4px;
+}
+.meta-value { font-size:13px; color:#111827; font-weight:500; word-break:break-word; }
+.meta-email { color:#2563eb; }
+
+.enquiry-body-box { border:1px solid #e5e7eb; border-radius:6px; overflow:hidden; }
+.enquiry-body-label {
+  font-size:11px; font-weight:600; color:#9ca3af; text-transform:uppercase;
+  letter-spacing:.4px; margin:0; padding:8px 12px;
+  background:#f8fafc; border-bottom:1px solid #e5e7eb;
+}
+.enquiry-body-content {
+  padding:14px; font-size:13.5px; color:#374151; line-height:1.65;
+  max-height:340px; overflow-y:auto; word-break:break-word;
+}
+
+/* btn-modal additions (if not already present in follow-up CSS) */
+.modal-card { background:white; border-radius:12px; box-shadow:0 24px 64px rgba(0,0,0,.18);
+  width:100%; max-width:520px; overflow:hidden; animation:slideUp .2s ease-out; }
+.modal-header { display:flex; align-items:center; justify-content:space-between;
+  padding:16px 22px; border-bottom:1px solid #e5e7eb; }
+.modal-title { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:600;
+  color:#111827; margin:0; }
+.modal-close { background:none; border:none; color:#9ca3af; cursor:pointer; padding:4px;
+  border-radius:4px; display:flex; align-items:center; }
+.modal-close:hover { color:#374151; background:#f3f4f6; }
+.modal-body { padding:20px 22px 16px; max-height:65vh; overflow-y:auto; }
+.modal-footer { display:flex; justify-content:flex-end; gap:10px;
+  padding:12px 22px; background:#f9fafb; border-top:1px solid #e5e7eb; }
+.btn-modal { display:inline-flex; align-items:center; gap:5px; padding:8px 20px;
+  border-radius:6px; font-size:14px; font-weight:500; cursor:pointer; border:1px solid transparent;
+  transition:background .15s, transform .1s; min-width:80px; justify-content:center; }
+.btn-modal-secondary { background:white; color:#374151; border-color:#d1d5db; }
+.btn-modal-secondary:hover { background:#f3f4f6; }
+.btn-modal-primary { background:#5a9fd4; color:white; border-color:#5a9fd4; }
+.btn-modal-primary:hover { background:#4a8fc4; transform:translateY(-1px); }
+
+@keyframes slideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.45); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:1000; }
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .content-split.has-preview { grid-template-columns: 1fr; }
@@ -570,4 +642,70 @@
   .table-card          { overflow-x: auto; }
   .followups-table     { min-width: 740px; }
   .modal-card          { max-width: calc(100vw - 24px); }
+}
+
+
+/* ── Main split: always a 2-column grid ──────────────────────── */
+.content-split {
+  display: grid;
+  /* Table always gets remaining space; panel slot is always 280px */
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+  /* Prevent the grid from collapsing when panel is absent */
+  min-height: 0;
+}
+
+/* When panel is absent (*ngIf removes it), hold the column with a ghost */
+.content-split::after {
+  content: '';
+  display: block;
+  /* Fills the grid's second column when the panel isn't rendered,
+     preventing the table from expanding and causing a jump */
+  width: 280px;
+  grid-column: 2;
+  /* Only present when panel is NOT showing */
+}
+
+/* When the real panel IS rendered, the ::after ghost is displaced
+   (it sits behind the panel in the same grid cell — no extra space needed) */
+.content-split.has-preview::after {
+  display: none;
+}
+
+/* ── Preview panel: fixed width, no layout impact ────────────── */
+.preview-panel {
+  width: 280px;
+  /* Stick to top of viewport as user scrolls */
+  position: sticky;
+  top: 80px;
+  /* Smooth appear, no jump */
+  animation: panelFadeIn 0.15s ease-out;
+  /* Prevent panel from causing column resize */
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+/* ── Table card: don't let it grow into panel space ─────────────*/
+.table-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Mobile: stack, no panel column reserved ─────────────────── */
+@media (max-width: 900px) {
+  .content-split,
+  .content-split.has-preview {
+    grid-template-columns: 1fr;
+  }
+  .content-split::after { display: none; }
+  .preview-panel {
+    width: 100%;
+    position: static;
+  }
 }

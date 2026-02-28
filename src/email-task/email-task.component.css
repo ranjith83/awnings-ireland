@@ -1406,3 +1406,60 @@
 
 /* ==================== COMPLETED TAB STYLING ==================== */
 .tab-button--completed.active { background: #d1fae5; color: #065f46; border-bottom-color: #10b981; }
+/* ═══════════════════════════════════════════════════════════
+   EMAIL-TASK COMPONENT — CSS ADDITIONS
+   Add these rules to email-task.component.css
+═══════════════════════════════════════════════════════════ */
+
+/* ── Initial Enquiry quick-action button ─────────────────── */
+.action-btn--enquiry {
+  background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+.action-btn--enquiry:hover:not(:disabled) {
+  background: #15803d;
+  color: white;
+  border-color: #15803d;
+}
+
+/* ── Workflow-exists block (button + name link together) ─── */
+.workflow-exists-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* The disabled "done" button in the workflow-exists block */
+.action-btn--workflow-done {
+  background: #f0fdf4 !important;
+  border-color: #86efac !important;
+  color: #15803d !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+}
+
+/* Clickable workflow name link beneath the done button */
+.workflow-name-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.workflow-name-link:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+  text-decoration: underline;
+}

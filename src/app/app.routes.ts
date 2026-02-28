@@ -61,7 +61,7 @@ export const routes: Routes = [
       
       // Tasks
       { path: 'task', component: EmailTaskComponent },
-      { path: 'tasks', component: TaskComponent }, // Alias for consistency
+      //{ path: 'tasks', component: TaskComponent }, // Alias for consistency
       { path: 'tasks/:id', component: TaskDetailComponent },
       { path: 'taskdetail', component: TaskDetailComponent },
       {  path: 'register', component: RegisterComponent },

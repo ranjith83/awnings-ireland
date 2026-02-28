@@ -113,10 +113,10 @@
               <span class="email-addr">{{ f.enquiryEmail || '—' }}</span>
             </td>
 
-            <!-- Comments preview -->
+            <!-- Comments preview — strip HTML tags for plain text display -->
             <td class="col-comments">
-              <span class="comments-preview" [title]="f.enquiryComments ?? ''">
-                {{ commentsPreview(f.enquiryComments) }}
+              <span class="comments-preview" [title]="stripHtml(f.enquiryComments)">
+                {{ commentsPreview(stripHtml(f.enquiryComments)) }}
               </span>
             </td>
 
@@ -144,6 +144,16 @@
             <!-- Actions -->
             <td class="col-actions" (click)="$event.stopPropagation()">
               <div class="action-row">
+                <!-- View enquiry details -->
+                <button class="btn-act btn-view-detail"
+                        (click)="openEmailPreviewModal($event, f)"
+                        title="View full enquiry details">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                  </svg>
+                  View
+                </button>
+
                 <!-- Open Enquiry (primary CTA) -->
                 <button *ngIf="!f.isDismissed"
                         class="btn-act btn-open"
@@ -180,8 +190,12 @@
       </table>
     </div>
 
-    <!-- ── PREVIEW PANEL ── -->
-    <div class="preview-panel" *ngIf="previewFollowUp && !previewFollowUp.isDismissed">
+    <!-- ── PREVIEW PANEL ── always in DOM to prevent grid reflow/jump -->
+    <div class="preview-panel"
+         [hidden]="!previewFollowUp || previewFollowUp.isDismissed"
+         [class.panel-visible]="previewFollowUp && !previewFollowUp.isDismissed">
+      <!-- Guard inner bindings — outer div stays in DOM to hold grid column -->
+      <ng-container *ngIf="previewFollowUp && !previewFollowUp.isDismissed">
       <div class="preview-header">
         <h4 class="preview-title">Enquiry Details</h4>
         <button class="preview-close" (click)="setPreview(null)">
@@ -200,12 +214,6 @@
         </div>
       </div>
 
-      <!-- Email -->
-      <div class="preview-section">
-        <span class="preview-label">Enquiry Email</span>
-        <span class="preview-value preview-email">{{ previewFollowUp.enquiryEmail || '—' }}</span>
-      </div>
-
       <!-- Last enquiry date -->
       <div class="preview-section">
         <span class="preview-label">Last Enquiry</span>
@@ -220,14 +228,20 @@
         </span>
       </div>
 
-      <!-- Comments -->
-      <div class="preview-section preview-section--full">
-        <span class="preview-label">Enquiry Comments</span>
-        <div class="preview-comments">{{ previewFollowUp.enquiryComments || 'No comments recorded.' }}</div>
+      <!-- View email details button (instead of showing inline) -->
+      <div class="preview-section">
+        <button class="btn-view-email"
+                (click)="openEmailPreviewModal($event, previewFollowUp)"
+                title="View full enquiry details">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+          </svg>
+          View Enquiry Details
+        </button>
       </div>
 
       <!-- CTA -->
-      <button class="btn-preview-cta" (click)="onRowClick(previewFollowUp)">
+      <button class="btn-preview-cta" (click)="onRowClick(previewFollowUp!)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
           <polyline points="15 3 21 3 21 9"/>
@@ -235,14 +249,82 @@
         </svg>
         Open Initial Enquiry
       </button>
-    </div>
+      </ng-container><!-- /guard null bindings -->
+    </div><!-- /preview-panel -->
 
   </div><!-- /content-split -->
 
 </div><!-- /followups-container -->
 
 <!-- ══════════════════════════════════════════════════════════════════
-     DISMISS MODAL
+     EMAIL / ENQUIRY PREVIEW MODAL
+     Shows HTML-parsed enquiry comments + email/date details in a modal
+     instead of on the hover panel (per UX fix).
+══════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showEmailPreviewModal" (click)="closeEmailPreviewModal()">
+  <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()" *ngIf="emailPreviewFollowUp">
+
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Enquiry Details — {{ emailPreviewFollowUp.companyName }}
+      </h3>
+      <button class="modal-close" (click)="closeEmailPreviewModal()">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Meta grid -->
+      <div class="enquiry-meta-grid">
+        <div class="enquiry-meta-item">
+          <span class="meta-label">Company</span>
+          <span class="meta-value">{{ emailPreviewFollowUp.companyName || '—' }}</span>
+        </div>
+        <div class="enquiry-meta-item">
+          <span class="meta-label">Enquiry Email</span>
+          <span class="meta-value meta-email">{{ emailPreviewFollowUp.enquiryEmail || '—' }}</span>
+        </div>
+        <div class="enquiry-meta-item">
+          <span class="meta-label">Last Enquiry Date</span>
+          <span class="meta-value">{{ formatDate(emailPreviewFollowUp.lastEnquiryDate) }}</span>
+        </div>
+        <div class="enquiry-meta-item">
+          <span class="meta-label">Overdue by</span>
+          <span class="overdue-badge overdue-critical">
+            {{ getDaysOverdue(emailPreviewFollowUp.lastEnquiryDate) }} days
+          </span>
+        </div>
+      </div>
+
+      <!-- Email body — parsed as HTML -->
+      <div class="enquiry-body-box">
+        <p class="enquiry-body-label">Enquiry Message</p>
+        <div class="enquiry-body-content"
+             [innerHTML]="emailPreviewFollowUp.enquiryComments || '<em>No message content recorded.</em>'">
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" (click)="closeEmailPreviewModal()">Close</button>
+      <button class="btn-modal btn-modal-primary" (click)="closeEmailPreviewModal(); onRowClick(emailPreviewFollowUp!)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             style="vertical-align:middle;margin-right:4px">
+          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+          <polyline points="15 3 21 3 21 9"/>
+          <line x1="10" y1="14" x2="21" y2="3"/>
+        </svg>
+        Open Initial Enquiry
+      </button>
+    </div>
+  </div>
+</div>
 ══════════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showDismissModal" (click)="closeDismissModal()">
   <div class="modal-card" (click)="$event.stopPropagation()">

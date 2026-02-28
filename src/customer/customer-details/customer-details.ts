@@ -372,7 +372,7 @@ export class CustomerDetails implements OnInit {
           this.emailTaskService.linkCustomerToTask(this.linkedTaskId, response.customerId)
             .subscribe(() => {
               alert('Customer created and linked to task successfully');
-              this.router.navigate(['/tasks']); // Go back to tasks
+              this.router.navigate(['/task']); // Go back to tasks
             });
         } else {
           alert('Customer added successfully');
@@ -474,8 +474,9 @@ export class CustomerDetails implements OnInit {
   navigateToWorkflow(customer: CustomerMainViewDto): void {
     this.router.navigate(['/workflow'], { 
       queryParams: { 
-        customerId: customer.customerId,
-        customerName: customer.companyName 
+        customerId:    customer.customerId,
+        customerName:  customer.companyName,
+        customerEmail: customer.contactEmail   // ← pass email so Initial Enquiry can pre-populate it
       } 
     });
   }

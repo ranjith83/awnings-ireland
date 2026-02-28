@@ -19,7 +19,7 @@ import { FollowUpDto, FollowUpService } from '../../service/follow-up.service';
 })
 export class FollowUpListComponent  implements OnInit, OnDestroy {
 
-  private destroy$ = new Subject<void>();
+   private destroy$ = new Subject<void>();
 
   // ── Data ──────────────────────────────────────────────────────────────────
   followUps: FollowUpDto[] = [];
@@ -44,7 +44,30 @@ export class FollowUpListComponent  implements OnInit, OnDestroy {
   // ── Detail preview panel (hover / click on row) ───────────────────────────
   previewFollowUp: FollowUpDto | null = null;
 
-  constructor(
+  // ── Email preview modal (enquiry comments parsed as HTML) ─────────────────
+  showEmailPreviewModal = false;
+  emailPreviewFollowUp: FollowUpDto | null = null;
+
+  openEmailPreviewModal(event: MouseEvent, followUp: FollowUpDto): void {
+    event.stopPropagation();
+    this.emailPreviewFollowUp = followUp;
+    this.showEmailPreviewModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeEmailPreviewModal(): void {
+    this.showEmailPreviewModal = false;
+    this.emailPreviewFollowUp = null;
+    this.cdr.markForCheck();
+  }
+
+  /** Strips HTML tags to get plain text for truncated table preview. */
+  stripHtml(html: string | null | undefined): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+constructor(
     private followUpService: FollowUpService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -116,9 +139,11 @@ export class FollowUpListComponent  implements OnInit, OnDestroy {
     if (followUp.isDismissed) return;   // dismissed rows are read-only
     this.router.navigate(['/workflow/initial-enquiry'], {
       queryParams: {
-        workflowId:   followUp.workflowId,
-        customerId:   followUp.customerId ?? '',
-        fromFollowUp: followUp.followUpId    // lets the initial-enquiry screen show a banner
+        workflowId:    followUp.workflowId,
+        customerId:    followUp.customerId ?? '',
+        customerEmail: followUp.enquiryEmail ?? '',   // ← pre-populate email in Initial Enquiry
+        customerName:  followUp.companyName  ?? '',
+        fromFollowUp:  followUp.followUpId            // lets the initial-enquiry screen show a banner
       }
     });
   }

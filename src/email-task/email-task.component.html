@@ -443,21 +443,47 @@
               📍 Add Site Visit
             </button>
 
-            <!-- ── Create Workflow ────────────────────────────────────────── -->
-            <!-- Visible by category.
-                 ENABLED  when: customer exists + NO workflow yet  (primary CTA)
-                 DISABLED when: workflow already exists                         -->
-            <button *ngIf="showWorkflowBtn"
-                    class="action-btn action-btn--workflow"
-                    [class.action-btn--workflow-done]="workflowExists === true"
-                    (click)="onCreateWorkflowClick(selectedTask)"
-                    [disabled]="!canWorkflow || workflowCheckInProgress"
-                    [title]="!selectedTask.customerId  ? noCustomerTip
-                             : workflowExists === true  ? workflowDoneTip
-                             : workflowExists === null  ? 'Checking workflow…'
-                             :                            'Create a workflow for this customer'">
-              🔧 Create Workflow
+            <!-- ── Initial Enquiry ─────────────────────────────────────────── -->
+            <!-- Navigate to Initial Enquiry screen pre-filled with task email  -->
+            <button *ngIf="showWorkflowBtn && workflowExists === true"
+                    class="action-btn action-btn--enquiry"
+                    (click)="onInitialEnquiryClick(selectedTask)"
+                    [disabled]="workflowCheckInProgress"
+                    title="Open Initial Enquiry screen for this customer">
+              📋 Initial Enquiry
             </button>
+
+            <!-- ── Create Workflow ────────────────────────────────────────── -->
+            <!-- ENABLED  when: customer exists + NO workflow yet  (primary CTA)
+                 DISABLED/replaced when: workflow already exists — shows clickable name link instead -->
+            <ng-container *ngIf="showWorkflowBtn">
+
+              <!-- When workflow does NOT yet exist: normal create button -->
+              <button *ngIf="workflowExists !== true"
+                      class="action-btn action-btn--workflow"
+                      (click)="onCreateWorkflowClick(selectedTask)"
+                      [disabled]="!canWorkflow || workflowCheckInProgress"
+                      [title]="!selectedTask.customerId  ? noCustomerTip
+                               : workflowExists === null  ? 'Checking workflow…'
+                               :                            'Create a workflow for this customer'">
+                🔧 Create Workflow
+              </button>
+
+              <!-- When workflow already exists: disabled button + clickable name link -->
+              <div class="workflow-exists-block" *ngIf="workflowExists === true">
+                <button class="action-btn action-btn--workflow action-btn--workflow-done"
+                        disabled
+                        title="Workflow already exists for this customer">
+                  ✓ Workflow Created
+                </button>
+                <a class="workflow-name-link"
+                   (click)="navigateToExistingWorkflow(selectedTask)"
+                   title="Click to open the workflow">
+                  {{ existingWorkflowName || 'View Workflow' }} →
+                </a>
+              </div>
+
+            </ng-container>
 
           </div>
 

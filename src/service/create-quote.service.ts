@@ -100,7 +100,15 @@ export class CreateQuoteService {
   }
 
   createQuote(createDto: CreateQuoteDto): Observable<QuoteDto> {
-    return this.http.post<QuoteDto>(this.apiUrl, createDto)
+    // Sanitise discount fields before sending:
+    // Send null (not undefined/empty-string) when no discount type is selected
+    // so the backend's IsNullOrWhiteSpace check fires correctly.
+    const sanitised: CreateQuoteDto = {
+      ...createDto,
+      discountType:  createDto.discountType?.trim() || undefined,
+      discountValue: createDto.discountType?.trim() ? (createDto.discountValue ?? 0) : 0
+    };
+    return this.http.post<QuoteDto>(this.apiUrl, sanitised)
       .pipe(catchError(this.handleError));
   }
 
