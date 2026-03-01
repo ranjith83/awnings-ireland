@@ -25,7 +25,7 @@ import {
 } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
-import { EmailTaskService, SendTaskEmailPayload } from '../../service/email-task.service';
+import { EmailTaskService, SendDirectEmailPayload, EmailAttachmentPayload } from '../../service/email-task.service';
 
 interface QuoteItemDisplay {
   id?: number;
@@ -86,9 +86,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   customerAddress    = '';
   customerCity       = '';
   customerPostalCode = '';
-
-  /** taskId of the first linked email task — used to send the quote email */
-  private linkedTaskId: number | null = null;
 
   // ── Selection bindings ─────────────────────────────────────────────────────
   selectedWorkflowId: number | null = null;
@@ -246,25 +243,23 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         this.loadWorkflowsForCustomer(workflowId);
         this.loadSuppliers();
 
-        // Resolve a linked task so we can send email from it later
-        if (this.customerId) this.resolveLinkedTaskId(this.customerId);
+        // customerEmail is resolved from route params above.
+        // If not present, fall back to fetching from any linked task's fromEmail.
+        if (this.customerId && !this.customerEmail) this.resolveCustomerEmail(this.customerId);
       });
   }
 
   /**
-   * Loads the customer's email tasks and stores the first taskId.
-   * Used when "Email Quote to Customer" is checked — we send via that task.
+   * Fallback: if customerEmail wasn't in the route params, fetch it from the
+   * first linked email task for this customer.  sendDirectEmail() doesn't need
+   * a taskId — it uses the email address directly — so we only need the address.
    */
-  private resolveLinkedTaskId(customerId: number) {
+  private resolveCustomerEmail(customerId: number) {
     this.emailTaskService.getTasksByCustomer(customerId)
       .pipe(takeUntil(this.destroy$), catchError(() => of([])))
       .subscribe(tasks => {
-        if (tasks.length) {
-          this.linkedTaskId = tasks[0].taskId;
-          // If no customerEmail yet, populate from task
-          if (!this.customerEmail && tasks[0].fromEmail) {
-            this.customerEmail = tasks[0].fromEmail;
-          }
+        if (tasks.length && tasks[0].fromEmail) {
+          this.customerEmail = tasks[0].fromEmail;
         }
       });
   }
@@ -466,17 +461,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.createQuoteService.createQuote(createDto)
       .pipe(
         takeUntil(this.destroy$),
-        tap(createdQuote => {
+        tap(async (createdQuote) => {
           this.successMessage$.next(`Quote ${createdQuote.quoteNumber} created successfully!`);
-          this.generatePdf(createdQuote);
 
-          // ── Email quote to customer if checkbox ticked ──────────────────
+          // FIXED: await the async PDF method so the download fires after layout is drawn
+          const pdfBase64 = await this.generatePdf(createdQuote);
+
           if (this.emailToCustomer) {
-            this.sendQuoteEmail(createdQuote);
+            this.sendQuoteEmail(createdQuote, pdfBase64);
           }
 
           setTimeout(() => this.resetFormPartial(), 2000);
-        }),
+        }),        
         catchError(error => {
           this.errorMessage$.next(error.message || 'Error generating quote. Please try again.');
           return of(null);
@@ -487,42 +483,54 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Send the generated quote as an email to the customer.
-   * Uses POST /api/EmailTask/{taskId}/send-email so the message goes via
-   * the monitored mailbox configured in the backend.
+   * Send the generated quote as an email to the customer with the PDF attached.
+   *
+   * Uses POST /api/EmailTask/send-direct — no taskId required.
+   * This always works regardless of whether an email task exists for this customer.
+   *
+   * @param quote      The just-created quote (for quoteNumber and totals).
+   * @param pdfBase64  Base64-encoded PDF returned by generatePdf().
+   *                   When null/empty the email is sent without an attachment.
    */
-  private sendQuoteEmail(quote: QuoteDto) {
+  private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
     const toEmail = this.customerEmail;
     if (!toEmail) {
       this.errorMessage$.next('Cannot send email: no customer email address found.');
       return;
     }
 
-    const taskId = this.linkedTaskId;
-    if (!taskId) {
-      // No linked task — log a warning but don't block the user
-      console.warn('[CreateQuote] No linked task found; quote email not sent.');
-      this.successMessage$.next(this.successMessage$.value + ' (Email could not be sent — no linked task)');
-      return;
+    const body = this.buildQuoteEmailBody(quote);
+
+    // Build attachment list — only include when we actually have PDF bytes
+    const attachments: EmailAttachmentPayload[] = [];
+    if (pdfBase64) {
+      attachments.push({
+        fileName:     `Quote-${quote.quoteNumber}.pdf`,
+        base64Content: pdfBase64,
+        contentType:  'application/pdf'
+      });
     }
 
-    const body = this.buildQuoteEmailBody(quote);
-    const payload: SendTaskEmailPayload = {
+    const payload: SendDirectEmailPayload = {
       toEmail,
-      toName:  this.customerName,
-      subject: `Your Quote ${quote.quoteNumber} from Awnings Ireland`,
-      body
+      toName:   this.customerName,
+      subject:  `Your Quote ${quote.quoteNumber} from Awnings Ireland`,
+      body,
+      attachments: attachments.length > 0 ? attachments : undefined
     };
 
     this.isSendingEmail$.next(true);
-    this.emailTaskService.sendTaskEmail(taskId, payload)
+    this.emailTaskService.sendDirectEmail(payload)
       .pipe(
         takeUntil(this.destroy$),
         finalize(() => this.isSendingEmail$.next(false))
       )
       .subscribe({
-        next: () => this.successMessage$.next(`Quote ${quote.quoteNumber} emailed to ${toEmail}`),
-        error: ()  => this.errorMessage$.next('Quote saved but email could not be sent.')
+        next: () => this.successMessage$.next(
+          `Quote ${quote.quoteNumber} emailed to ${toEmail}` +
+          (attachments.length > 0 ? ' with PDF attached' : '')
+        ),
+        error: () => this.errorMessage$.next('Quote saved but email could not be sent.')
       });
   }
 
@@ -553,49 +561,73 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   // ── PDF ────────────────────────────────────────────────────────────────────
 
-  private generatePdf(quote: QuoteDto) {
-    const items = this.quoteItemsSubject$.value;
-    const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
-    const itemLevelDiscount = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice * (i.discountPercentage / 100)), 0);
+  /**
+   * Generates the quote PDF.
+   * - Triggers a browser download (existing behaviour).
+   * - Returns the raw base64 string so sendQuoteEmail() can attach it.
+   *   Returns null if the PDF service doesn't support blob generation.
+   */
+  private async generatePdf(quote: QuoteDto): Promise<string | null> {
+  const items = this.quoteItemsSubject$.value;
+  const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+  const itemLevelDiscount = items.reduce(
+    (sum, i) => sum + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0
+  );
 
-    let quoteLevelDiscount = 0;
-    if (this.discountType && this.discountValue > 0) {
-      quoteLevelDiscount = this.discountType === 'Percentage'
-        ? subtotal * (this.discountValue / 100)
-        : this.discountValue;
-    }
-
-    const totalDiscount = itemLevelDiscount + quoteLevelDiscount;
-    const totalTax = items.reduce((sum, i) => {
-      const sub  = i.quantity * i.unitPrice;
-      const disc = sub * ((i.discountPercentage || 0) / 100);
-      return sum + ((sub - disc) * ((i.taxRate || 0) / 100));
-    }, 0);
-
-    const adjustedTax = quoteLevelDiscount > 0 && (subtotal - itemLevelDiscount) > 0
-      ? totalTax * (1 - quoteLevelDiscount / (subtotal - itemLevelDiscount))
-      : totalTax;
-
-    const pdfData: QuotePdfData = {
-      quoteNumber:      quote.quoteNumber,
-      quoteDate:        quote.quoteDate instanceof Date ? quote.quoteDate.toLocaleDateString('en-GB') : quote.quoteDate,
-      expiryDate:       this.followUpDate,
-      customerName:     this.customerName,
-      customerAddress:  this.customerAddress   || '12 OSWALD ROAD',
-      customerCity:     this.customerCity      || 'DUBLIN 4',
-      customerPostalCode: this.customerPostalCode || 'D04 X470',
-      reference:        this.selectedProductName || 'Awning Quote',
-      items: items.map(i => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, tax: i.taxRate || this.vatRate, amount: i.amount })),
-      subtotal:         subtotal,
-      discount:         totalDiscount > 0 ? totalDiscount : undefined,
-      totalTax:         adjustedTax,
-      taxRate:          this.vatRate,
-      total:            subtotal + adjustedTax,
-      terms:            this.terms
-    };
-
-    this.pdfService.generateQuotePdf(pdfData);
+  let quoteLevelDiscount = 0;
+  if (this.discountType && this.discountValue > 0) {
+    quoteLevelDiscount = this.discountType === 'Percentage'
+      ? subtotal * (this.discountValue / 100)
+      : this.discountValue;
   }
+
+  const totalDiscount = itemLevelDiscount + quoteLevelDiscount;
+  const totalTax = items.reduce((sum, i) => {
+    const sub  = i.quantity * i.unitPrice;
+    const disc = sub * ((i.discountPercentage || 0) / 100);
+    return sum + ((sub - disc) * ((i.taxRate || 0) / 100));
+  }, 0);
+
+  const adjustedTax = quoteLevelDiscount > 0 && (subtotal - itemLevelDiscount) > 0
+    ? totalTax * (1 - quoteLevelDiscount / (subtotal - itemLevelDiscount))
+    : totalTax;
+
+  const pdfData: QuotePdfData = {
+    quoteNumber:        quote.quoteNumber,
+    quoteDate:          typeof quote.quoteDate === 'string'
+                          ? quote.quoteDate
+                          : (quote.quoteDate as Date).toISOString(),
+    expiryDate:         this.followUpDate,
+    customerName:       this.customerName,
+    customerAddress:    this.customerAddress    || '',
+    customerCity:       this.customerCity       || '',
+    customerPostalCode: this.customerPostalCode || '',
+    reference:          this.selectedProductName || 'Awning Quote',
+    items: items.map(i => ({
+      description: i.description,
+      quantity:    i.quantity,
+      unitPrice:   i.unitPrice,
+      tax:         i.taxRate || this.vatRate,
+      amount:      i.amount
+    })),
+    subtotal:     subtotal,
+    discount:     totalDiscount > 0 ? totalDiscount : undefined,
+    totalTax:     adjustedTax,
+    taxRate:      this.vatRate,
+    total:        subtotal - totalDiscount + adjustedTax,
+    terms:        this.terms
+  };
+
+  // FIXED: await the async service methods — without await the Promise
+  // returned by generateQuotePdf() was ignored and doc.save() never fired.
+  if (typeof this.pdfService.generateQuotePdfAsBase64 === 'function') {
+    // Single call: builds PDF, triggers download, and returns base64
+    return await this.pdfService.generateQuotePdfAsBase64(pdfData);
+  }
+
+  await this.pdfService.generateQuotePdf(pdfData);
+  return null;
+}
 
   // ── Form helpers ───────────────────────────────────────────────────────────
 

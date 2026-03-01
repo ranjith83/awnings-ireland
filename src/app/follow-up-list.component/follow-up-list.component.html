@@ -21,8 +21,8 @@
         <span class="badge-count" *ngIf="!showDismissed && followUps.length > 0">{{ followUps.length }}</span>
       </h1>
       <p class="page-subtitle">
-        Initial enquiries with no follow-up for more than <strong>3 days</strong>.
-        Click a row to open the enquiry and send a new reply — this resets the timer.
+        Initial enquiries with no follow-up for more than <strong>3 days</strong> and no quote created yet.
+        Reply to the customer via <em>Open Enquiry</em> to remove it from this list — or create a quote.
       </p>
     </div>
 
@@ -73,8 +73,8 @@
         </svg>
         <h3>{{ showDismissed ? 'No follow-ups recorded yet' : 'All caught up!' }}</h3>
         <p>{{ showDismissed
-             ? 'Follow-ups will appear here once initial enquiries go unanswered for 3 days.'
-             : 'No enquiries have been waiting more than 3 days without a reply.' }}</p>
+             ? 'Follow-ups appear here when enquiries go unanswered for 3 days and no quote has been raised.'
+             : 'No enquiries have been waiting more than 3 days without a reply or quote.' }}</p>
       </div>
 
       <!-- Grid -->
@@ -96,9 +96,7 @@
               [class.dismissed-row]="f.isDismissed"
               [class.active-row]="!f.isDismissed"
               [class.preview-active]="previewFollowUp?.followUpId === f.followUpId"
-              (click)="onRowClick(f)"
-              (mouseenter)="setPreview(f)"
-              (mouseleave)="setPreview(null)">
+              (click)="onRowClick(f)">
 
             <!-- Company -->
             <td class="col-company">
@@ -113,7 +111,7 @@
               <span class="email-addr">{{ f.enquiryEmail || '—' }}</span>
             </td>
 
-            <!-- Comments preview — strip HTML tags for plain text display -->
+            <!-- Comments preview -->
             <td class="col-comments">
               <span class="comments-preview" [title]="stripHtml(f.enquiryComments)">
                 {{ commentsPreview(stripHtml(f.enquiryComments)) }}
@@ -125,7 +123,7 @@
               <span class="date-text">{{ formatDateShort(f.lastEnquiryDate) }}</span>
             </td>
 
-            <!-- Overdue badge -->
+            <!-- Overdue badge / dismissed chip -->
             <td class="col-overdue">
               <span *ngIf="!f.isDismissed"
                     class="overdue-badge"
@@ -133,11 +131,16 @@
                     [class.overdue-critical]="getDaysOverdue(f.lastEnquiryDate) >= 7">
                 {{ getDaysOverdue(f.lastEnquiryDate) }} day{{ getDaysOverdue(f.lastEnquiryDate) !== 1 ? 's' : '' }}
               </span>
-              <span *ngIf="f.isDismissed" class="dismissed-chip">
+
+              <!-- Dismissed chip — label reflects why it was dismissed -->
+              <span *ngIf="f.isDismissed" class="dismissed-chip"
+                    [class.chip-replied]="f.dismissReason === 'Replied'"
+                    [class.chip-quote]="f.dismissReason === 'QuoteRaised'"
+                    [class.chip-user]="f.dismissReason === 'UserDismiss'">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                {{ f.dismissReason === 'NewEnquiry' ? 'Replied' : 'Dismissed' }}
+                {{ getDismissLabel(f.dismissReason) }}
               </span>
             </td>
 
@@ -154,11 +157,11 @@
                   View
                 </button>
 
-                <!-- Open Enquiry (primary CTA) -->
+                <!-- Open Enquiry — primary CTA, only for active rows -->
                 <button *ngIf="!f.isDismissed"
                         class="btn-act btn-open"
-                        (click)="onRowClick(f)"
-                        title="Open Initial Enquiry to send a reply">
+                        (click)="navigateToEnquiry(f); $event.stopPropagation()"
+                        title="Open Initial Enquiry to send a reply — removes this follow-up">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                     <polyline points="15 3 21 3 21 9"/>
@@ -167,7 +170,7 @@
                   Open Enquiry
                 </button>
 
-                <!-- Dismiss -->
+                <!-- Dismiss manually -->
                 <button *ngIf="!f.isDismissed"
                         class="btn-act btn-dismiss"
                         (click)="openDismissModal($event, f)"
@@ -190,66 +193,76 @@
       </table>
     </div>
 
-    <!-- ── PREVIEW PANEL ── always in DOM to prevent grid reflow/jump -->
+    <!-- ── PREVIEW PANEL — always in DOM to prevent grid reflow/jump ── -->
     <div class="preview-panel"
          [hidden]="!previewFollowUp || previewFollowUp.isDismissed"
          [class.panel-visible]="previewFollowUp && !previewFollowUp.isDismissed">
-      <!-- Guard inner bindings — outer div stays in DOM to hold grid column -->
       <ng-container *ngIf="previewFollowUp && !previewFollowUp.isDismissed">
-      <div class="preview-header">
-        <h4 class="preview-title">Enquiry Details</h4>
-        <button class="preview-close" (click)="setPreview(null)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
-      </div>
 
-      <!-- Company -->
-      <div class="preview-section">
-        <span class="preview-label">Company</span>
-        <div class="preview-company">
-          <span class="preview-avatar">{{ (previewFollowUp.companyName || '?')[0].toUpperCase() }}</span>
-          <strong>{{ previewFollowUp.companyName || '—' }}</strong>
+        <div class="preview-header">
+          <h4 class="preview-title">Enquiry Details</h4>
+          <button class="preview-close" (click)="closePreview()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
-      </div>
 
-      <!-- Last enquiry date -->
-      <div class="preview-section">
-        <span class="preview-label">Last Enquiry</span>
-        <span class="preview-value">{{ formatDate(previewFollowUp.lastEnquiryDate) }}</span>
-      </div>
+        <!-- Company -->
+        <div class="preview-section">
+          <span class="preview-label">Company</span>
+          <div class="preview-company">
+            <span class="preview-avatar">{{ (previewFollowUp.companyName || '?')[0].toUpperCase() }}</span>
+            <strong>{{ previewFollowUp.companyName || '—' }}</strong>
+          </div>
+        </div>
 
-      <!-- Overdue -->
-      <div class="preview-section">
-        <span class="preview-label">Overdue by</span>
-        <span class="overdue-badge overdue-critical">
-          {{ getDaysOverdue(previewFollowUp.lastEnquiryDate) }} day{{ getDaysOverdue(previewFollowUp.lastEnquiryDate) !== 1 ? 's' : '' }}
-        </span>
-      </div>
+        <!-- Last enquiry date -->
+        <div class="preview-section">
+          <span class="preview-label">Last Enquiry</span>
+          <span class="preview-value">{{ formatDate(previewFollowUp.lastEnquiryDate) }}</span>
+        </div>
 
-      <!-- View email details button (instead of showing inline) -->
-      <div class="preview-section">
-        <button class="btn-view-email"
-                (click)="openEmailPreviewModal($event, previewFollowUp)"
-                title="View full enquiry details">
+        <!-- Overdue -->
+        <div class="preview-section">
+          <span class="preview-label">Overdue by</span>
+          <span class="overdue-badge overdue-critical">
+            {{ getDaysOverdue(previewFollowUp.lastEnquiryDate) }} day{{ getDaysOverdue(previewFollowUp.lastEnquiryDate) !== 1 ? 's' : '' }}
+          </span>
+        </div>
+
+        <!-- Helper text -->
+        <div class="preview-section preview-hint">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          View Enquiry Details
-        </button>
-      </div>
+          <span>Replying via <strong>Open Enquiry</strong> or creating a quote will remove this from your list.</span>
+        </div>
 
-      <!-- CTA -->
-      <button class="btn-preview-cta" (click)="onRowClick(previewFollowUp!)">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-          <polyline points="15 3 21 3 21 9"/>
-          <line x1="10" y1="14" x2="21" y2="3"/>
-        </svg>
-        Open Initial Enquiry
-      </button>
-      </ng-container><!-- /guard null bindings -->
+        <!-- View email details button -->
+        <div class="preview-section">
+          <button class="btn-view-email"
+                  (click)="openEmailPreviewModal($event, previewFollowUp)"
+                  title="View full enquiry details">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            View Enquiry Details
+          </button>
+        </div>
+
+        <!-- CTA -->
+        <button class="btn-preview-cta" (click)="navigateToEnquiry(previewFollowUp!)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          Open Initial Enquiry
+        </button>
+
+      </ng-container>
     </div><!-- /preview-panel -->
 
   </div><!-- /content-split -->
@@ -258,8 +271,6 @@
 
 <!-- ══════════════════════════════════════════════════════════════════
      EMAIL / ENQUIRY PREVIEW MODAL
-     Shows HTML-parsed enquiry comments + email/date details in a modal
-     instead of on the hover panel (per UX fix).
 ══════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showEmailPreviewModal" (click)="closeEmailPreviewModal()">
   <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()" *ngIf="emailPreviewFollowUp">
@@ -302,7 +313,7 @@
         </div>
       </div>
 
-      <!-- Email body — parsed as HTML -->
+      <!-- Email body -->
       <div class="enquiry-body-box">
         <p class="enquiry-body-label">Enquiry Message</p>
         <div class="enquiry-body-content"
@@ -313,7 +324,9 @@
 
     <div class="modal-footer">
       <button class="btn-modal btn-modal-secondary" (click)="closeEmailPreviewModal()">Close</button>
-      <button class="btn-modal btn-modal-primary" (click)="closeEmailPreviewModal(); onRowClick(emailPreviewFollowUp!)">
+      <button *ngIf="!emailPreviewFollowUp.isDismissed"
+              class="btn-modal btn-modal-primary"
+              (click)="closeEmailPreviewModal(); navigateToEnquiry(emailPreviewFollowUp!)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              style="vertical-align:middle;margin-right:4px">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -325,7 +338,10 @@
     </div>
   </div>
 </div>
-══════════════════════════════════════════════════════════════════════ -->
+
+<!-- ══════════════════════════════════════════════════════════════════
+     DISMISS MODAL
+══════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showDismissModal" (click)="closeDismissModal()">
   <div class="modal-card" (click)="$event.stopPropagation()">
 
@@ -367,8 +383,10 @@
           <line x1="12" y1="8" x2="12" y2="12"/>
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
-        <span>Tip: if you replied to this customer, use <em>Open Enquiry</em> instead — adding
-          a new enquiry there automatically resets the 3-day timer.</span>
+        <span>
+          If you replied to this customer, use <em>Open Enquiry</em> instead — adding a new enquiry
+          automatically removes this follow-up and resets the 3-day timer. Creating a quote also removes it.
+        </span>
       </div>
 
       <div class="modal-field">

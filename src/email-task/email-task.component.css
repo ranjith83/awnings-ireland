@@ -1224,13 +1224,28 @@
 .email-tab-send { gap: 6px; }
 .email-tab-send.active { color: #1a56db; border-bottom-color: #1a56db; }
 
-/* Outer wrapper */
+/* Outer wrapper — must use flex:1 + overflow-y:auto so it sits inside the
+   flex-column modal correctly, just like .email-content and .attachments-content.
+   Without flex:1, content grows outside the max-height boundary and the footer
+   overlaps it — the "broken Send Email tab" bug visible in the screenshot. */
 .send-email-content {
+  flex: 1;
+  overflow-y: auto;
   padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  min-height: 340px;
+}
+
+/* Body field expands to fill remaining scroll area */
+.send-field--body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.send-field--body .send-textarea {
+  flex: 1;
+  min-height: 160px;
 }
 
 /* Alert banners */
@@ -1249,7 +1264,6 @@
   flex-direction: column;
   gap: 6px;
 }
-.send-field--body { flex: 1; }
 
 .send-label {
   font-size: 12px;
@@ -1462,4 +1476,28 @@
   background: #eff6ff;
   color: #1d4ed8;
   text-decoration: underline;
+}
+
+/* ── Complete Task Button ── */
+.complete-task-btn {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.35);
+  letter-spacing: 0.3px;
+}
+
+.complete-task-btn:hover {
+  background: linear-gradient(135deg, #15803d, #166534);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.45);
 }

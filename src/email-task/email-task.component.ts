@@ -126,14 +126,31 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   sendEmailError:    string = '';
 
   // Workflow guard UI
-  workflowCheckInProgress:  boolean       = false;
-  showNoWorkflowBanner:     boolean       = false;
-  workflowMissingForAction: string        = '';
+  workflowCheckInProgress:  boolean = false;
+  showNoWorkflowBanner:     boolean = false;
+  workflowMissingForAction: string  = '';
 
-  // Populated eagerly when the viewer opens — null = not yet checked
-  workflowExists:      boolean | null = null;
-  existingWorkflowId:  number  | null = null;
-  existingWorkflowName: string | null = null;   // ← shown as link when workflow already exists
+  // ── Workflow status as a single BehaviorSubject ─────────────────────────────
+  // Using a BehaviorSubject (not plain properties) is the correct pattern for
+  // SSR + OnPush: subscribe callbacks run outside Angular's zone during SSR so
+  // mutations to plain class properties are never picked up by the template.
+  // The async pipe subscribes directly to the observable and triggers CD on
+  // every emission — no markForCheck() needed anywhere for workflow state.
+  //
+  //   exists = null  → still loading
+  //   exists = false → customer has no workflows
+  //   exists = true  → at least one workflow found
+  readonly workflowStatus$ = new BehaviorSubject<{
+    exists:       boolean | null;
+    workflowId:   number  | null;
+    workflowName: string  | null;
+  }>({ exists: null, workflowId: null, workflowName: null });
+
+  // Synchronous snapshots — used inside TS methods that need immediate values
+  private get _ws() { return this.workflowStatus$.value; }
+  get workflowExists():       boolean | null { return this._ws.exists;       }
+  get existingWorkflowId():   number  | null { return this._ws.workflowId;   }
+  get existingWorkflowName(): string  | null { return this._ws.workflowName; }
 
   // ── Toast notification ─────────────────────────────────────────────────────
   toast: { visible: boolean; type: 'success' | 'error' | 'warning'; message: string } = {
@@ -415,16 +432,12 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.showNoWorkflowBanner    = false;
     this.workflowMissingForAction = '';
 
-    // Pre-set from task data so the button state is correct before the API responds.
-    // loadWorkflowStatus() will refine these values asynchronously.
+    // Pre-set immediately from task data so the button state is correct before
+    // the API responds. loadWorkflowStatus() refines via workflowStatus$.next().
     if (task.workflowId) {
-      this.workflowExists     = true;
-      this.existingWorkflowId = task.workflowId;
-      this.existingWorkflowName = null;   // name resolved async by loadWorkflowStatus
+      this.workflowStatus$.next({ exists: true, workflowId: task.workflowId, workflowName: null });
     } else {
-      this.workflowExists     = null;   // unknown — will be set by loadWorkflowStatus
-      this.existingWorkflowId = null;
-      this.existingWorkflowName = null;
+      this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     }
 
     // Eagerly check workflow existence so buttons reflect real state immediately
@@ -439,42 +452,35 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
    * immediately so the "Create Workflow" button is disabled without waiting for
    * the API response. The async call still runs to populate existingWorkflowName.
    */
+  /**
+   * Loads workflow status and pushes result into workflowStatus$ so the
+   * async pipe in the template re-renders automatically.
+   *
+   * SSR + OnPush safe: BehaviorSubject.next() is zone-agnostic — no
+   * cdr.markForCheck() needed for workflow state anywhere in this component.
+   */
   private loadWorkflowStatus(task: EmailTaskExtended): void {
     if (!task.customerId) {
-      this.workflowExists    = false;
-      this.existingWorkflowId = null;
-      this.cdr.markForCheck();
+      this.workflowStatus$.next({ exists: false, workflowId: null, workflowName: null });
       return;
     }
 
-    // ── Fast-path: task already has a linked workflowId ────────────────────
-    // Disable the button immediately — don't wait for the API round-trip.
-    if (task.workflowId) {
-      this.workflowExists     = true;
-      this.existingWorkflowId = task.workflowId;
-      this.cdr.markForCheck();  // re-render NOW so button disables instantly
-    }
-
-    // Still fetch from API to get the workflow name (for the clickable link)
-    // and to verify / correct the cached value.
     this.workflowService.getWorkflowsForCustomer(task.customerId).pipe(
       take(1),
       catchError(() => of([] as WorkflowDto[]))
     ).subscribe(workflows => {
       if (!workflows || workflows.length === 0) {
-        this.workflowExists     = false;
-        this.existingWorkflowId = null;
-        this.existingWorkflowName = null;
+        this.workflowStatus$.next({ exists: false, workflowId: null, workflowName: null });
       } else {
         const matched = task.workflowId
           ? workflows.find(w => w.workflowId === task.workflowId) ?? workflows[0]
           : workflows[0];
-        this.workflowExists       = true;
-        this.existingWorkflowId   = matched.workflowId;
-        this.existingWorkflowName = matched.workflowName || matched.productName || `Workflow #${matched.workflowId}`;
+        this.workflowStatus$.next({
+          exists:       true,
+          workflowId:   matched.workflowId,
+          workflowName: matched.workflowName || matched.productName || `Workflow #${matched.workflowId}`
+        });
       }
-      // ── Critical for OnPush: tell Angular this component has changed ──────
-      this.cdr.markForCheck();
     });
   }
 
@@ -486,9 +492,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.selectedStatus           = '';
     this.showNoWorkflowBanner     = false;
     this.workflowMissingForAction = '';
-    this.workflowExists           = null;
-    this.existingWorkflowId       = null;
-    this.existingWorkflowName     = null;
+    this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this.clearSendEmail();
   }
 
@@ -636,6 +640,47 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * One-click "Complete Task" — called from the Complete button in the viewer footer.
+   * Marks the task Completed and moves it straight to the Completed tab.
+   * Only visible when task is assigned to the current user and not already completed.
+   */
+  completeTask(): void {
+    if (!this.selectedTask) return;
+
+    this.emailTaskService.updateTaskStatus(this.selectedTask.taskId, 'Completed')
+      .subscribe({
+        next: () => {
+          this.closeEmailViewer();
+          this.refreshTrigger.next();
+          this.showToast('success', 'Task marked as Completed and moved to Completed tab.');
+          setTimeout(() => {
+            this.setActiveTab('completed');
+            this.cdr.markForCheck();
+          }, 600);
+        },
+        error: (err) => {
+          this.showToast('error', `Failed to complete task: ${err?.message ?? 'Unknown error'}.`);
+        }
+      });
+  }
+
+  /**
+   * Whether the "Complete Task" button should be shown.
+   * True when: task is assigned, not yet completed, and the current user is
+   * the assignee (or an admin).
+   */
+  get canCompleteTask(): boolean {
+    if (!this.selectedTask) return false;
+    const status = (this.selectedTask.status ?? '').toLowerCase();
+    if (status === 'completed' || status === 'closed') return false;
+    // Must be assigned to someone
+    if (!this.selectedTask.assignedToUserId) return false;
+    // Admin can complete any task; regular user only their own
+    if (this.isAdmin) return true;
+    return this.selectedTask.assignedToUserId === this.currentUserId;
+  }
+
   downloadAttachment(attachment: EmailAttachment): void {
     if (this.isBrowser && attachment.blobUrl) window.open(attachment.blobUrl, '_blank');
   }
@@ -737,7 +782,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       this.workflowCheckInProgress = true;
       this.checkWorkflowExists(task).subscribe(result => {
         this.workflowCheckInProgress = false;
-        if (result.ok) { this.existingWorkflowId = result.workflowId; this.workflowExists = true; this._navToQuote(task, result.workflowId); }
+        if (result.ok) { this.workflowStatus$.next({ exists: true, workflowId: result.workflowId, workflowName: this._ws.workflowName }); this._navToQuote(task, result.workflowId); }
         else { this.workflowMissingForAction = 'generate_quote'; this.showNoWorkflowBanner = true; }
       });
       return;
@@ -770,7 +815,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       this.workflowCheckInProgress = true;
       this.checkWorkflowExists(task).subscribe(result => {
         this.workflowCheckInProgress = false;
-        if (result.ok) { this.existingWorkflowId = result.workflowId; this.workflowExists = true; this._navToInvoice(task, result.workflowId); }
+        if (result.ok) { this.workflowStatus$.next({ exists: true, workflowId: result.workflowId, workflowName: this._ws.workflowName }); this._navToInvoice(task, result.workflowId); }
         else { this.workflowMissingForAction = 'generate_invoice'; this.showNoWorkflowBanner = true; }
       });
       return;
@@ -808,7 +853,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       this.workflowCheckInProgress = true;
       this.checkWorkflowExists(task).subscribe(result => {
         this.workflowCheckInProgress = false;
-        if (result.ok) { this.existingWorkflowId = result.workflowId; this.workflowExists = true; this._navToSiteVisit(task, result.workflowId); }
+        if (result.ok) { this.workflowStatus$.next({ exists: true, workflowId: result.workflowId, workflowName: this._ws.workflowName }); this._navToSiteVisit(task, result.workflowId); }
         else { this.workflowMissingForAction = 'add_site_visit'; this.showNoWorkflowBanner = true; }
       });
       return;

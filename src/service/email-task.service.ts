@@ -94,12 +94,24 @@ export interface TaskStatistics {
   dueTodayTasks: number;
 }
 
+/** A single file attachment carried in an email send request. */
+export interface EmailAttachmentPayload {
+  /** File name shown in the email client, e.g. "Quote-001.pdf" */
+  fileName:     string;
+  /** Base64-encoded file content (no data-URI prefix). */
+  base64Content: string;
+  /** MIME type, e.g. "application/pdf" */
+  contentType:  string;
+}
+
 export interface SendTaskEmailPayload {
   toEmail?:               string;
   toName?:                string;
   subject:                string;
   body:                   string;
   originalEmailGraphId?:  string | null;
+  /** Optional file attachments — base64-encoded. */
+  attachments?:           EmailAttachmentPayload[];
 }
 
 /** Payload for POST /api/EmailTask/send-direct — no task context required. */
@@ -108,6 +120,8 @@ export interface SendDirectEmailPayload {
   toName?:  string;
   subject:  string;
   body:     string;
+  /** Optional file attachments — base64-encoded. */
+  attachments?: EmailAttachmentPayload[];
 }
 
 // ==================== PAGINATION INTERFACES ====================
@@ -277,7 +291,7 @@ export class EmailTaskService {
   }
 
   updateTaskStatus(taskId: number, status: string, completionNotes?: string): Observable<EmailTask> {
-    return this.http.patch<EmailTask>(`${this.apiUrl}/${taskId}/status`, { status, completionNotes });
+    return this.http.put<EmailTask>(`${this.apiUrl}/${taskId}/status`, { status, completionNotes });
   }
 
   completeTask(taskId: number, completionNotes?: string): Observable<EmailTask> {

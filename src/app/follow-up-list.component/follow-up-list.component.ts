@@ -9,17 +9,16 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 import { FollowUpDto, FollowUpService } from '../../service/follow-up.service';
 
-
 @Component({
   selector: 'app-follow-up-list.component',
-    imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './follow-up-list.component.html',
   styleUrl: './follow-up-list.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FollowUpListComponent  implements OnInit, OnDestroy {
+export class FollowUpListComponent implements OnInit, OnDestroy {
 
-   private destroy$ = new Subject<void>();
+  private destroy$ = new Subject<void>();
 
   // ── Data ──────────────────────────────────────────────────────────────────
   followUps: FollowUpDto[] = [];
@@ -41,33 +40,14 @@ export class FollowUpListComponent  implements OnInit, OnDestroy {
   // ── Toggle dismissed rows ─────────────────────────────────────────────────
   showDismissed = false;
 
-  // ── Detail preview panel (hover / click on row) ───────────────────────────
+  // ── Detail preview panel ──────────────────────────────────────────────────
   previewFollowUp: FollowUpDto | null = null;
 
-  // ── Email preview modal (enquiry comments parsed as HTML) ─────────────────
+  // ── Email preview modal ───────────────────────────────────────────────────
   showEmailPreviewModal = false;
   emailPreviewFollowUp: FollowUpDto | null = null;
 
-  openEmailPreviewModal(event: MouseEvent, followUp: FollowUpDto): void {
-    event.stopPropagation();
-    this.emailPreviewFollowUp = followUp;
-    this.showEmailPreviewModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeEmailPreviewModal(): void {
-    this.showEmailPreviewModal = false;
-    this.emailPreviewFollowUp = null;
-    this.cdr.markForCheck();
-  }
-
-  /** Strips HTML tags to get plain text for truncated table preview. */
-  stripHtml(html: string | null | undefined): string {
-    if (!html) return '';
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-
-constructor(
+  constructor(
     private followUpService: FollowUpService,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -84,6 +64,16 @@ constructor(
 
   // ── Generate + Load ───────────────────────────────────────────────────────
 
+  /**
+   * On load / refresh:
+   *   1. POST /generate — backend runs a two-phase scan:
+   *        Phase 1: auto-dismiss any active follow-ups whose workflow now has a quote.
+   *        Phase 2: create new follow-ups for enquiries older than 3 days with no quote.
+   *   2. Reload the list.
+   *
+   * This means the list is always consistent with the current quote state —
+   * follow-ups disappear as soon as a quote is raised or a reply is added.
+   */
   generateAndLoad(): void {
     this.isGenerating$.next(true);
     this.previewFollowUp = null;
@@ -128,37 +118,63 @@ constructor(
     this.loadFollowUps();
   }
 
-  // ── Row click → navigate to Initial Enquiry screen ───────────────────────
+  // ── Row click → preview panel ─────────────────────────────────────────────
+
+  onRowClick(followUp: FollowUpDto): void {
+    if (followUp.isDismissed) return;
+    this.togglePreview(followUp);
+  }
 
   /**
-   * PRIMARY ACTION: clicking a follow-up row navigates to the
-   * Initial Enquiry screen for that workflow so the user can add a new
-   * enquiry (which resets the 3-day follow-up timer automatically).
+   * Navigate to the Initial Enquiry screen.
+   * When the user saves a new reply there, WorkflowService.AddInitialEnquiry
+   * automatically calls DismissActiveForWorkflowAsync → the follow-up is
+   * dismissed with reason "Replied" and disappears from the list on next load.
    */
-  onRowClick(followUp: FollowUpDto): void {
-    if (followUp.isDismissed) return;   // dismissed rows are read-only
+  navigateToEnquiry(followUp: FollowUpDto): void {
+    if (followUp.isDismissed) return;
     this.router.navigate(['/workflow/initial-enquiry'], {
       queryParams: {
         workflowId:    followUp.workflowId,
         customerId:    followUp.customerId ?? '',
-        customerEmail: followUp.enquiryEmail ?? '',   // ← pre-populate email in Initial Enquiry
+        customerEmail: followUp.enquiryEmail ?? '',
         customerName:  followUp.companyName  ?? '',
-        fromFollowUp:  followUp.followUpId            // lets the initial-enquiry screen show a banner
+        fromFollowUp:  followUp.followUpId
       }
     });
   }
 
-  // ── Detail preview on hover ───────────────────────────────────────────────
+  // ── Preview panel ─────────────────────────────────────────────────────────
 
-  setPreview(followUp: FollowUpDto | null): void {
-    this.previewFollowUp = followUp;
+  togglePreview(followUp: FollowUpDto): void {
+    this.previewFollowUp = this.previewFollowUp?.followUpId === followUp.followUpId ? null : followUp;
+    this.cdr.markForCheck();
+  }
+
+  closePreview(): void {
+    this.previewFollowUp = null;
+    this.cdr.markForCheck();
+  }
+
+  // ── Email preview modal ───────────────────────────────────────────────────
+
+  openEmailPreviewModal(event: MouseEvent, followUp: FollowUpDto): void {
+    event.stopPropagation();
+    this.emailPreviewFollowUp = followUp;
+    this.showEmailPreviewModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeEmailPreviewModal(): void {
+    this.showEmailPreviewModal = false;
+    this.emailPreviewFollowUp = null;
     this.cdr.markForCheck();
   }
 
   // ── Dismiss modal ─────────────────────────────────────────────────────────
 
   openDismissModal(event: MouseEvent, followUp: FollowUpDto): void {
-    event.stopPropagation();   // don't trigger row click navigation
+    event.stopPropagation();
     this.dismissingFollowUp = followUp;
     this.dismissNotes       = '';
     this.showDismissModal   = true;
@@ -192,13 +208,25 @@ constructor(
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  /**
-   * Number of days since the last enquiry date.
-   * Used for the "X days overdue" badge in the grid.
-   */
   getDaysOverdue(lastEnquiryDate: string): number {
     const ms = Date.now() - new Date(lastEnquiryDate).getTime();
     return Math.floor(ms / 86_400_000);
+  }
+
+  /**
+   * Returns a human-readable label for each dismiss reason.
+   *
+   *   "Replied"     → user added a new InitialEnquiry (replied to the customer)
+   *   "QuoteRaised" → a quote was created for this workflow
+   *   "UserDismiss" → manually dismissed via the UI
+   */
+  getDismissLabel(reason: string | null | undefined): string {
+    switch (reason) {
+      case 'Replied':     return 'Replied';
+      case 'QuoteRaised': return 'Quote Raised';
+      case 'UserDismiss': return 'Dismissed';
+      default:            return 'Resolved';
+    }
   }
 
   formatDate(date: string | null | undefined): string {
@@ -219,6 +247,12 @@ constructor(
   commentsPreview(comments: string | null | undefined): string {
     if (!comments) return '—';
     return comments.length > 120 ? comments.slice(0, 120) + '…' : comments;
+  }
+
+  /** Strips HTML tags to plain text for truncated table preview. */
+  stripHtml(html: string | null | undefined): string {
+    if (!html) return '';
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   private showSuccess(msg: string): void {
