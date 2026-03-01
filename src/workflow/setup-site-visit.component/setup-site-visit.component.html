@@ -8,41 +8,35 @@
   </div>
 
   <form [formGroup]="siteVisitForm" class="site-visit-form">
-    <!-- Select Workflow and Product Model Section -->
+    <!-- Workflow + Product Model + Add New — compact single bar -->
     <div class="form-section">
-      <h2 class="section-title">Select Workflow</h2>
-      <div class="form-row two-columns">
-        <div class="form-group">
+      <div class="header-bar">
+        <div class="header-field workflow-field">
           <label>Workflow</label>
           <select formControlName="workflow" [(ngModel)]="selectedWorkflowId" class="form-control">
             <option value="">Select Workflow</option>
             <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
-              {{ workflow.description }} 
+              {{ workflow.description }}
             </option>
           </select>
         </div>
-        <div class="form-group">
-          <div class="product-model-with-button">
-            <div class="product-model-field">
-              <label>Product Model</label>
-              <select formControlName="productModel" class="form-control">
-                <option value="">Select Product Model</option>
-                <option *ngFor="let model of productModels" [value]="model.id">
-                  {{ model.name }}
-                </option>
-              </select>
-            </div>
-            <!-- Add New Button - Always visible when workflow is selected -->
-            <button 
-              *ngIf="currentWorkflowId"
-              type="button" 
-              class="btn-add-new" 
-              (click)="addNewSiteVisit()"
-              title="Add New Site Visit">
-              + Add New
-            </button>
-          </div>
+        <div class="header-field product-field">
+          <label>Product Model</label>
+          <select formControlName="productModel" class="form-control">
+            <option value="">Select Product Model</option>
+            <option *ngFor="let model of productModels" [value]="model.id">
+              {{ model.name }}
+            </option>
+          </select>
         </div>
+        <button
+          *ngIf="currentWorkflowId && !showForm"
+          type="button"
+          class="btn-add-new"
+          (click)="addNewSiteVisit()"
+          title="Add New Site Visit">
+          Add New Site Visit
+        </button>
       </div>
     </div>
 
@@ -104,9 +98,12 @@
     <div *ngIf="showForm">
       <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
       <div class="form-section" *ngIf="!showFullTabs">
-        <h2 class="section-title">
-          {{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}
-        </h2>
+        <div class="form-header-bar">
+          <span class="form-title">{{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}</span>
+          <span class="model-badge" *ngIf="selectedProductModel">
+            {{ getProductModelName(selectedProductModel) }}
+          </span>
+        </div>
         <div class="form-row">
           <div class="form-group">
             <label>Model</label>
@@ -130,10 +127,12 @@
 
       <!-- Product Tabs Section (only for Awning and Roof System) -->
       <div class="form-section" *ngIf="showFullTabs">
-        <!-- Other Specify Section (always shown first outside tabs for Awning/RoofSystem) -->
-        <h2 class="section-title">
-          {{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}
-        </h2>
+        <div class="form-header-bar">
+          <span class="form-title">{{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}</span>
+          <span class="model-badge" *ngIf="selectedProductModel">
+            {{ getProductModelName(selectedProductModel) }}
+          </span>
+        </div>
         <div class="form-row two-columns other-specify-section">
           <div class="form-group">
             <label>Model</label>

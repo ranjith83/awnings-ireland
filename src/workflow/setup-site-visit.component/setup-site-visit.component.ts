@@ -884,17 +884,18 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       this.showError('Please select a workflow first');
       return;
     }
-    
-    // Reset form fields but keep workflow selected
+
+    // Preserve workflow AND productModel — only wipe the data entry fields
     const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
-    
+    const currentProductModel = this.siteVisitForm.get('productModel')?.value;
+
     this.editMode = false;
     this.editingSiteVisitId = null;
-    this.showForm = true; // ✅ Show the form
-    
+    this.showForm = true;
+
     this.siteVisitForm.patchValue({
       workflow: currentWorkflow,
-      productModel: '',
+      productModel: currentProductModel, // retain the model the user already chose
       model: '',
       otherPleaseSpecify: '',
       siteLayout: '',
@@ -942,17 +943,19 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       controllerBox: '',
       heaterAnyOtherDetails: ''
     }, { emitEvent: false });
-    
-    // Manually reset form state
+
+    // Reset validation state on data fields only (not productModel / workflow)
     Object.keys(this.siteVisitForm.controls).forEach(key => {
-      const control = this.siteVisitForm.get(key);
-      control?.markAsUntouched();
-      control?.markAsPristine();
+      if (key !== 'workflow' && key !== 'productModel') {
+        const control = this.siteVisitForm.get(key);
+        control?.markAsUntouched();
+        control?.markAsPristine();
+      }
     });
-    
-    this.selectedProductModel = '';
-    this.showFullTabs = false;
-    this.activeTab = 'product-model';
+
+    // selectedProductModel / showFullTabs / activeTab are already correct
+    // because the productModel valueChanges subscriber set them when the user
+    // first picked the model — we must NOT reset them here.
   }
 
   // ✅ NEW METHOD: Cancel form and return to grid
