@@ -1501,3 +1501,159 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.45);
 }
+/* ===== REORGANISED FOOTER LAYOUT ===== */
+
+/* Row 1: controls strip */
+.footer-controls-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.footer-controls-row .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+}
+
+.footer-controls-row .form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Save + Close pushed to the right */
+.footer-main-btns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  align-items: flex-end;
+}
+
+/* Row 2: quick actions + complete */
+.footer-quick-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.quick-actions-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.quick-actions-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Complete Task — right-aligned in the quick-row */
+.complete-task-btn {
+  margin-left: auto;
+  padding: 8px 18px;
+  background: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.complete-task-btn:hover { background: #218838; }
+
+/* ── Footer bottom row: Complete Task | Save | Close ── */
+.footer-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.footer-bottom-right {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* Controls row — all four dropdowns in one line */
+.footer-controls-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #e0e0e0;
+  flex-wrap: wrap;
+}
+
+.footer-controls-row .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 120px;
+}
+
+.footer-controls-row .form-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+/* Quick actions row */
+.footer-quick-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid #e0e0e0;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.quick-actions-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Complete Task button */
+.complete-task-btn {
+  padding: 8px 18px;
+  background: #28a745;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.complete-task-btn:hover { background: #218838; }

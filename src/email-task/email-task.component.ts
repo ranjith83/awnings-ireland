@@ -624,7 +624,8 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
         } else if (isStatusChange && (this.selectedStatus === 'Completed' || this.selectedStatus === 'Closed')) {
           this.closeEmailViewer();
           this.refreshTrigger.next();
-          this.showToast('success', `Task marked as ${this.selectedStatus}.`);
+          this.cdr.markForCheck();   // ← ensure OnPush picks up closed-viewer state before toast renders
+          this.showToast('success', `Task marked as ${this.selectedStatus} ✅`);
           setTimeout(() => {
             this.setActiveTab('completed');
             this.cdr.markForCheck();
@@ -645,25 +646,31 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
    * Marks the task Completed and moves it straight to the Completed tab.
    * Only visible when task is assigned to the current user and not already completed.
    */
-  completeTask(): void {
-    if (!this.selectedTask) return;
+ completeTask(): void {
+  if (!this.selectedTask) return;
 
-    this.emailTaskService.updateTaskStatus(this.selectedTask.taskId, 'Completed')
-      .subscribe({
-        next: () => {
-          this.closeEmailViewer();
-          this.refreshTrigger.next();
-          this.showToast('success', 'Task marked as Completed and moved to Completed tab.');
-          setTimeout(() => {
-            this.setActiveTab('completed');
-            this.cdr.markForCheck();
-          }, 600);
-        },
-        error: (err) => {
-          this.showToast('error', `Failed to complete task: ${err?.message ?? 'Unknown error'}.`);
-        }
-      });
-  }
+  this.emailTaskService.updateTaskStatus(this.selectedTask.taskId, 'Completed')
+    .subscribe({
+      next: () => {
+        // 1. Close viewer first so the grid is visible
+        this.closeEmailViewer();
+        // 2. Trigger grid refresh
+        this.refreshTrigger.next();
+        // 3. Show toast — markForCheck is called inside showToast(), but we
+        //    also call it here to guarantee OnPush picks up the closed viewer state
+        this.cdr.markForCheck();
+        this.showToast('success', 'Task marked as Completed ✅ and moved to Completed tab.');
+        // 4. Switch to completed tab after toast appears
+        setTimeout(() => {
+          this.setActiveTab('completed');
+          this.cdr.markForCheck();
+        }, 600);
+      },
+      error: (err) => {
+        this.showToast('error', `Failed to complete task: ${err?.message ?? 'Unknown error'}.`);
+      }
+    });
+}
 
   /**
    * Whether the "Complete Task" button should be shown.
@@ -674,6 +681,8 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     if (!this.selectedTask) return false;
     const status = (this.selectedTask.status ?? '').toLowerCase();
     if (status === 'completed' || status === 'closed') return false;
+    // Hide if the user has already chosen Completed in the status dropdown
+    if (this.selectedStatus === 'Completed' || this.selectedStatus === 'Closed') return false;
     // Must be assigned to someone
     if (!this.selectedTask.assignedToUserId) return false;
     // Admin can complete any task; regular user only their own

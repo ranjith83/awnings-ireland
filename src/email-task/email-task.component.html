@@ -328,184 +328,144 @@
       </div>
 
       <!-- ==================== ACTION FOOTER ==================== -->
-      <div class="email-footer">
+     <!-- ==================== ACTION FOOTER ==================== -->
+<div class="email-footer">
 
-        <!-- Left: form controls -->
-        <div class="footer-left">
-          <div class="form-group">
-            <label>Status:</label>
-            <select [(ngModel)]="selectedStatus" class="status-select">
-              <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
-            </select>
-          </div>
+  <!-- ── Row 1: Status | Assign To | Customer | Action ── -->
+  <div class="footer-controls-row">
 
-          <div class="form-group">
-            <label>Assign To:</label>
-            <select [(ngModel)]="selectedAssignee" class="assign-select">
-              <option [value]="null">-- Unassigned --</option>
-              <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
-            </select>
-          </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select [(ngModel)]="selectedStatus" class="status-select">
+        <option *ngFor="let s of statusOptions" [value]="s.value">{{ s.label }}</option>
+      </select>
+    </div>
 
-          <div class="form-group">
-            <label>Customer:</label>
-            <div *ngIf="selectedTask.customerId" class="customer-info">{{ selectedTask.customerName }}</div>
-            <button *ngIf="!selectedTask.customerId" class="create-customer-btn" (click)="onCreateCustomerClick(selectedTask)">
-              Create Customer
-            </button>
-          </div>
+    <div class="form-group">
+      <label>Assign To</label>
+      <select [(ngModel)]="selectedAssignee" class="assign-select">
+        <option [value]="null">— Unassigned —</option>
+        <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
+      </select>
+    </div>
 
-          <div class="form-group">
-            <label>Action:</label>
-            <select [(ngModel)]="selectedAction" class="action-select">
-              <option value="">-- Select Action --</option>
-              <option *ngFor="let action of availableActions" [value]="action.value">{{ action.label }}</option>
-            </select>
-          </div>
+    <div class="form-group">
+      <label>Customer</label>
+      <div *ngIf="selectedTask.customerId" class="customer-info">{{ selectedTask.customerName }}</div>
+      <button *ngIf="!selectedTask.customerId" class="create-customer-btn" (click)="onCreateCustomerClick(selectedTask)">
+        + Create Customer
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label>Action</label>
+      <select [(ngModel)]="selectedAction" class="action-select">
+        <option value="">— Select Action —</option>
+        <option *ngFor="let action of availableActions" [value]="action.value">{{ action.label }}</option>
+      </select>
+    </div>
+
+  </div><!-- /footer-controls-row -->
+
+  <!-- ── Row 2: Quick Actions + Complete Task ── -->
+  <div class="footer-quick-row">
+
+    <ng-container *ngIf="workflowStatus$ | async as ws">
+
+      <div class="quick-actions-section">
+        <div class="quick-actions-label">
+          Quick Actions
+          <ng-container *ngIf="selectedTask.customerId; else noCustomerPill">
+            <span class="workflow-status-pill workflow-status-pill--checking" *ngIf="ws.exists === null">⏳ Checking…</span>
+            <span class="workflow-status-pill workflow-status-pill--ok"       *ngIf="ws.exists === true">✓ Workflow linked</span>
+            <span class="workflow-status-pill workflow-status-pill--missing"  *ngIf="ws.exists === false">✗ No workflow yet</span>
+          </ng-container>
+          <ng-template #noCustomerPill>
+            <span class="workflow-status-pill workflow-status-pill--nocustomer">⚠ No customer linked</span>
+          </ng-template>
         </div>
 
-        <!-- Centre: Quick Action buttons — visible by category, enabled by workflow status -->
-        <div class="footer-actions">
-          <!-- Single async pipe resolves workflow status — SSR + OnPush safe -->
-          <ng-container *ngIf="workflowStatus$ | async as ws">
+        <div class="quick-actions-row">
 
-          <div class="quick-actions-label">
-            Quick Actions
-
-            <!-- Workflow status pill — only shown when customer is linked -->
-            <ng-container *ngIf="selectedTask.customerId">
-              <span class="workflow-status-pill workflow-status-pill--checking"
-                    *ngIf="ws.exists === null">
-                ⏳ Checking…
-              </span>
-              <span class="workflow-status-pill workflow-status-pill--ok"
-                    *ngIf="ws.exists === true">
-                ✓ Workflow exists
-              </span>
-              <span class="workflow-status-pill workflow-status-pill--missing"
-                    *ngIf="ws.exists === false">
-                ✗ No workflow — create one first
-              </span>
-            </ng-container>
-            <span class="workflow-status-pill workflow-status-pill--nocustomer"
-                  *ngIf="!selectedTask.customerId">
-              ⚠ No customer linked
-            </span>
-          </div>
-
-          <div class="quick-actions-row">
-
-            <!-- ── Generate Quote ──────────────────────────────────────────── -->
-            <button *ngIf="showQuoteBtn"
-                    class="action-btn action-btn--quote"
-                    [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
-                    (click)="onGenerateQuoteClick(selectedTask)"
-                    [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
-                    [title]="!selectedTask.customerId ? noCustomerTip
-                             : ws.exists === false    ? noWorkflowTip
-                             : ws.exists === null     ? 'Checking workflow…'
-                             :                          'Generate a quote for this customer'">
-              📄 Generate Quote
-            </button>
-
-            <!-- ── Generate Invoice ───────────────────────────────────────── -->
-            <button *ngIf="showInvoiceBtn"
-                    class="action-btn action-btn--invoice"
-                    [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
-                    (click)="onGenerateInvoiceClick(selectedTask)"
-                    [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
-                    [title]="!selectedTask.customerId ? noCustomerTip
-                             : ws.exists === false    ? noWorkflowTip
-                             : ws.exists === null     ? 'Checking workflow…'
-                             : !selectedTask.quoteId  ? 'No quote yet — will redirect to Generate Quote first'
-                             :                          'Generate an invoice for this customer'">
-              🧾 Generate Invoice
-              <span class="no-quote-hint"
-                    *ngIf="selectedTask.customerId && ws.exists === true && !selectedTask.quoteId"
-                    title="No quote yet — you will be taken to Generate Quote first">⚠</span>
-            </button>
-
-            <!-- ── Add Site Visit ─────────────────────────────────────────── -->
-            <button *ngIf="showSiteVisitBtn"
-                    class="action-btn action-btn--site-visit"
-                    [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
-                    (click)="onAddSiteVisitClick(selectedTask)"
-                    [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
-                    [title]="!selectedTask.customerId ? noCustomerTip
-                             : ws.exists === false    ? noWorkflowTip
-                             : ws.exists === null     ? 'Checking workflow…'
-                             :                          'Add a site visit (email content pre-filled)'">
-              📍 Add Site Visit
-            </button>
-
-            <!-- ── Initial Enquiry ─────────────────────────────────────────── -->
-            <button *ngIf="showWorkflowBtn && ws.exists === true"
-                    class="action-btn action-btn--enquiry"
-                    (click)="onInitialEnquiryClick(selectedTask)"
-                    [disabled]="workflowCheckInProgress"
-                    title="Open Initial Enquiry screen for this customer">
-              📋 Initial Enquiry
-            </button>
-
-            <!-- ── Create Workflow ────────────────────────────────────────── -->
-            <!-- ENABLED  when: customer exists + ws.exists !== true
-                 DISABLED when: workflow already exists — shows clickable name link -->
-            <ng-container *ngIf="showWorkflowBtn">
-
-              <!-- No workflow yet: show create button -->
-              <button *ngIf="ws.exists !== true"
-                      class="action-btn action-btn--workflow"
-                      (click)="onCreateWorkflowClick(selectedTask)"
-                      [disabled]="!selectedTask.customerId || ws.exists || workflowCheckInProgress"
-                      [title]="!selectedTask.customerId ? noCustomerTip
-                               : ws.exists === null     ? 'Checking workflow…'
-                               :                          'Create a workflow for this customer'">
-                🔧 Create Workflow
-              </button>
-
-              <!-- Workflow exists: disabled tick + clickable name link -->
-              <div class="workflow-exists-block" *ngIf="ws.exists === true">
-                <button class="action-btn action-btn--workflow action-btn--workflow-done"
-                        disabled
-                        title="Workflow already exists for this customer">
-                  ✓ Workflow Created
-                </button>
-                <a class="workflow-name-link"
-                   (click)="navigateToExistingWorkflow(selectedTask)"
-                   title="Click to open the workflow">
-                  {{ ws.workflowName || 'View Workflow' }} →
-                </a>
-              </div>
-
-            </ng-container>
-
-          </div>
-
-          <!-- Hint row: explains why action buttons are greyed out -->
-          <div class="no-workflow-hint-row"
-               *ngIf="selectedTask.customerId && ws.exists === false && (showQuoteBtn || showInvoiceBtn || showSiteVisitBtn)">
-            <span>👆 Create a workflow first to unlock the action buttons above.</span>
-          </div>
-
-          </ng-container><!-- /workflowStatus$ async -->
-
-        </div>
-
-        <!-- Right: Complete / Save / Close -->
-        <div class="footer-right">
-          <!-- Complete Task — only shown when task is assigned and not yet done -->
-          <button class="complete-task-btn"
-                  *ngIf="canCompleteTask"
-                  (click)="completeTask()"
-                  title="Mark this task as completed and move it to the Completed tab">
-            ✅ Complete Task
+          <!-- Generate Quote -->
+          <button *ngIf="showQuoteBtn"
+                  class="action-btn action-btn--quote"
+                  [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
+                  (click)="onGenerateQuoteClick(selectedTask)"
+                  [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
+                  [title]="!selectedTask.customerId ? noCustomerTip : ws.exists === false ? noWorkflowTip : ws.exists === null ? 'Checking workflow…' : 'Generate a quote'">
+            📄 Quote
           </button>
-          <button class="save-btn" (click)="save()">Save</button>
-          <button class="close-btn" (click)="closeEmailViewer()">Close</button>
+
+          <!-- Generate Invoice -->
+          <button *ngIf="showInvoiceBtn"
+                  class="action-btn action-btn--invoice"
+                  [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
+                  (click)="onGenerateInvoiceClick(selectedTask)"
+                  [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
+                  [title]="!selectedTask.customerId ? noCustomerTip : ws.exists === false ? noWorkflowTip : ws.exists === null ? 'Checking workflow…' : !selectedTask.quoteId ? 'No quote yet — will go to Generate Quote first' : 'Generate an invoice'">
+            🧾 Invoice
+            <span class="no-quote-hint" *ngIf="selectedTask.customerId && ws.exists === true && !selectedTask.quoteId" title="No quote yet">⚠</span>
+          </button>
+
+          <!-- Add Site Visit -->
+          <button *ngIf="showSiteVisitBtn"
+                  class="action-btn action-btn--site-visit"
+                  [class.action-btn--locked]="!(selectedTask.customerId && ws.exists === true)"
+                  (click)="onAddSiteVisitClick(selectedTask)"
+                  [disabled]="!(selectedTask.customerId && ws.exists === true) || workflowCheckInProgress"
+                  [title]="!selectedTask.customerId ? noCustomerTip : ws.exists === false ? noWorkflowTip : ws.exists === null ? 'Checking workflow…' : 'Schedule a site visit'">
+            📍 Site Visit
+          </button>
+
+          <!-- Initial Enquiry -->
+          <button *ngIf="showWorkflowBtn && ws.exists === true"
+                  class="action-btn action-btn--enquiry"
+                  (click)="onInitialEnquiryClick(selectedTask)"
+                  [disabled]="workflowCheckInProgress"
+                  title="Open Initial Enquiry screen">
+            📋 Enquiry
+          </button>
+
+          <!-- Create Workflow / Workflow exists -->
+          <ng-container *ngIf="showWorkflowBtn">
+            <button *ngIf="ws.exists !== true"
+                    class="action-btn action-btn--workflow"
+                    (click)="onCreateWorkflowClick(selectedTask)"
+                    [disabled]="!selectedTask.customerId || ws.exists || workflowCheckInProgress"
+                    [title]="!selectedTask.customerId ? noCustomerTip : ws.exists === null ? 'Checking workflow…' : 'Create a workflow for this customer'">
+              🔧 Create Workflow
+            </button>
+            <div class="workflow-exists-block" *ngIf="ws.exists === true">
+              <button class="action-btn action-btn--workflow action-btn--workflow-done" disabled title="Workflow already exists">✓ Workflow</button>
+              <a class="workflow-name-link" (click)="navigateToExistingWorkflow(selectedTask)" title="Open workflow">{{ ws.workflowName || 'View Workflow' }} →</a>
+            </div>
+          </ng-container>
+
+        </div><!-- /quick-actions-row -->
+
+        <div class="no-workflow-hint-row" *ngIf="selectedTask.customerId && ws.exists === false && (showQuoteBtn || showInvoiceBtn || showSiteVisitBtn)">
+          <span>👆 Create a workflow first to unlock the action buttons above.</span>
         </div>
 
-      </div><!-- /email-footer -->
-    </div><!-- /email-viewer-container -->
-  </div><!-- /email-viewer-modal -->
+      </div><!-- /quick-actions-section -->
 
-</div><!-- /email-tasks-container -->
+    </ng-container><!-- /workflowStatus$ async -->
+
+  </div><!-- /footer-quick-row -->
+
+  <!-- ── Row 3: Complete Task + Save + Close ── -->
+  <div class="footer-bottom-row">
+    <button class="complete-task-btn"
+            *ngIf="canCompleteTask"
+            (click)="completeTask()"
+            title="Mark this task as completed">
+      ✅ Complete Task
+    </button>
+    <div class="footer-bottom-right">
+      <button class="save-btn" (click)="save()">💾 Save</button>
+      <button class="close-btn" (click)="closeEmailViewer()">✕ Close</button>
+    </div>
+  </div><!-- /footer-bottom-row -->
+
+</div><!-- /email-footer -->
