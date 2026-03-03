@@ -135,6 +135,31 @@
         <span class="char-hint">{{ newComments.length }}/2000</span>
       </div>
 
+      <!-- Attachments -->
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Attachments</label>
+        <div class="ie-attach-zone">
+          <label class="ie-attach-btn" [class.disabled]="(isSaving$ | async) === true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
+              <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
+              <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
+            </svg>
+            Choose files
+            <input type="file" multiple hidden (change)="onFilesSelected($event,'add')"
+              [disabled]="(isSaving$ | async) === true" />
+          </label>
+          <span class="ie-attach-hint">PDF, images, Word, Excel — any file type</span>
+        </div>
+        <div class="ie-attach-list" *ngIf="pendingAttachments.length">
+          <div class="ie-attach-item" *ngFor="let a of pendingAttachments; let i = index">
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
+            <span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span>
+            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'add')">✕</button>
+          </div>
+        </div>
+      </div>
+
       <div class="form-footer">
         <label class="checkbox-label">
           <input type="checkbox"
@@ -183,6 +208,7 @@
             <th>#</th>
             <th>EMAIL</th>
             <th>COMMENTS</th>
+            <th>ATTACHMENTS</th>
             <th>DATE ADDED</th>
             <th>ADDED BY</th>
             <th class="col-actions">ACTIONS</th>
@@ -193,6 +219,18 @@
             <td class="col-index">{{ i + 1 }}</td>
             <td class="col-email-small">{{ enq.email }}</td>
             <td class="col-comments" [title]="enq.comments">{{ enq.comments }}</td>
+            <td class="col-attachments">
+              <ng-container *ngIf="getEnquiryAttachments(enq) as atts">
+                <span class="ie-no-attach" *ngIf="!atts.length">—</span>
+                <div class="ie-attach-pills" *ngIf="atts.length">
+                  <button class="ie-attach-pill" *ngFor="let a of atts"
+                          [title]="a.fileName + ' (' + formatBytes(a.sizeBytes) + ')'"
+                          (click)="downloadEnquiryAttachment(a)">
+                    {{ fileIcon(a.contentType) }} {{ a.fileName }}
+                  </button>
+                </div>
+              </ng-container>
+            </td>
             <td class="col-date">{{ enq.dateCreated | date:'dd MMM yyyy, HH:mm' }}</td>
             <td class="col-user">{{ enq.createdBy || '—' }}</td>
             <td class="col-actions">
@@ -259,8 +297,10 @@
       </div>
       <div class="email-body-box">
         <p class="email-body-label">Message</p>
-        <div class="email-body-content">{{ emailModalTask.emailBody || '(No body content)' }}</div>
+        <!-- [innerHTML] + SafeHtml parses HTML tags correctly instead of showing raw text -->
+        <div class="email-body-content email-html-body" [innerHTML]="emailModalBodyHtml || '(No body content)'"></div>
       </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn-modal btn-modal-secondary" (click)="closeEmailPreview()">Close</button>
@@ -309,6 +349,30 @@
           placeholder="Type your message…" rows="6" [disabled]="(isSendingEmail$ | async) === true"></textarea>
       </div>
     </div>
+      <!-- Send modal attachments -->
+      <div class="modal-field">
+        <label class="modal-label">Attachments</label>
+        <div class="ie-attach-zone ie-attach-zone--compact">
+          <label class="ie-attach-btn ie-attach-btn--sm" [class.disabled]="(isSendingEmail$ | async) === true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+              <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
+              <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
+            </svg>
+            Attach files
+            <input type="file" multiple hidden (change)="onFilesSelected($event,'send')"
+              [disabled]="(isSendingEmail$ | async) === true" />
+          </label>
+        </div>
+        <div class="ie-attach-list" *ngIf="sendPendingAttachments.length">
+          <div class="ie-attach-item" *ngFor="let a of sendPendingAttachments; let i = index">
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
+            <span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span>
+            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'send')">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn-modal btn-modal-secondary" (click)="closeSendModal()"
         [disabled]="(isSendingEmail$ | async) === true">Cancel</button>
@@ -323,7 +387,7 @@
       </button>
     </div>
   </div>
-</div>
+
 
 
 <!-- ══════════════════════════════════════════════════════════════════════
@@ -364,6 +428,45 @@
           [disabled]="(isSaving$ | async) === true">
         </textarea>
         <span class="char-hint">{{ editComments.length }}/2000</span>
+      </div>
+
+      <!-- Existing saved attachments (read-only + download) -->
+      <div class="modal-field" *ngIf="editingEnquiry && getEnquiryAttachments(editingEnquiry).length">
+        <label class="modal-label">Saved Attachments</label>
+        <div class="ie-attach-list">
+          <div class="ie-attach-item ie-attach-item--saved"
+               *ngFor="let a of getEnquiryAttachments(editingEnquiry)">
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
+            <span class="ie-attach-name">{{ a.fileName }}</span>
+            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <button class="ie-attach-dl" type="button" title="Download"
+                    (click)="downloadEnquiryAttachment(a)">↓</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add more attachments to this enquiry -->
+      <div class="modal-field">
+        <label class="modal-label">Add Attachments</label>
+        <div class="ie-attach-zone ie-attach-zone--compact">
+          <label class="ie-attach-btn ie-attach-btn--sm" [class.disabled]="(isSaving$ | async) === true">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+              <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
+              <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
+            </svg>
+            Attach files
+            <input type="file" multiple hidden (change)="onFilesSelected($event,'edit')"
+              [disabled]="(isSaving$ | async) === true" />
+          </label>
+        </div>
+        <div class="ie-attach-list" *ngIf="editPendingAttachments.length">
+          <div class="ie-attach-item" *ngFor="let a of editPendingAttachments; let i = index">
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
+            <span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span>
+            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'edit')">✕</button>
+          </div>
+        </div>
       </div>
 
       <!-- Send-on-update checkbox -->

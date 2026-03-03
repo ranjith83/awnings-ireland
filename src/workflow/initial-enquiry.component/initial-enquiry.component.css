@@ -275,3 +275,144 @@
   .form-footer { flex-direction:column; align-items:flex-start; }
   .btn-primary { width:100%; justify-content:center; }
 }
+/* ════════════════════════════════════════════════════════════════════
+   HTML EMAIL BODY — render full HTML instead of raw text
+════════════════════════════════════════════════════════════════════ */
+.email-html-body {
+  white-space: normal !important; /* override pre-wrap — HTML email handles its own spacing */
+}
+.email-html-body img { max-width: 100%; height: auto; }
+.email-html-body table { max-width: 100%; word-break: break-word; }
+
+/* ════════════════════════════════════════════════════════════════════
+   ATTACHMENT UPLOAD ZONE
+════════════════════════════════════════════════════════════════════ */
+.ie-attach-zone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 7px;
+  background: #fafafa;
+  margin-bottom: 8px;
+}
+.ie-attach-zone--compact { padding: 7px 12px; }
+
+.ie-attach-hint { font-size: 12px; color: #9ca3af; }
+
+.ie-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  user-select: none;
+  white-space: nowrap;
+}
+.ie-attach-btn:hover:not(.disabled) { background: #2563eb; color: white; border-color: #2563eb; }
+.ie-attach-btn.disabled             { opacity: .5; cursor: not-allowed; }
+.ie-attach-btn--sm                  { padding: 5px 12px; font-size: 12.5px; }
+
+/* ── Staged / saved attachment list ─────────────────────────────── */
+.ie-attach-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.ie-attach-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: #f0f7ff;
+  border: 1px solid #bfdbfe;
+  font-size: 12.5px;
+  cursor: default;
+}
+.ie-attach-item--saved {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.ie-attach-icon { font-size: 15px; flex-shrink: 0; }
+
+.ie-attach-name {
+  flex: 1;
+  color: #111827;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.ie-attach-size { color: #6b7280; font-size: 11.5px; white-space: nowrap; flex-shrink: 0; }
+
+.ie-attach-remove {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: .7;
+  transition: opacity .15s;
+}
+.ie-attach-remove:hover { opacity: 1; }
+
+.ie-attach-dl {
+  background: none;
+  border: none;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 3px;
+  flex-shrink: 0;
+  opacity: .8;
+  transition: opacity .15s;
+}
+.ie-attach-dl:hover { opacity: 1; }
+
+/* ── Enquiry history attachment column ───────────────────────────── */
+.col-attachments { min-width: 120px; }
+
+.ie-no-attach { color: #9ca3af; font-size: 13px; }
+
+.ie-attach-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.ie-attach-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #065f46;
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.ie-attach-pill:hover { background: #065f46; color: white; border-color: #065f46; }
+
+/* ── Email preview attachment section ────────────────────────────── */
+.ie-attach-item { cursor: pointer; }
+.ie-attach-item:hover { background: #e0f2fe; border-color: #7dd3fc; }

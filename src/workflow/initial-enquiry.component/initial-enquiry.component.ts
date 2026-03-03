@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 
@@ -19,6 +20,14 @@ export interface CustomerEmailRow {
   priority: string;
   emailBody: string;
   category: string;
+}
+
+/** Attachment staged in memory before save. Serialised as JSON into enquiry.images. */
+export interface PendingAttachment {
+  fileName: string;
+  contentType: string;
+  base64Content: string;
+  sizeBytes: number;
 }
 
 @Component({
@@ -68,6 +77,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Email preview modal ────────────────────────────────────────────────────
   showEmailModal   = false;
   emailModalTask: CustomerEmailRow | null = null;
+  /** Sanitised HTML for [innerHTML] — prevents raw tags showing as text. */
+  emailModalBodyHtml: SafeHtml | null = null;
 
   // ── Send-email modal ───────────────────────────────────────────────────────
   showSendModal    = false;
@@ -75,13 +86,22 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   sendSubject      = '';
   sendBody         = '';
   sendToEmail      = '';
+  /** Attachments staged for the send-email modal. */
+  sendPendingAttachments: PendingAttachment[] = [];
+
+  // ── Attachment state for Add form & Edit modal ─────────────────────────────
+  /** Attachments staged for the next addEnquiry() call. */
+  pendingAttachments: PendingAttachment[] = [];
+  /** Attachments staged for the current saveEdit() call. */
+  editPendingAttachments: PendingAttachment[] = [];
 
   private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
     private workflowService: WorkflowService,
-    private emailTaskService: EmailTaskService
+    private emailTaskService: EmailTaskService,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit() {
@@ -160,17 +180,26 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     if (!this.workflowId) { this.showError('No workflow selected.'); return; }
     if (!this.newComments.trim()) { this.showError('Please enter enquiry comments.'); return; }
 
+    // Serialise staged attachments as JSON into the images field
+    const imagesJson = this.pendingAttachments.length
+      ? JSON.stringify(this.pendingAttachments.map(a => ({
+          fileName: a.fileName, contentType: a.contentType,
+          sizeBytes: a.sizeBytes, base64Content: a.base64Content
+        })))
+      : undefined;
+
     const dto: InitialEnquiryDto = {
       workflowId: this.workflowId,
       email:      this.newEmail.trim(),
       comments:   this.newComments.trim(),
-      images:     ''
+      images:     imagesJson
     };
 
     // Capture before async — fields clear on success
     const emailToSend    = this.newEmail.trim();
     const commentsToSend = this.newComments.trim();
     const shouldSend     = this.sendEmailOnAdd;
+    const attachsToSend  = [...this.pendingAttachments];
 
     this.isSaving$.next(true);
     this.workflowService.addInitialEnquiry(dto)
@@ -179,13 +208,15 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
         next: (saved) => {
           this.enquiries = [saved, ...this.enquiries];
           this.newComments = '';
+          this.pendingAttachments = [];
           this.showSuccess('Enquiry added successfully!');
 
           if (shouldSend && emailToSend) {
             this.dispatchDirectEmail(
               emailToSend,
               `Re: Initial Enquiry – ${this.customerName}`,
-              `Thank you for your enquiry.\n\n${commentsToSend}\n\nKind regards`
+              `Thank you for your enquiry.\n\n${commentsToSend}\n\nKind regards`,
+              attachsToSend
             );
           }
         },
@@ -196,29 +227,38 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
 
   openEditModal(enquiry: InitialEnquiryDto) {
-    this.editingEnquiry   = { ...enquiry };
-    this.editEmail        = enquiry.email;          // email shown first
-    this.editComments     = enquiry.comments;
-    this.sendEmailOnUpdate = true;
-    this.showEditModal    = true;
+    this.editingEnquiry         = { ...enquiry };
+    this.editEmail              = enquiry.email;
+    this.editComments           = enquiry.comments;
+    this.sendEmailOnUpdate      = true;
+    this.editPendingAttachments = [];
+    this.showEditModal          = true;
     this.errorMessage$.next('');
   }
 
   closeEditModal() {
-    this.showEditModal  = false;
-    this.editingEnquiry = null;
-    this.editEmail      = '';
-    this.editComments   = '';
+    this.showEditModal          = false;
+    this.editingEnquiry         = null;
+    this.editEmail              = '';
+    this.editComments           = '';
+    this.editPendingAttachments = [];
   }
 
   saveEdit() {
     if (!this.editingEnquiry) return;
     if (!this.editComments.trim()) { this.showError('Comments are required.'); return; }
 
+    // Merge new uploads with any attachments already saved in images
+    let existingAtts: PendingAttachment[] = [];
+    try { if (this.editingEnquiry.images) existingAtts = JSON.parse(this.editingEnquiry.images); } catch { /* ignore */ }
+    const allAtts    = [...existingAtts, ...this.editPendingAttachments];
+    const imagesJson = allAtts.length ? JSON.stringify(allAtts) : undefined;
+
     const dto: InitialEnquiryDto = {
       ...this.editingEnquiry,
       email:    this.editEmail.trim(),
-      comments: this.editComments.trim()
+      comments: this.editComments.trim(),
+      images:   imagesJson
     };
 
     this.isSaving$.next(true);
@@ -235,7 +275,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
             this.dispatchDirectEmail(
               this.editEmail.trim(),
               `Enquiry Update – ${this.customerName}`,
-              `Your enquiry details have been updated.\n\n${this.editComments.trim()}\n\nKind regards`
+              `Your enquiry details have been updated.\n\n${this.editComments.trim()}\n\nKind regards`,
+              this.editPendingAttachments
             );
           }
 
@@ -248,8 +289,19 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
   // ── Email preview ──────────────────────────────────────────────────────────
 
-  openEmailPreview(row: CustomerEmailRow) { this.emailModalTask = row; this.showEmailModal = true; }
-  closeEmailPreview()                     { this.showEmailModal = false; this.emailModalTask = null; }
+  openEmailPreview(row: CustomerEmailRow) {
+    this.emailModalTask     = row;
+    this.emailModalBodyHtml = row.emailBody
+      ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody)
+      : null;
+    this.showEmailModal     = true;
+  }
+
+  closeEmailPreview() {
+    this.showEmailModal     = false;
+    this.emailModalTask     = null;
+    this.emailModalBodyHtml = null;
+  }
 
   // ── Send-email modal ───────────────────────────────────────────────────────
 
@@ -263,9 +315,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   }
 
   closeSendModal() {
-    this.showSendModal = false;
-    this.sendModalTaskId = null;
+    this.showSendModal          = false;
+    this.sendModalTaskId        = null;
     this.sendSubject = this.sendBody = this.sendToEmail = '';
+    this.sendPendingAttachments = [];
   }
 
   sendEmail() {
@@ -274,9 +327,12 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
     // Reply modal always has a real taskId — use the task-threaded send endpoint
     const payload: SendTaskEmailPayload = {
-      toEmail:  this.sendToEmail,
-      subject:  this.sendSubject,
-      body:     this.sendBody
+      toEmail:     this.sendToEmail,
+      subject:     this.sendSubject,
+      body:        this.sendBody,
+      attachments: this.sendPendingAttachments.length
+        ? this.sendPendingAttachments.map(a => ({ fileName: a.fileName, base64Content: a.base64Content, contentType: a.contentType }))
+        : undefined
     };
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendTaskEmail(this.sendModalTaskId, payload)
@@ -298,11 +354,17 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     toEmail: string,
     subject: string,
     body: string,
+    attachments: PendingAttachment[] = [],
     onSuccess?: () => void
   ) {
     if (!toEmail?.trim()) { onSuccess?.(); return; }
 
-    const payload: SendDirectEmailPayload = { toEmail, subject, body };
+    const payload: SendDirectEmailPayload = {
+      toEmail, subject, body,
+      attachments: attachments.length
+        ? attachments.map(a => ({ fileName: a.fileName, base64Content: a.base64Content, contentType: a.contentType }))
+        : undefined
+    };
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendDirectEmail(payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
@@ -326,6 +388,66 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       case 'COMPLETED': return 'badge badge--completed'; case 'CANCELLED': return 'badge badge--cancelled';
       case 'PENDING':   return 'badge badge--pending';   default:          return 'badge badge--inprogress';
     }
+  }
+
+  // ── Attachment helpers ────────────────────────────────────────────────────
+
+  /**
+   * File-input change handler. Reads each file as base64 and pushes into the
+   * correct pending list: 'add' | 'edit' | 'send'
+   */
+  onFilesSelected(event: Event, target: 'add' | 'edit' | 'send'): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const att: PendingAttachment = {
+          fileName:      file.name,
+          contentType:   file.type || 'application/octet-stream',
+          base64Content: (reader.result as string).split(',')[1],
+          sizeBytes:     file.size
+        };
+        if (target === 'add')  this.pendingAttachments      = [...this.pendingAttachments,      att];
+        if (target === 'edit') this.editPendingAttachments  = [...this.editPendingAttachments,  att];
+        if (target === 'send') this.sendPendingAttachments  = [...this.sendPendingAttachments,  att];
+      };
+      reader.readAsDataURL(file);
+    });
+    input.value = ''; // reset so same file can be re-selected
+  }
+
+  removeAttachment(index: number, target: 'add' | 'edit' | 'send'): void {
+    if (target === 'add')  this.pendingAttachments      = this.pendingAttachments.filter((_,i) => i !== index);
+    if (target === 'edit') this.editPendingAttachments  = this.editPendingAttachments.filter((_,i) => i !== index);
+    if (target === 'send') this.sendPendingAttachments  = this.sendPendingAttachments.filter((_,i) => i !== index);
+  }
+
+  /** Parse saved JSON from enquiry.images back into attachment objects for display. */
+  getEnquiryAttachments(enquiry: InitialEnquiryDto): PendingAttachment[] {
+    if (!enquiry.images) return [];
+    try { return JSON.parse(enquiry.images); } catch { return []; }
+  }
+
+  downloadEnquiryAttachment(att: PendingAttachment): void {
+    const link    = document.createElement('a');
+    link.href     = `data:${att.contentType};base64,${att.base64Content}`;
+    link.download = att.fileName;
+    link.click();
+  }
+
+  formatBytes(bytes: number): string {
+    if (bytes < 1024)    return `${bytes} B`;
+    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+  }
+
+  fileIcon(contentType: string): string {
+    if (contentType?.includes('pdf'))   return '📄';
+    if (contentType?.includes('image')) return '🖼️';
+    if (contentType?.includes('word'))  return '📝';
+    if (contentType?.includes('excel') || contentType?.includes('spreadsheet')) return '📊';
+    return '📎';
   }
 
   trackByEnquiry(_: number, e: InitialEnquiryDto) { return e.enquiryId; }
