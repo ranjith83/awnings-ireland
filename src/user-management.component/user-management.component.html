@@ -141,7 +141,7 @@
   </div>
 
   <!-- Modal -->
-  <div class="modal-overlay" *ngIf="showModal$ | async" (click)="closeModal()">
+  <div class="modal-overlay" *ngIf="showModal$ | async" (click)="$event.stopPropagation()">
     <div class="modal-content" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>{{ (isEditMode$ | async) ? 'Edit User' : 'Add New User' }}</h2>
