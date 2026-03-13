@@ -18,7 +18,6 @@ import {
   SupplierDto,
   ProductDto,
   WorkflowDto,
-  ArmDto,
   MotorDto,
   HeaterDto,
   BracketDto
@@ -50,7 +49,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   workflows$!: Observable<WorkflowDto[]>;
   suppliers$!: Observable<SupplierDto[]>;
   brackets$!: Observable<BracketDto[]>;
-  arms$!: Observable<ArmDto[]>;
   motors$!: Observable<MotorDto[]>;
   heaters$!: Observable<HeaterDto[]>;
   availableWidths$!: Observable<number[]>;
@@ -71,7 +69,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   private workflowsSubject$   = new BehaviorSubject<WorkflowDto[]>([]);
   private suppliersSubject$   = new BehaviorSubject<SupplierDto[]>([]);
   private bracketsSubject$    = new BehaviorSubject<BracketDto[]>([]);
-  private armsSubject$        = new BehaviorSubject<ArmDto[]>([]);
   private motorsSubject$      = new BehaviorSubject<MotorDto[]>([]);
   private heatersSubject$     = new BehaviorSubject<HeaterDto[]>([]);
   private widthsSubject$      = new BehaviorSubject<number[]>([]);
@@ -110,11 +107,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   installationFee     = 0;
   vatRate             = 13.5;
   selectedBrackets    = '';
-  selectedArms        = '';
   selectedMotor       = '';
   selectedHeater      = '';
   includeElectrician  = false;
   electricianPrice    = 280.00;
+
+  // Extras (free-text replacement for Arms)
+  extrasDescription = '';
+  extrasPrice       = 0;
 
   /**
    * When true the quote PDF is emailed to the customer address via Graph.
@@ -153,7 +153,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.workflows$          = this.workflowsSubject$.asObservable();
     this.suppliers$          = this.suppliersSubject$.asObservable();
     this.brackets$           = this.bracketsSubject$.asObservable();
-    this.arms$               = this.armsSubject$.asObservable();
     this.motors$             = this.motorsSubject$.asObservable();
     this.heaters$            = this.heatersSubject$.asObservable();
     this.availableWidths$    = this.widthsSubject$.asObservable();
@@ -316,9 +315,39 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   private loadProductAddons() {
     if (!this.selectedModelId) return;
     const id = this.selectedModelId;
-    this.workflowService.getBracketsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.bracketsSubject$.next(v)), catchError(() => of([]))).subscribe();
-    this.workflowService.getArmsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.armsSubject$.next(v)), catchError(() => of([]))).subscribe();
-    this.workflowService.getMotorsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.motorsSubject$.next(v)), catchError(() => of([]))).subscribe();
+    this.workflowService.getBracketsForProduct(id).pipe(
+      takeUntil(this.destroy$),
+      tap(v => {
+        this.bracketsSubject$.next(v);
+        // Default bracket: "Surcharge for face fixture" (BracketId = 1, price 86.00)
+        const defaultBracket = v.find(b =>
+          b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
+          !b.bracketName.toLowerCase().includes('spreader')
+        );
+        if (defaultBracket) {
+          this.selectedBrackets = defaultBracket.bracketId.toString();
+          this.onBracketChange();
+        }
+      }),
+      catchError(() => of([]))
+    ).subscribe();
+    this.workflowService.getMotorsForProduct(id).pipe(
+      takeUntil(this.destroy$),
+      tap(v => {
+        this.motorsSubject$.next(v);
+        // Default motor: "Surcharge for radio-contr. motor io/RTS + 1 ch. transmitter"
+        const defaultMotor = v.find(m =>
+          m.description.toLowerCase().includes('radio') &&
+          m.description.toLowerCase().includes('rts') &&
+          m.description.toLowerCase().includes('1 ch')
+        );
+        if (defaultMotor) {
+          this.selectedMotor = defaultMotor.motorId.toString();
+          this.onMotorChange();
+        }
+      }),
+      catchError(() => of([]))
+    ).subscribe();
     this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.heatersSubject$.next(v)), catchError(() => of([]))).subscribe();
   }
 
@@ -365,10 +394,20 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (bracket) this.addOrUpdateAddonLineItem('bracket', { description: bracket.bracketName, quantity: 1, unitPrice: bracket.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, bracket.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
   }
 
-  onArmChange() {
-    if (!this.selectedArms) { this.removeAddonLineItem('arm'); return; }
-    const arm = this.armsSubject$.value.find(a => a.armId.toString() === this.selectedArms);
-    if (arm) this.addOrUpdateAddonLineItem('arm', { description: arm.description, quantity: 1, unitPrice: arm.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, arm.price, this.vatRate, 0), id: this.getAddonItemId('arm') });
+  onExtrasChange() {
+    if (!this.extrasDescription || this.extrasPrice <= 0) {
+      this.removeAddonLineItem('arm');
+      return;
+    }
+    this.addOrUpdateAddonLineItem('arm', {
+      description: this.extrasDescription,
+      quantity: 1,
+      unitPrice: this.extrasPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
+      id: this.getAddonItemId('arm')
+    });
   }
 
   onMotorChange() {

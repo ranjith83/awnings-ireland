@@ -19,7 +19,6 @@ import {
 import { 
   WorkflowService, 
   WorkflowDto,
-  ArmDto,
   MotorDto,
   HeaterDto,
   BracketDto
@@ -51,7 +50,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   workflows$!: Observable<WorkflowDto[]>;
   quotes$!: Observable<QuoteDto[]>;
   brackets$!: Observable<BracketDto[]>;
-  arms$!: Observable<ArmDto[]>;
   motors$!: Observable<MotorDto[]>;
   heaters$!: Observable<HeaterDto[]>;
   availableWidths$!: Observable<number[]>;
@@ -72,7 +70,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
   private quotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
   private bracketsSubject$ = new BehaviorSubject<BracketDto[]>([]);
-  private armsSubject$ = new BehaviorSubject<ArmDto[]>([]);
   private motorsSubject$ = new BehaviorSubject<MotorDto[]>([]);
   private heatersSubject$ = new BehaviorSubject<HeaterDto[]>([]);
   private widthsSubject$ = new BehaviorSubject<number[]>([]);
@@ -107,7 +104,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   
   // Addon selections
   selectedBrackets: string = '';
-  selectedArms: string = '';
+  extrasDescription: string = '';
+  extrasPrice: number = 0;
   selectedMotor: string = '';
   selectedHeater: string = '';
   includeElectrician: boolean = false;
@@ -145,7 +143,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.workflows$ = this.workflowsSubject$.asObservable();
     this.quotes$ = this.quotesSubject$.asObservable();
     this.brackets$ = this.bracketsSubject$.asObservable();
-    this.arms$ = this.armsSubject$.asObservable();
     this.motors$ = this.motorsSubject$.asObservable();
     this.heaters$ = this.heatersSubject$.asObservable();
     this.availableWidths$ = this.widthsSubject$.asObservable();
@@ -333,15 +330,18 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.workflowService.getBracketsForProduct(this.selectedModelId)
       .pipe(
         takeUntil(this.destroy$),
-        tap(brackets => this.bracketsSubject$.next(brackets)),
-        catchError(() => of([]))
-      )
-      .subscribe();
-
-    this.workflowService.getArmsForProduct(this.selectedModelId)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(arms => this.armsSubject$.next(arms)),
+        tap(brackets => {
+          this.bracketsSubject$.next(brackets);
+          // Default: "Surcharge for face fixture" (price 86.00)
+          const defaultBracket = brackets.find(b =>
+            b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
+            !b.bracketName.toLowerCase().includes('spreader')
+          );
+          if (defaultBracket) {
+            this.selectedBrackets = defaultBracket.bracketId.toString();
+            this.onBracketChange();
+          }
+        }),
         catchError(() => of([]))
       )
       .subscribe();
@@ -349,7 +349,19 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.workflowService.getMotorsForProduct(this.selectedModelId)
       .pipe(
         takeUntil(this.destroy$),
-        tap(motors => this.motorsSubject$.next(motors)),
+        tap(motors => {
+          this.motorsSubject$.next(motors);
+          // Default: "Surcharge for radio-contr. motor io/RTS + 1 ch. transmitter"
+          const defaultMotor = motors.find(m =>
+            m.description.toLowerCase().includes('radio') &&
+            m.description.toLowerCase().includes('rts') &&
+            m.description.toLowerCase().includes('1 ch')
+          );
+          if (defaultMotor) {
+            this.selectedMotor = defaultMotor.motorId.toString();
+            this.onMotorChange();
+          }
+        }),
         catchError(() => of([]))
       )
       .subscribe();
@@ -418,7 +430,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       }
       
       const brackets = this.bracketsSubject$.value;
-      const arms = this.armsSubject$.value;
       const motors = this.motorsSubject$.value;
       const heaters = this.heatersSubject$.value;
       
@@ -429,9 +440,6 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         
         const bracket = brackets.find(b => desc.includes(b.bracketName.toLowerCase()));
         if (bracket) this.selectedBrackets = bracket.bracketId.toString();
-        
-        const arm = arms.find(a => desc.includes(a.description.toLowerCase()));
-        if (arm) this.selectedArms = arm.armId.toString();
         
         const motor = motors.find(m => desc.includes(m.description.toLowerCase()) || desc.includes('motor'));
         if (motor) this.selectedMotor = motor.motorId.toString();
@@ -455,7 +463,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedWidthCm = null;
     this.selectedAwning = null;
     this.selectedBrackets = '';
-    this.selectedArms = '';
+    this.extrasDescription = '';
+    this.extrasPrice = 0;
     this.selectedMotor = '';
     this.selectedHeater = '';
     this.includeElectrician = false;
@@ -552,30 +561,26 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     }
   }
 
-  onArmChange() {
-    if (!this.selectedArms) {
+  onExtrasChange() {
+    if (!this.extrasDescription || this.extrasPrice <= 0) {
       this.removeAddonLineItem('arm');
       return;
     }
 
-    const arms = this.armsSubject$.value;
-    const arm = arms.find(a => a.armId.toString() === this.selectedArms);
-    if (arm) {
-      const totalPrice = this.calculateItemTotal(1, arm.price, this.vatRate, 0);
-      
-      const lineItem: InvoiceItemDisplay = {
-        description: arm.description,
-        quantity: 1,
-        unitPrice: arm.price,
-        taxRate: this.vatRate,
-        discountPercentage: 0,
-        unit: 'pcs',
-        totalPrice: totalPrice,
-        id: this.getAddonItemId('arm')
-      };
+    const totalPrice = this.calculateItemTotal(1, this.extrasPrice, this.vatRate, 0);
 
-      this.addOrUpdateAddonLineItem('arm', lineItem);
-    }
+    const lineItem: InvoiceItemDisplay = {
+      description: this.extrasDescription,
+      quantity: 1,
+      unitPrice: this.extrasPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      unit: 'pcs',
+      totalPrice: totalPrice,
+      id: this.getAddonItemId('arm')
+    };
+
+    this.addOrUpdateAddonLineItem('arm', lineItem);
   }
 
   onMotorChange() {

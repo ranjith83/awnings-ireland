@@ -526,6 +526,27 @@
   }
 }
 
+/* Extras field */
+.extras-group {
+  grid-column: span 1;
+}
+
+.extras-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.extras-description {
+  flex: 1;
+  min-width: 0;
+}
+
+.extras-price {
+  width: 110px;
+  flex-shrink: 0;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .form-row {
