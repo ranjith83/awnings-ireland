@@ -112,10 +112,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   includeElectrician  = false;
   electricianPrice    = 280.00;
 
-  // Extras (free-text replacement for Arms)
-  extrasDescription = '';
-  extrasPrice       = 0;
-
   /**
    * When true the quote PDF is emailed to the customer address via Graph.
    * The email is sent using the linked task's send-email endpoint.
@@ -374,11 +370,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedProductName) return;
     const widthM      = (this.selectedWidthCm / 100).toFixed(1);
     const projectionM = (this.selectedAwning  / 100).toFixed(0);
-    const description = `${this.selectedProductName} closed cassette awning\n${widthM}m wide x ${projectionM}m projection`;
+    const suffix      = (this.installationFee && this.installationFee > 0) ? 'Supply & Fit' : 'Supply Only';
+    const description = `${this.selectedProductName} closed cassette awning ${widthM}m wide x ${projectionM}m projection ${suffix}`;
+    // Fold the installation fee into the unit price of this line item
+    const unitPrice   = this.calculatedPrice + (this.installationFee || 0);
     const item: QuoteItemDisplay = {
-      description, quantity: 1, unitPrice: this.calculatedPrice,
+      description, quantity: 1, unitPrice,
       taxRate: this.vatRate, discountPercentage: 0,
-      amount: this.calculateAmount(1, this.calculatedPrice, this.vatRate, 0)
+      amount: this.calculateAmount(1, unitPrice, this.vatRate, 0)
     };
     const current = this.quoteItemsSubject$.value;
     if (current.length > 0 && current[0].description.includes('wide x')) {
@@ -392,22 +391,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedBrackets) { this.removeAddonLineItem('bracket'); return; }
     const bracket = this.bracketsSubject$.value.find(b => b.bracketId.toString() === this.selectedBrackets);
     if (bracket) this.addOrUpdateAddonLineItem('bracket', { description: bracket.bracketName, quantity: 1, unitPrice: bracket.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, bracket.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
-  }
-
-  onExtrasChange() {
-    if (!this.extrasDescription || this.extrasPrice <= 0) {
-      this.removeAddonLineItem('arm');
-      return;
-    }
-    this.addOrUpdateAddonLineItem('arm', {
-      description: this.extrasDescription,
-      quantity: 1,
-      unitPrice: this.extrasPrice,
-      taxRate: this.vatRate,
-      discountPercentage: 0,
-      amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
-      id: this.getAddonItemId('arm')
-    });
   }
 
   onMotorChange() {
@@ -428,9 +411,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onInstallationFeeChange() {
-    if (!this.installationFee || this.installationFee <= 0) { this.removeAddonLineItem('installation'); return; }
-    const desc = this.selectedProductName ? `Supply and Fit ${this.selectedProductName}` : 'Supply and Fit';
-    this.addOrUpdateAddonLineItem('installation', { description: desc, quantity: 1, unitPrice: this.installationFee, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, this.installationFee, this.vatRate, 0), id: this.getAddonItemId('installation') });
+    // No separate installation line item — fee is folded into the first line item's
+    // unit price, and the description suffix switches between Supply & Fit / Supply Only.
+    this.removeAddonLineItem('installation'); // clean up any legacy item
+    this.generateFirstLineItem();
   }
 
   /** Discount is optional — just triggers recalculation */
@@ -674,7 +658,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.quoteDate   = new Date().toISOString().split('T')[0];
     this.followUpDate = this.getDefaultFollowUpDate();
     this.notes       = '';
-    this.terms       = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
+    this.terms         = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
+    this.installationFee = 0;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
     this.quoteItemsSubject$.next(first ? [first] : []);
     this.successMessage$.next('');
