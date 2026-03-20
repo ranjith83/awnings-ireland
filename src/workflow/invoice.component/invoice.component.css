@@ -429,6 +429,18 @@
   flex-shrink: 0;
 }
 
+
+/* Electrician checkbox vertical alignment in addons row */
+.form-group .checkbox-label-wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 100%;
+}
+
+.form-row .form-group .checkbox-label {
+  padding-bottom: 10px; /* align checkbox baseline with input controls */
+}
 /* Responsive Design */
 @media (max-width: 1024px) {
   .summary-section {

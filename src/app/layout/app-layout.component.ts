@@ -10,7 +10,8 @@ import {
   faCog,
   faFileSignature,
   faUserPlus,
-  faBell
+  faBell,
+  faSlidersH
 } from '@fortawesome/free-solid-svg-icons';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -44,7 +45,8 @@ export class AppLayoutComponent {
     { icon: faCog, label: 'Task', route: '/task' },
     { icon: faBell, label: 'Follow Ups', route: '/followups' },
     { icon: faUserPlus, label: 'User Register', route: '/user-management' },
-    { icon: faFileSignature, label: 'Audit', route: '/audit' }
+    { icon: faFileSignature, label: 'Audit', route: '/audit' },
+    { icon: faSlidersH, label: 'Configuration', route: '/configuration' }
   ];
 
   

@@ -526,6 +526,51 @@
   }
 }
 
+/* Extras field */
+.extras-group {
+  grid-column: span 1;
+}
+
+.extras-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.extras-description {
+  flex: 1;
+  min-width: 0;
+}
+
+.extras-price {
+  width: 110px;
+  flex-shrink: 0;
+}
+
+
+/* Electrician + Extras side-by-side row */
+.addon-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  align-items: end;
+}
+
+.addon-bottom-row .form-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.addon-bottom-row .checkbox-label {
+  padding-bottom: 10px; /* align with input baseline */
+}
+
+@media (max-width: 768px) {
+  .addon-bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
 /* Responsive Design */
 @media (max-width: 1200px) {
   .form-row {

@@ -21,6 +21,7 @@ import { PaymentComponent } from '../payment/payment.component';
 import { QuickCalculatorComponent } from './quick-calculator.component/quick-calculator.component';
 import { EmailTaskComponent } from '../email-task/email-task.component';
 import { FollowUpListComponent } from './follow-up-list.component/follow-up-list.component';
+import { ConfigurationComponent } from './configuration/configuration.component';
 
 
 export const routes: Routes = [
@@ -68,6 +69,7 @@ export const routes: Routes = [
       {  path: 'user-management',  component: UserManagementComponent },
       {  path: 'audit',  component: AuditHistoryComponent },
       {  path: 'followups', component: FollowUpListComponent },
+      { path: 'configuration', component: ConfigurationComponent },
       
     ]
   },

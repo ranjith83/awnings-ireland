@@ -112,6 +112,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   includeElectrician  = false;
   electricianPrice    = 280.00;
 
+  // Extras (free-text line item)
+  extrasDescription = '';
+  extrasPrice       = 0;
+
   /**
    * When true the quote PDF is emailed to the customer address via Graph.
    * The email is sent using the linked task's send-email endpoint.
@@ -391,6 +395,22 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedBrackets) { this.removeAddonLineItem('bracket'); return; }
     const bracket = this.bracketsSubject$.value.find(b => b.bracketId.toString() === this.selectedBrackets);
     if (bracket) this.addOrUpdateAddonLineItem('bracket', { description: bracket.bracketName, quantity: 1, unitPrice: bracket.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, bracket.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
+  }
+
+  onExtrasChange() {
+    if (!this.extrasDescription || this.extrasPrice <= 0) {
+      this.removeAddonLineItem('arm');
+      return;
+    }
+    this.addOrUpdateAddonLineItem('arm', {
+      description: this.extrasDescription,
+      quantity: 1,
+      unitPrice: this.extrasPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
+      id: this.getAddonItemId('arm')
+    });
   }
 
   onMotorChange() {
