@@ -8,7 +8,7 @@
   </div>
 
   <form [formGroup]="siteVisitForm" class="site-visit-form">
-    <!-- Workflow + Product Model + Add New — compact single bar -->
+    <!-- Workflow + Product Model + Add New + Check Availability -->
     <div class="form-section">
       <div class="header-bar">
         <div class="header-field workflow-field">
@@ -37,8 +37,124 @@
           title="Add New Site Visit">
           Add New Site Visit
         </button>
+        <!-- ── Check Availability button ─────────────────────────────── -->
+        <button
+          type="button"
+          class="btn-check-availability"
+          [class.active]="showCalendar"
+          (click)="toggleCalendar()"
+          title="Check Outlook Calendar Availability">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Check Availability
+        </button>
       </div>
     </div>
+
+    <!-- ── Outlook Calendar Panel ─────────────────────────────────────────── -->
+    <div class="calendar-panel" *ngIf="showCalendar">
+      <div class="calendar-panel-header">
+        <div class="calendar-panel-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Outlook Calendar — Availability
+        </div>
+        <div class="calendar-legend">
+          <span class="legend-item legend-free"><span class="legend-dot"></span>Free</span>
+          <span class="legend-item legend-busy"><span class="legend-dot"></span>Busy</span>
+          <span class="legend-item legend-past"><span class="legend-dot"></span>Past</span>
+        </div>
+        <button type="button" class="calendar-close-btn" (click)="closeCalendar()" title="Close">✕</button>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="calendarLoading" class="calendar-loading">
+        <div class="calendar-spinner"></div>
+        Loading calendar...
+      </div>
+
+      <!-- Error banner (non-blocking) -->
+      <div *ngIf="calendarError && !calendarLoading" class="calendar-error-banner">
+        ⚠️ {{ calendarError }}
+      </div>
+
+      <!-- Calendar body -->
+      <div class="calendar-body" *ngIf="!calendarLoading">
+
+        <!-- Month navigation -->
+        <div class="calendar-nav">
+          <button type="button" class="cal-nav-btn" (click)="prevMonth()" title="Previous month">‹</button>
+          <span class="cal-month-label">{{ calendarMonthLabel }}</span>
+          <button type="button" class="cal-nav-btn" (click)="nextMonth()" title="Next month">›</button>
+        </div>
+
+        <!-- Summary pills -->
+        <div class="calendar-summary">
+          <span class="summary-pill pill-free">{{ freeDaysCount }} free day{{ freeDaysCount !== 1 ? 's' : '' }}</span>
+          <span class="summary-pill pill-busy">{{ busyDaysCount }} busy day{{ busyDaysCount !== 1 ? 's' : '' }}</span>
+        </div>
+
+        <div class="calendar-grid-wrap">
+          <!-- Weekday headers -->
+          <div class="cal-weekdays">
+            <div *ngFor="let wd of WEEKDAYS" class="cal-weekday">{{ wd }}</div>
+          </div>
+
+          <!-- Day grid -->
+          <div class="cal-weeks">
+            <div class="cal-week" *ngFor="let week of calendarWeeks">
+              <div
+                *ngFor="let day of week"
+                class="cal-day"
+                [class.other-month]="!day.isCurrentMonth"
+                [class.today]="day.isToday"
+                [class.free]="day.isFree && day.isCurrentMonth"
+                [class.busy]="day.isBusy && day.isCurrentMonth"
+                [class.past]="day.isPast && !day.isToday"
+                [class.selected]="day.isSelected"
+                [class.clickable]="!day.isPast || day.isToday"
+                (click)="selectDay(day)"
+                [title]="day.isBusy ? day.events.length + ' event(s)' : (day.isFree && day.isCurrentMonth ? 'Free' : '')">
+                <span class="cal-day-num">{{ day.dayNumber }}</span>
+                <span class="cal-event-dot" *ngIf="day.isBusy && day.isCurrentMonth"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected day detail panel -->
+        <div class="cal-day-detail" *ngIf="selectedDate">
+          <div class="cal-day-detail-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            {{ selectedDateLabel }}
+          </div>
+          <div *ngIf="selectedDateEvents.length === 0" class="cal-day-free-msg">
+            ✅ No events — this day is free for a site visit.
+          </div>
+          <div *ngIf="selectedDateEvents.length > 0" class="cal-events-list">
+            <div class="cal-event-item" *ngFor="let ev of selectedDateEvents">
+              <div class="cal-event-time">
+                {{ formatEventTime(ev.start) }} – {{ formatEventTime(ev.end) }}
+              </div>
+              <div class="cal-event-subject">{{ ev.subject }}</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <!-- ── End Calendar Panel ─────────────────────────────────────────────── -->
 
     <!-- Site Visits Grid - Always visible when workflow is selected -->
     <div class="form-section" *ngIf="currentWorkflowId">
@@ -80,12 +196,8 @@
               <td>{{ siteVisit.dateCreated ? (siteVisit.dateCreated | date:'dd/MM/yyyy') : '-' }}</td>
               <td>
                 <div class="action-buttons">
-                  <button type="button" class="btn-edit" (click)="editSiteVisit(siteVisit)" title="Edit">
-                    ✏️
-                  </button>
-                  <button type="button" class="btn-delete" (click)="deleteSiteVisit(siteVisit.siteVisitId!)" title="Delete">
-                    🗑️
-                  </button>
+                  <button type="button" class="btn-edit" (click)="editSiteVisit(siteVisit)" title="Edit">✏️</button>
+                  <button type="button" class="btn-delete" (click)="deleteSiteVisit(siteVisit.siteVisitId!)" title="Delete">🗑️</button>
                 </div>
               </td>
             </tr>
@@ -94,9 +206,9 @@
       </div>
     </div>
 
-    <!-- Site Visit Form - Only show when showForm is true (edit or add new) -->
+    <!-- Site Visit Form - Only show when showForm is true -->
     <div *ngIf="showForm">
-      <!-- Other Specify Section (outside tabs, shown for non-Awning/RoofSystem products) -->
+      <!-- Other Specify Section (outside tabs, for non-Awning/RoofSystem products) -->
       <div class="form-section" *ngIf="!showFullTabs">
         <div class="form-header-bar">
           <span class="form-title">{{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}</span>
@@ -116,11 +228,7 @@
           </div>
           <div class="form-group">
             <label>Other please specify</label>
-            <input 
-              type="text" 
-              formControlName="otherPleaseSpecify" 
-              class="form-control"
-              placeholder="Enter other details">
+            <input type="text" formControlName="otherPleaseSpecify" class="form-control" placeholder="Enter other details">
           </div>
         </div>
       </div>
@@ -145,96 +253,34 @@
           </div>
           <div class="form-group">
             <label>Other please specify</label>
-            <input 
-              type="text" 
-              formControlName="otherPleaseSpecify" 
-              class="form-control"
-              placeholder="Enter other details">
+            <input type="text" formControlName="otherPleaseSpecify" class="form-control" placeholder="Enter other details">
           </div>
         </div>
 
         <!-- Tabs -->
         <div class="product-tabs">
-          <button 
-            type="button"
-            class="product-tab"
-            [class.active]="activeTab === 'product-model'"
-            (click)="setActiveTab('product-model')">
-            Product Model
-          </button>
-          <button 
-            type="button"
-            class="product-tab"
-            [class.active]="activeTab === 'model-details'"
-            (click)="setActiveTab('model-details')">
-            Model Details
-          </button>
-          <button 
-            type="button"
-            class="product-tab"
-            [class.active]="activeTab === 'shadeplus-lights'"
-            (click)="setActiveTab('shadeplus-lights')">
-            ShadePlus & Lights
-          </button>
-          <button 
-            type="button"
-            class="product-tab"
-            [class.active]="activeTab === 'heater'"
-            (click)="setActiveTab('heater')">
-            Heater
-          </button>
-          <button 
-            type="button"
-            class="product-tab"
-            [class.active]="activeTab === 'images'"
-            (click)="setActiveTab('images')">
-            Images
-          </button>
+          <button type="button" class="product-tab" [class.active]="activeTab === 'product-model'" (click)="setActiveTab('product-model')">Product Model</button>
+          <button type="button" class="product-tab" [class.active]="activeTab === 'model-details'" (click)="setActiveTab('model-details')">Model Details</button>
+          <button type="button" class="product-tab" [class.active]="activeTab === 'shadeplus-lights'" (click)="setActiveTab('shadeplus-lights')">ShadePlus & Lights</button>
+          <button type="button" class="product-tab" [class.active]="activeTab === 'heater'" (click)="setActiveTab('heater')">Heater</button>
+          <button type="button" class="product-tab" [class.active]="activeTab === 'images'" (click)="setActiveTab('images')">Images</button>
         </div>
 
-        <!-- Product Model Tab Content -->
+        <!-- Product Model Tab -->
         <div class="tab-content" *ngIf="activeTab === 'product-model'">
           <h3 class="subsection-title">Product Model Section</h3>
-
           <div class="dynamic-fields">
             <ng-container *ngFor="let field of productModelFields">
               <div class="form-group" *ngIf="isFieldVisible(field)">
                 <label>{{ field.label }}</label>
-                
-                <!-- Dropdown -->
-                <select 
-                  *ngIf="field.type === 'dropdown'" 
-                  [formControlName]="field.name" 
-                  class="form-control">
+                <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                    {{ value }}
-                  </option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
-
-                <!-- Text Input -->
-                <input 
-                  *ngIf="field.type === 'text'" 
-                  type="text" 
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
-
-                <!-- Number Input -->
-                <input 
-                  *ngIf="field.type === 'number'" 
-                  type="number" 
-                  step="0.01"
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
-
-                <!-- Checkbox -->
+                <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <label *ngIf="field.type === 'checkbox'" class="checkbox-label">
-                  <input 
-                    type="checkbox"
-                    [formControlName]="field.name"
-                    class="checkbox-input">
+                  <input type="checkbox" [formControlName]="field.name" class="checkbox-input">
                   <span>{{ field.label }}</span>
                 </label>
               </div>
@@ -242,152 +288,77 @@
           </div>
         </div>
 
-        <!-- Model Details Tab Content -->
+        <!-- Model Details Tab -->
         <div class="tab-content" *ngIf="activeTab === 'model-details'">
           <h3 class="subsection-title">Model Details Section</h3>
-
           <div class="dynamic-fields">
             <ng-container *ngFor="let field of modelDetailsFields">
               <div class="form-group" *ngIf="isFieldVisible(field)">
                 <label>{{ field.label }}</label>
-                
-                <!-- Dropdown -->
-                <select 
-                  *ngIf="field.type === 'dropdown'" 
-                  [formControlName]="field.name" 
-                  class="form-control">
+                <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                    {{ value }}
-                  </option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
-
-                <!-- Text Input -->
-                <input 
-                  *ngIf="field.type === 'text'" 
-                  type="text" 
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
-
-                <!-- Number Input -->
-                <input 
-                  *ngIf="field.type === 'number'" 
-                  type="number" 
-                  step="0.01"
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
               </div>
             </ng-container>
           </div>
         </div>
 
-        <!-- ShadePlus & Lights Tab Content (MERGED) -->
+        <!-- ShadePlus & Lights Tab -->
         <div class="tab-content" *ngIf="activeTab === 'shadeplus-lights'">
           <h3 class="subsection-title">ShadePlus & Lights Section</h3>
-
           <div class="dynamic-fields">
             <ng-container *ngFor="let field of shadePlusLightsFields">
               <div class="form-group" *ngIf="isFieldVisible(field)">
                 <label>{{ field.label }}</label>
-                
-                <!-- Dropdown -->
-                <select 
-                  *ngIf="field.type === 'dropdown'" 
-                  [formControlName]="field.name" 
-                  class="form-control">
+                <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                    {{ value }}
-                  </option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
-
-                <!-- Text Input -->
-                <input 
-                  *ngIf="field.type === 'text'" 
-                  type="text" 
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
-
-                <!-- Number Input -->
-                <input 
-                  *ngIf="field.type === 'number'" 
-                  type="number" 
-                  step="0.01"
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
               </div>
             </ng-container>
           </div>
         </div>
 
-        <!-- Heater Tab Content -->
+        <!-- Heater Tab -->
         <div class="tab-content" *ngIf="activeTab === 'heater'">
           <h3 class="subsection-title">Heater Section</h3>
-
           <div class="dynamic-fields">
             <ng-container *ngFor="let field of heaterFields">
               <div class="form-group" *ngIf="isFieldVisible(field)">
                 <label>{{ field.label }}</label>
-                
-                <!-- Dropdown -->
-                <select 
-                  *ngIf="field.type === 'dropdown'" 
-                  [formControlName]="field.name" 
-                  class="form-control">
+                <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">
-                    {{ value }}
-                  </option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
-
-                <!-- Text Input -->
-                <input 
-                  *ngIf="field.type === 'text'" 
-                  type="text" 
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
-
-                <!-- Number Input -->
-                <input 
-                  *ngIf="field.type === 'number'" 
-                  type="number" 
-                  step="0.01"
-                  [formControlName]="field.name" 
-                  class="form-control"
-                  [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
+                <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
               </div>
             </ng-container>
           </div>
         </div>
 
-        <!-- Images Tab Content -->
+        <!-- Images Tab -->
         <div class="tab-content" *ngIf="activeTab === 'images'">
           <h3 class="subsection-title">Images</h3>
           <p class="placeholder-text">Image upload will appear here</p>
         </div>
       </div>
 
-      <!-- Submit Button - Show when form is visible -->
+      <!-- Submit / Cancel -->
       <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cancelForm()">
-          Cancel
-        </button>
-        <button 
-          type="submit" 
-          class="btn-primary" 
-          (click)="onSubmit()"
-          [disabled]="isSaving$ | async">
+        <button type="button" class="btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="submit" class="btn-primary" (click)="onSubmit()" [disabled]="isSaving$ | async">
           {{ (isSaving$ | async) ? 'Saving...' : (editMode ? 'Update Site Visit' : 'Submit Site Visit') }}
         </button>
       </div>
     </div>
 
-    <!-- Message when form should be shown but product not selected -->
+    <!-- Prompt to select product model -->
     <div class="form-section" *ngIf="showForm && !selectedProductModel">
       <div class="no-equipment-message">
         <p>Please select a product model to continue</p>

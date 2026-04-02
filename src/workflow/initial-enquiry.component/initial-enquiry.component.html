@@ -1,34 +1,28 @@
 <div class="ie-container">
 
-  <!-- ── Contextual source banners ──────────────────────────────────── -->
+  <!-- ── Contextual banners ────────────────────────────────────────── -->
   <div class="context-banner context-banner--followup" *ngIf="fromFollowUp">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
       <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
       <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
     </svg>
-    <div>
-      <strong>Opened from Follow-Up</strong> — this enquiry has been overdue for more than 3 days.
-      Adding a new enquiry below will reset the follow-up timer automatically.
-    </div>
+    <div><strong>Opened from Follow-Up</strong> — Adding a new enquiry will reset the follow-up timer.</div>
   </div>
-
   <div class="context-banner context-banner--task" *ngIf="fromTask && !fromFollowUp">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="banner-icon">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
       <polyline points="22,6 12,13 2,6"/>
     </svg>
-    <div>
-      <strong>Opened from Email Task</strong> — the customer email below is pre-filled from the task sender address.
-    </div>
+    <div><strong>Opened from Email Task</strong> — Customer email is pre-filled from the task sender.</div>
   </div>
 
-  <!-- ── Alerts ──────────────────────────────────────────────────────── -->
+  <!-- ── Alerts ────────────────────────────────────────────────────── -->
   <div class="alert alert-success" *ngIf="successMessage$ | async as msg">{{ msg }}</div>
   <div class="alert alert-error"   *ngIf="errorMessage$   | async as msg">{{ msg }}</div>
 
-  <!-- ════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════
        SECTION 1 — CUSTOMER EMAILS
-  ════════════════════════════════════════════════════════════════════════ -->
+  ═══════════════════════════════════════════════════════════════════ -->
   <div class="section-card">
     <div class="section-header">
       <div class="section-title-row">
@@ -41,42 +35,29 @@
       </div>
       <p class="section-subtitle">Emails linked to <strong>{{ customerName || 'this customer' }}</strong></p>
     </div>
-
     <div class="loading-row" *ngIf="isLoadingEmails$ | async">
       <div class="spinner"></div><span>Loading emails…</span>
     </div>
-
     <div class="table-wrapper" *ngIf="(isLoadingEmails$ | async) === false">
       <table class="data-table" *ngIf="customerEmails.length; else noEmails">
         <thead>
-          <tr>
-            <th>SUBJECT</th>
-            <th>FROM</th>
-            <th>TYPE</th>
-            <th>PRIORITY</th>
-            <th>STATUS</th>
-            <th>DATE</th>
-            <th class="col-actions">ACTIONS</th>
-          </tr>
+          <tr><th>SUBJECT</th><th>FROM</th><th>TYPE</th><th>PRIORITY</th><th>STATUS</th><th>DATE</th><th class="col-actions">ACTIONS</th></tr>
         </thead>
         <tbody>
           <tr *ngFor="let row of customerEmails; trackBy: trackByEmail">
             <td class="col-subject" [title]="row.subject">{{ row.subject }}</td>
-            <td class="col-from">
-              <div class="from-name">{{ row.fromName }}</div>
-              <div class="from-email">{{ row.fromEmail }}</div>
-            </td>
+            <td class="col-from"><div class="from-name">{{ row.fromName }}</div><div class="from-email">{{ row.fromEmail }}</div></td>
             <td><span class="type-chip">{{ row.taskType || row.category }}</span></td>
             <td><span [class]="getPriorityClass(row.priority)">{{ row.priority }}</span></td>
             <td><span [class]="getStatusClass(row.status)">{{ row.status }}</span></td>
             <td class="col-date">{{ row.dateAdded | date:'dd MMM yyyy' }}</td>
             <td class="col-actions">
-              <button class="btn-icon btn-view" title="View email" (click)="openEmailPreview(row)">
+              <button class="btn-icon btn-view" (click)="openEmailPreview(row)">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/>
                 </svg>View
               </button>
-              <button class="btn-icon btn-reply" title="Reply" (click)="openSendModal(row)">
+              <button class="btn-icon btn-reply" (click)="openSendModal(row)">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
                   <polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/>
                 </svg>Reply
@@ -97,43 +78,81 @@
     </div>
   </div>
 
-
-  <!-- ════════════════════════════════════════════════════════════════════
-       SECTION 2 — ADD NEW ENQUIRY  (email field FIRST, then comments)
-  ════════════════════════════════════════════════════════════════════════ -->
+  <!-- ═══════════════════════════════════════════════════════════════
+       SECTION 2 — ADD NEW ENQUIRY
+  ═══════════════════════════════════════════════════════════════════ -->
   <div class="section-card">
     <div class="section-header">
       <div class="section-title-row">
         <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/>
-          <line x1="8" y1="12" x2="16" y2="12"/>
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
         </svg>
         <h3 class="section-title">Add Enquiry</h3>
       </div>
     </div>
 
     <div class="add-form">
-      <!-- Row 1: email first -->
+      <!-- Email row -->
       <div class="form-group">
         <label class="form-label">Customer Email</label>
-        <input type="email" class="form-input"
-          [(ngModel)]="newEmail"
-          placeholder="customer@example.com"
-          [disabled]="(isSaving$ | async) === true" />
+        <input type="email" class="form-input" [(ngModel)]="newEmail"
+          placeholder="customer@example.com" [disabled]="(isSaving$ | async) === true" />
       </div>
 
-      <!-- Row 2: comments -->
-      <div class="form-group" style="margin-top:14px;">
-        <label class="form-label">Comments <span class="required">*</span></label>
-        <textarea class="form-input form-textarea"
-          [(ngModel)]="newComments"
-          placeholder="Enter enquiry details…"
-          rows="4"
-          maxlength="2000"
-          [disabled]="(isSaving$ | async) === true">
-        </textarea>
-        <span class="char-hint">{{ newComments.length }}/2000</span>
-      </div>
+      <!-- Side-by-side: Comments | Signature -->
+      <div class="ie-two-col" style="margin-top:14px;">
+
+        <!-- Comments -->
+        <div class="form-group ie-col">
+          <label class="form-label">Comments <span class="required">*</span></label>
+          <textarea class="form-input form-textarea ie-textarea-fill"
+            [(ngModel)]="newComments" placeholder="Enter enquiry details…"
+            rows="7" maxlength="2000" [disabled]="(isSaving$ | async) === true"></textarea>
+          <span class="char-hint">{{ newComments.length }}/2000</span>
+        </div>
+
+        <!-- Signature -->
+        <div class="form-group ie-col">
+          <div class="sig-label-row">
+            <label class="form-label">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"
+                   width="13" height="13" style="vertical-align:middle;margin-right:3px">
+                <path d="M2 12c1-2 3-3 5-1s4 1 5-1"/><line x1="2" y1="14" x2="14" y2="14"/>
+              </svg>Email Signature
+            </label>
+
+            <div class="sig-toolbar">
+              <!-- Saved signature picker -->
+              <select class="sig-select" *ngIf="userSignatures.length"
+                (change)="applySignatureToAdd(userSignatures[$any($event.target).selectedIndex - 1])"
+                [disabled]="(isSaving$ | async) === true">
+                <option value="" disabled selected>Use saved…</option>
+                <option *ngFor="let s of userSignatures; trackBy: trackBySig" [value]="s.signatureId">
+                  {{ s.label }}{{ s.isDefault ? ' ★' : '' }}
+                </option>
+              </select>
+
+              <!-- Format builder button -->
+              <button class="sig-builder-btn" type="button" (click)="openBuilderForNew()"
+                title="Create / manage signatures with the format builder">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+                  <rect x="2" y="2" width="12" height="12" rx="2"/>
+                  <line x1="5" y1="6" x2="11" y2="6"/>
+                  <line x1="5" y1="9" x2="9"  y2="9"/>
+                </svg>
+                {{ userSignatures.length ? 'Manage' : 'Create Signature' }}
+              </button>
+            </div>
+          </div>
+
+          <textarea class="form-input form-textarea ie-textarea-fill ie-sig-textarea"
+            [(ngModel)]="newSignature"
+            placeholder="Select a saved signature above, or type one here…"
+            rows="7" [disabled]="(isSaving$ | async) === true"></textarea>
+        </div>
+
+      </div><!-- /ie-two-col -->
 
       <!-- Attachments -->
       <div class="form-group" style="margin-top:14px;">
@@ -162,13 +181,11 @@
 
       <div class="form-footer">
         <label class="checkbox-label">
-          <input type="checkbox"
-            [(ngModel)]="sendEmailOnAdd"
+          <input type="checkbox" [(ngModel)]="sendEmailOnAdd"
             [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
           <span>Send email notification to customer on save</span>
         </label>
-        <button class="btn-primary"
-          (click)="addEnquiry()"
+        <button class="btn-primary" (click)="addEnquiry()"
           [disabled]="!newComments.trim() || (isSaving$ | async) === true">
           <svg *ngIf="(isSaving$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/>
@@ -180,10 +197,9 @@
     </div>
   </div>
 
-
-  <!-- ════════════════════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════════════════
        SECTION 3 — ENQUIRY HISTORY
-  ════════════════════════════════════════════════════════════════════════ -->
+  ═══════════════════════════════════════════════════════════════════ -->
   <div class="section-card">
     <div class="section-header">
       <div class="section-title-row">
@@ -196,23 +212,13 @@
         <span class="badge-count">{{ enquiries.length }}</span>
       </div>
     </div>
-
     <div class="loading-row" *ngIf="isLoadingEnquiries$ | async">
       <div class="spinner"></div><span>Loading enquiries…</span>
     </div>
-
     <div class="table-wrapper" *ngIf="(isLoadingEnquiries$ | async) === false">
       <table class="data-table" *ngIf="enquiries.length; else noEnquiries">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>EMAIL</th>
-            <th>COMMENTS</th>
-            <th>ATTACHMENTS</th>
-            <th>DATE ADDED</th>
-            <th>ADDED BY</th>
-            <th class="col-actions">ACTIONS</th>
-          </tr>
+          <tr><th>#</th><th>EMAIL</th><th>COMMENTS</th><th>ATTACHMENTS</th><th>DATE ADDED</th><th>ADDED BY</th><th class="col-actions">ACTIONS</th></tr>
         </thead>
         <tbody>
           <tr *ngFor="let enq of enquiries; let i = index; trackBy: trackByEnquiry">
@@ -224,17 +230,15 @@
                 <span class="ie-no-attach" *ngIf="!atts.length">—</span>
                 <div class="ie-attach-pills" *ngIf="atts.length">
                   <button class="ie-attach-pill" *ngFor="let a of atts"
-                          [title]="a.fileName + ' (' + formatBytes(a.sizeBytes) + ')'"
-                          (click)="downloadEnquiryAttachment(a)">
-                    {{ fileIcon(a.contentType) }} {{ a.fileName }}
-                  </button>
+                    [title]="a.fileName + ' (' + formatBytes(a.sizeBytes) + ')'"
+                    (click)="downloadEnquiryAttachment(a)">{{ fileIcon(a.contentType) }} {{ a.fileName }}</button>
                 </div>
               </ng-container>
             </td>
             <td class="col-date">{{ enq.dateCreated | date:'dd MMM yyyy, HH:mm' }}</td>
             <td class="col-user">{{ enq.createdBy || '—' }}</td>
             <td class="col-actions">
-              <button class="btn-icon btn-edit" title="Edit enquiry" (click)="openEditModal(enq)">
+              <button class="btn-icon btn-edit" (click)="openEditModal(enq)">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
                   <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
                 </svg>Edit
@@ -259,9 +263,184 @@
 </div><!-- /ie-container -->
 
 
-<!-- ══════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — SIGNATURE FORMAT BUILDER
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showSigBuilder" (click)="closeSigBuilder()">
+  <div class="modal-card sig-builder-modal" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+          <path d="M2 12c1-2 3-3 5-1s4 1 5-1"/><line x1="2" y1="14" x2="14" y2="14"/>
+        </svg>
+        {{ editingSigId ? 'Edit Signature' : 'Create Signature' }}
+      </h3>
+      <button class="modal-close" (click)="closeSigBuilder()">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
+          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="sig-builder-body">
+
+      <!-- ── LEFT: Saved signatures list + form ────────────────────────────── -->
+      <div class="sig-builder-left">
+
+        <!-- Saved list -->
+        <div class="sig-saved-list" *ngIf="userSignatures.length">
+          <p class="sig-saved-heading">Saved Signatures</p>
+          <div class="sig-saved-item"
+               *ngFor="let s of userSignatures; trackBy: trackBySig"
+               [class.sig-saved-item--default]="s.isDefault">
+            <div class="sig-saved-info">
+              <span class="sig-saved-label">{{ s.label }}</span>
+              <span class="sig-default-badge" *ngIf="s.isDefault">Default</span>
+            </div>
+            <div class="sig-saved-actions">
+              <button class="sab sab--use"  type="button" (click)="applySignatureToAdd(s); closeSigBuilder()" title="Use">✓ Use</button>
+              <button class="sab sab--edit" type="button" (click)="openBuilderForEdit(s)" title="Edit">✎ Edit</button>
+              <button class="sab sab--def"  type="button" *ngIf="!s.isDefault" (click)="setDefaultSig(s)" title="Set default">★</button>
+              <button class="sab sab--del"  type="button" (click)="deleteSig(s)" title="Delete">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Label + options -->
+        <div class="sig-form-section">
+          <h4 class="sig-section-title">{{ editingSigId ? 'Edit Details' : 'New Signature' }}</h4>
+
+          <div class="sb-field">
+            <label class="sb-label">Label <span class="required">*</span></label>
+            <input class="sb-input" type="text" [(ngModel)]="sigForm.label"
+              (ngModelChange)="refreshPreview()" placeholder="e.g. Formal, Quick reply" />
+          </div>
+
+          <!-- Greeting -->
+          <div class="sb-field">
+            <label class="sb-label">Greeting</label>
+            <select class="sb-select" [(ngModel)]="sigForm.greetingText" (ngModelChange)="refreshPreview()">
+              <option *ngFor="let g of greetingPresets" [value]="g">
+                {{ g === 'custom' ? 'Custom…' : g }}
+              </option>
+            </select>
+            <input *ngIf="sigForm.greetingText === 'custom'" class="sb-input" type="text"
+              style="margin-top:6px"
+              [(ngModel)]="sigForm.customGreeting" (ngModelChange)="refreshPreview()"
+              placeholder="Type your greeting…" />
+          </div>
+
+          <!-- Separator -->
+          <div class="sb-field">
+            <label class="sb-label">Separator after greeting</label>
+            <div class="sb-radio-group">
+              <label class="sb-radio" *ngFor="let opt of separatorOptions">
+                <input type="radio" [(ngModel)]="sigForm.separatorStyle"
+                  [value]="opt.value" (change)="refreshPreview()" />
+                <span>{{ opt.label }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Layout -->
+          <div class="sb-field">
+            <label class="sb-label">Contact layout</label>
+            <div class="sb-radio-group">
+              <label class="sb-radio" *ngFor="let opt of layoutOptions">
+                <input type="radio" [(ngModel)]="sigForm.layoutOrder"
+                  [value]="opt.value" (change)="refreshPreview()" />
+                <span>{{ opt.label }}</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Default -->
+          <label class="checkbox-label" style="margin-top:4px">
+            <input type="checkbox" [(ngModel)]="sigForm.isDefault" (ngModelChange)="refreshPreview()" />
+            <span>Set as my default signature</span>
+          </label>
+        </div>
+      </div><!-- /sig-builder-left -->
+
+      <!-- ── CENTRE: Contact fields ─────────────────────────────────────── -->
+      <div class="sig-builder-centre">
+        <h4 class="sig-section-title">Contact Details</h4>
+
+        <div class="sb-field">
+          <label class="sb-label">Full Name</label>
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.fullName"
+            (ngModelChange)="refreshPreview()" placeholder="Michael Maguire" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Job Title</label>
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.jobTitle"
+            (ngModelChange)="refreshPreview()" placeholder="Sales Manager" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Company</label>
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.company"
+            (ngModelChange)="refreshPreview()" placeholder="Awnings of Ireland" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Phone</label>
+          <input class="sb-input" type="tel" [(ngModel)]="sigForm.phone"
+            (ngModelChange)="refreshPreview()" placeholder="+353 1652 3014" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Mobile</label>
+          <input class="sb-input" type="tel" [(ngModel)]="sigForm.mobile"
+            (ngModelChange)="refreshPreview()" placeholder="+353 (0)86 0891816" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Email</label>
+          <input class="sb-input" type="email" [(ngModel)]="sigForm.email"
+            (ngModelChange)="refreshPreview()" placeholder="michael@awningsofireland.com" />
+        </div>
+        <div class="sb-field">
+          <label class="sb-label">Website</label>
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.website"
+            (ngModelChange)="refreshPreview()" placeholder="www.awningsofireland.com" />
+        </div>
+      </div>
+
+      <!-- ── RIGHT: Live preview ────────────────────────────────────────── -->
+      <div class="sig-builder-right">
+        <h4 class="sig-section-title">Live Preview</h4>
+        <div class="sig-preview-card">
+          <div class="sig-preview-label">Email signature</div>
+          <pre class="sig-preview-text" *ngIf="sigPreview">{{ sigPreview }}</pre>
+          <p class="sig-preview-empty" *ngIf="!sigPreview">Fill in the fields to see a preview.</p>
+        </div>
+        <p class="sig-preview-hint">
+          This plain-text signature will be appended below your email message, separated by a line break.
+        </p>
+      </div>
+
+    </div><!-- /sig-builder-body -->
+
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-secondary" (click)="closeSigBuilder()"
+        [disabled]="(isSavingSig$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="saveSigFromBuilder()"
+        [disabled]="!sigForm.label.trim() || (isSavingSig$ | async) === true">
+        <span *ngIf="(isSavingSig$ | async) === false">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:4px">
+            <path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/>
+            <polyline points="11,2 11,6 5,6"/><polyline points="5,10 5,14"/>
+          </svg>
+          {{ editingSigId ? 'Update Signature' : 'Save Signature' }}
+        </span>
+        <span *ngIf="(isSavingSig$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
      MODAL — EMAIL PREVIEW
-══════════════════════════════════════════════════════════════════════════ -->
+═══════════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showEmailModal" (click)="closeEmailPreview()">
   <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -271,220 +450,159 @@
         </svg>Email Detail
       </h3>
       <button class="modal-close" (click)="closeEmailPreview()">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
-        </svg>
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
       </button>
     </div>
     <div class="modal-body" *ngIf="emailModalTask">
       <div class="email-meta-grid">
-        <div class="email-meta-item">
-          <span class="meta-label">From</span>
-          <span class="meta-value">{{ emailModalTask.fromName }} &lt;{{ emailModalTask.fromEmail }}&gt;</span>
-        </div>
-        <div class="email-meta-item">
-          <span class="meta-label">Subject</span>
-          <span class="meta-value">{{ emailModalTask.subject }}</span>
-        </div>
-        <div class="email-meta-item">
-          <span class="meta-label">Date</span>
-          <span class="meta-value">{{ emailModalTask.dateAdded | date:'dd MMM yyyy, HH:mm' }}</span>
-        </div>
-        <div class="email-meta-item">
-          <span class="meta-label">Type</span>
-          <span class="meta-value">{{ emailModalTask.taskType || emailModalTask.category }}</span>
-        </div>
+        <div class="email-meta-item"><span class="meta-label">From</span><span class="meta-value">{{ emailModalTask.fromName }} &lt;{{ emailModalTask.fromEmail }}&gt;</span></div>
+        <div class="email-meta-item"><span class="meta-label">Subject</span><span class="meta-value">{{ emailModalTask.subject }}</span></div>
+        <div class="email-meta-item"><span class="meta-label">Date</span><span class="meta-value">{{ emailModalTask.dateAdded | date:'dd MMM yyyy, HH:mm' }}</span></div>
+        <div class="email-meta-item"><span class="meta-label">Type</span><span class="meta-value">{{ emailModalTask.taskType || emailModalTask.category }}</span></div>
       </div>
       <div class="email-body-box">
         <p class="email-body-label">Message</p>
-        <!-- [innerHTML] + SafeHtml parses HTML tags correctly instead of showing raw text -->
         <div class="email-body-content email-html-body" [innerHTML]="emailModalBodyHtml || '(No body content)'"></div>
       </div>
-
     </div>
     <div class="modal-footer">
       <button class="btn-modal btn-modal-secondary" (click)="closeEmailPreview()">Close</button>
       <button class="btn-modal btn-modal-primary" (click)="closeEmailPreview(); openSendModal(emailModalTask!)">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
-          <polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/>
-        </svg>Reply
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/></svg>Reply
       </button>
     </div>
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════════════════════════
      MODAL — SEND EMAIL
-══════════════════════════════════════════════════════════════════════════ -->
+═══════════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showSendModal" (click)="closeSendModal()">
   <div class="modal-card" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3 class="modal-title">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
-          <line x1="2" y1="3" x2="13" y2="12"/><line x1="2" y1="17" x2="13" y2="12"/>
-          <polyline points="5,3 18,3 18,17 5,17"/>
-        </svg>Send Email
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><line x1="2" y1="3" x2="13" y2="12"/><line x1="2" y1="17" x2="13" y2="12"/><polyline points="5,3 18,3 18,17 5,17"/></svg>Send Email
       </h3>
-      <button class="modal-close" (click)="closeSendModal()">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
-        </svg>
-      </button>
+      <button class="modal-close" (click)="closeSendModal()"><svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg></button>
     </div>
     <div class="modal-body">
-      <div class="modal-field">
-        <label class="modal-label">To</label>
-        <input type="email" class="modal-input" [(ngModel)]="sendToEmail"
-          placeholder="recipient@example.com" [disabled]="(isSendingEmail$ | async) === true" />
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Subject</label>
-        <input type="text" class="modal-input" [(ngModel)]="sendSubject"
-          placeholder="Subject…" [disabled]="(isSendingEmail$ | async) === true" />
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Message <span class="required">*</span></label>
-        <textarea class="modal-input modal-textarea" [(ngModel)]="sendBody"
-          placeholder="Type your message…" rows="6" [disabled]="(isSendingEmail$ | async) === true"></textarea>
-      </div>
+      <div class="modal-field"><label class="modal-label">To</label><input type="email" class="modal-input" [(ngModel)]="sendToEmail" placeholder="recipient@example.com" [disabled]="(isSendingEmail$ | async) === true" /></div>
+      <div class="modal-field"><label class="modal-label">Subject</label><input type="text" class="modal-input" [(ngModel)]="sendSubject" placeholder="Subject…" [disabled]="(isSendingEmail$ | async) === true" /></div>
+      <div class="modal-field"><label class="modal-label">Message <span class="required">*</span></label><textarea class="modal-input modal-textarea" [(ngModel)]="sendBody" placeholder="Type your message…" rows="6" [disabled]="(isSendingEmail$ | async) === true"></textarea></div>
     </div>
-      <!-- Send modal attachments -->
-      <div class="modal-field">
-        <label class="modal-label">Attachments</label>
-        <div class="ie-attach-zone ie-attach-zone--compact">
-          <label class="ie-attach-btn ie-attach-btn--sm" [class.disabled]="(isSendingEmail$ | async) === true">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
-              <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
-              <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
-            </svg>
-            Attach files
-            <input type="file" multiple hidden (change)="onFilesSelected($event,'send')"
-              [disabled]="(isSendingEmail$ | async) === true" />
-          </label>
-        </div>
-        <div class="ie-attach-list" *ngIf="sendPendingAttachments.length">
-          <div class="ie-attach-item" *ngFor="let a of sendPendingAttachments; let i = index">
-            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
-            <span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span>
-            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
-            <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'send')">✕</button>
-          </div>
+    <div class="modal-field">
+      <label class="modal-label">Attachments</label>
+      <div class="ie-attach-zone ie-attach-zone--compact">
+        <label class="ie-attach-btn ie-attach-btn--sm" [class.disabled]="(isSendingEmail$ | async) === true">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/><polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/></svg>
+          Attach files<input type="file" multiple hidden (change)="onFilesSelected($event,'send')" [disabled]="(isSendingEmail$ | async) === true" />
+        </label>
+      </div>
+      <div class="ie-attach-list" *ngIf="sendPendingAttachments.length">
+        <div class="ie-attach-item" *ngFor="let a of sendPendingAttachments; let i = index">
+          <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span><span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span><span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+          <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'send')">✕</button>
         </div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn-modal btn-modal-secondary" (click)="closeSendModal()"
-        [disabled]="(isSendingEmail$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-primary" (click)="sendEmail()"
-        [disabled]="!sendBody.trim() || (isSendingEmail$ | async) === true">
-        <span *ngIf="(isSendingEmail$ | async) === false">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:4px">
-            <line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/>
-          </svg>Send Email
-        </span>
+      <button class="btn-modal btn-modal-secondary" (click)="closeSendModal()" [disabled]="(isSendingEmail$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="sendEmail()" [disabled]="!sendBody.trim() || (isSendingEmail$ | async) === true">
+        <span *ngIf="(isSendingEmail$ | async) === false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:4px"><line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/></svg>Send Email</span>
         <span *ngIf="(isSendingEmail$ | async) === true"><span class="spinner-inline"></span> Sending…</span>
       </button>
     </div>
   </div>
+</div>
 
 
-
-<!-- ══════════════════════════════════════════════════════════════════════
-     MODAL — EDIT ENQUIRY  (email FIRST, then comments + send-on-update)
-══════════════════════════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — EDIT ENQUIRY
+═══════════════════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()">
-  <div class="modal-card" (click)="$event.stopPropagation()">
+  <div class="modal-card modal-card--xl" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3 class="modal-title">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
-          <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-        </svg>Edit Enquiry
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit Enquiry
       </h3>
-      <button class="modal-close" (click)="closeEditModal()">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
-        </svg>
-      </button>
+      <button class="modal-close" (click)="closeEditModal()"><svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg></button>
     </div>
-
     <div class="modal-body" *ngIf="editingEnquiry">
-      <!-- Email FIRST -->
       <div class="modal-field">
         <label class="modal-label">Customer Email</label>
-        <input type="email" class="modal-input"
-          [(ngModel)]="editEmail"
-          placeholder="customer@example.com"
-          [disabled]="(isSaving$ | async) === true" />
+        <input type="email" class="modal-input" [(ngModel)]="editEmail" placeholder="customer@example.com" [disabled]="(isSaving$ | async) === true" />
       </div>
-
-      <!-- Comments second -->
-      <div class="modal-field">
-        <label class="modal-label">Comments <span class="required">*</span></label>
-        <textarea class="modal-input modal-textarea"
-          [(ngModel)]="editComments"
-          rows="5"
-          maxlength="2000"
-          [disabled]="(isSaving$ | async) === true">
-        </textarea>
-        <span class="char-hint">{{ editComments.length }}/2000</span>
-      </div>
-
-      <!-- Existing saved attachments (read-only + download) -->
-      <div class="modal-field" *ngIf="editingEnquiry && getEnquiryAttachments(editingEnquiry).length">
-        <label class="modal-label">Saved Attachments</label>
-        <div class="ie-attach-list">
-          <div class="ie-attach-item ie-attach-item--saved"
-               *ngFor="let a of getEnquiryAttachments(editingEnquiry)">
-            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
-            <span class="ie-attach-name">{{ a.fileName }}</span>
-            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
-            <button class="ie-attach-dl" type="button" title="Download"
-                    (click)="downloadEnquiryAttachment(a)">↓</button>
+      <div class="ie-two-col" style="margin-top:14px;">
+        <!-- Comments -->
+        <div class="modal-field ie-col">
+          <label class="modal-label">Comments <span class="required">*</span></label>
+          <textarea class="modal-input modal-textarea ie-textarea-fill" [(ngModel)]="editComments" rows="7" maxlength="2000" [disabled]="(isSaving$ | async) === true"></textarea>
+          <span class="char-hint">{{ editComments.length }}/2000</span>
+        </div>
+        <!-- Signature -->
+        <div class="modal-field ie-col">
+          <div class="sig-label-row">
+            <label class="modal-label">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" style="vertical-align:middle;margin-right:3px"><path d="M2 12c1-2 3-3 5-1s4 1 5-1"/><line x1="2" y1="14" x2="14" y2="14"/></svg>
+              Email Signature
+            </label>
+            <div class="sig-toolbar">
+              <select class="sig-select" *ngIf="userSignatures.length"
+                (change)="applySignatureToEdit(userSignatures[$any($event.target).selectedIndex - 1])"
+                [disabled]="(isSaving$ | async) === true">
+                <option value="" disabled selected>Use saved…</option>
+                <option *ngFor="let s of userSignatures; trackBy: trackBySig" [value]="s.signatureId">{{ s.label }}{{ s.isDefault ? ' ★' : '' }}</option>
+              </select>
+              <button class="sig-builder-btn" type="button" (click)="openBuilderForNew()" [disabled]="(isSaving$ | async) === true">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg>
+                Manage
+              </button>
+            </div>
           </div>
+          <textarea class="modal-input modal-textarea ie-textarea-fill ie-sig-textarea"
+            [(ngModel)]="editSignature" rows="7"
+            placeholder="Select a saved signature or type one here…"
+            [disabled]="(isSaving$ | async) === true"></textarea>
         </div>
       </div>
 
-      <!-- Add more attachments to this enquiry -->
+      <!-- Saved attachments -->
+      <div class="modal-field" *ngIf="editingEnquiry && getEnquiryAttachments(editingEnquiry).length">
+        <label class="modal-label">Saved Attachments</label>
+        <div class="ie-attach-list">
+          <div class="ie-attach-item ie-attach-item--saved" *ngFor="let a of getEnquiryAttachments(editingEnquiry)">
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span><span class="ie-attach-name">{{ a.fileName }}</span><span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <button class="ie-attach-dl" type="button" (click)="downloadEnquiryAttachment(a)">↓</button>
+          </div>
+        </div>
+      </div>
+      <!-- New attachments -->
       <div class="modal-field">
         <label class="modal-label">Add Attachments</label>
         <div class="ie-attach-zone ie-attach-zone--compact">
           <label class="ie-attach-btn ie-attach-btn--sm" [class.disabled]="(isSaving$ | async) === true">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
-              <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
-              <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
-            </svg>
-            Attach files
-            <input type="file" multiple hidden (change)="onFilesSelected($event,'edit')"
-              [disabled]="(isSaving$ | async) === true" />
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/><polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/></svg>
+            Attach files<input type="file" multiple hidden (change)="onFilesSelected($event,'edit')" [disabled]="(isSaving$ | async) === true" />
           </label>
         </div>
         <div class="ie-attach-list" *ngIf="editPendingAttachments.length">
           <div class="ie-attach-item" *ngFor="let a of editPendingAttachments; let i = index">
-            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span>
-            <span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span>
-            <span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
+            <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span><span class="ie-attach-name" [title]="a.fileName">{{ a.fileName }}</span><span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
             <button class="ie-attach-remove" type="button" (click)="removeAttachment(i,'edit')">✕</button>
           </div>
         </div>
       </div>
-
-      <!-- Send-on-update checkbox -->
       <div class="send-update-row">
         <label class="checkbox-label">
-          <input type="checkbox"
-            [(ngModel)]="sendEmailOnUpdate"
-            [disabled]="!editEmail.trim() || (isSaving$ | async) === true" />
+          <input type="checkbox" [(ngModel)]="sendEmailOnUpdate" [disabled]="!editEmail.trim() || (isSaving$ | async) === true" />
           <span>Send email notification to customer on update</span>
         </label>
       </div>
     </div>
-
     <div class="modal-footer">
-      <button class="btn-modal btn-modal-secondary" (click)="closeEditModal()"
-        [disabled]="(isSaving$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-primary" (click)="saveEdit()"
-        [disabled]="!editComments.trim() || (isSaving$ | async) === true">
+      <button class="btn-modal btn-modal-secondary" (click)="closeEditModal()" [disabled]="(isSaving$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="saveEdit()" [disabled]="!editComments.trim() || (isSaving$ | async) === true">
         <span *ngIf="(isSaving$ | async) === false">Save Changes</span>
         <span *ngIf="(isSaving$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
       </button>

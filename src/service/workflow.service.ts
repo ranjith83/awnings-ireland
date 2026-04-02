@@ -50,6 +50,13 @@ export interface InitialEnquiryDto {
   email: string;
   images?: string;
 
+  /**
+   * Plain-text email signature appended to outgoing emails.
+   * e.g. "Kindest regards,\nMichael Maguire\nAwnings of Ireland\n..."
+   * Optional — null/undefined for enquiries where no signature was supplied.
+   */
+  signature?: string | null;
+
   // ── Email linkage (populated when created by the email processor) ──
   /** EmailTask.TaskId that originated this enquiry (null for manual entries). */
   taskId?: number | null;
@@ -248,7 +255,6 @@ export class WorkflowService {
 
   /**
    * @deprecated – no backend endpoint for this. Retained for compatibility.
-   * Prefer loading enquiries via getInitialEnquiryForWorkflow() and filtering by workflow.
    */
   getInitialEnquiryHistory(
     workflowId: number,

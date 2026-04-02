@@ -32,15 +32,12 @@
 
     <!-- ═══════════════  SITE VISIT VALUES  ═══════════════════════════════════ -->
     <ng-container *ngIf="activeTab === 'siteVisit'">
-
-      <!-- Add form -->
       <div class="config-card">
         <h3 class="config-card-title">Add Site Visit Value</h3>
         <div class="form-grid form-grid-5">
           <div class="form-group">
             <label class="form-label">Category <span class="req">*</span></label>
-            <input class="form-input" type="text" [(ngModel)]="newSv.category"
-              placeholder="e.g. WallType" list="svCategoryList" />
+            <input class="form-input" type="text" [(ngModel)]="newSv.category" placeholder="e.g. WallType" list="svCategoryList" />
             <datalist id="svCategoryList">
               <option *ngFor="let c of svCategories$ | async" [value]="c"></option>
             </datalist>
@@ -62,16 +59,12 @@
           </div>
           <div class="form-group form-group--end">
             <button class="btn-add" (click)="addSiteVisitValue()" [disabled]="(isSaving$ | async) === true">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
               {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
             </button>
           </div>
         </div>
       </div>
-
-      <!-- Filter + table -->
       <div class="config-card">
         <div class="table-toolbar">
           <h3 class="config-card-title">Site Visit Values</h3>
@@ -83,47 +76,22 @@
             </select>
           </div>
         </div>
-
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Category</th>
-                <th>Value</th>
-                <th>Order</th>
-                <th>Active</th>
-                <th class="actions-th">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Category</th><th>Value</th><th>Order</th><th>Active</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let sv of filteredSiteVisitValues$ | async">
                 <td class="id-cell">{{ sv.id }}</td>
                 <td><span class="badge-category">{{ sv.category }}</span></td>
                 <td>{{ sv.value }}</td>
                 <td class="center-cell">{{ sv.displayOrder }}</td>
-                <td class="center-cell">
-                  <span class="status-dot" [class.active]="sv.isActive"></span>
-                </td>
+                <td class="center-cell"><span class="status-dot" [class.active]="sv.isActive"></span></td>
                 <td class="actions-cell">
-                  <button class="btn-row btn-edit" (click)="openEditSv(sv)" title="Edit">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                    </svg>
-                    Edit
-                  </button>
-                  <button class="btn-row btn-delete" (click)="confirmDeleteSv(sv)" title="Delete">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/>
-                      <rect x="3" y="4" width="10" height="10" rx="1"/>
-                    </svg>
-                    Delete
-                  </button>
+                  <button class="btn-row btn-edit" (click)="openEditSv(sv)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteSv(sv)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredSiteVisitValues$ | async)?.length === 0">
-                <td colspan="6" class="empty-cell">No values found.</td>
-              </tr>
+              <tr *ngIf="(filteredSiteVisitValues$ | async)?.length === 0"><td colspan="6" class="empty-cell">No values found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -132,7 +100,6 @@
 
     <!-- ═══════════════  BRACKETS  ════════════════════════════════════════════ -->
     <ng-container *ngIf="activeTab === 'brackets'">
-
       <div class="config-card">
         <h3 class="config-card-title">Add Bracket</h3>
         <div class="form-grid form-grid-5">
@@ -157,15 +124,12 @@
           </div>
           <div class="form-group form-group--end">
             <button class="btn-add" (click)="addBracket()" [disabled]="(isSaving$ | async) === true">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
               {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
             </button>
           </div>
         </div>
       </div>
-
       <div class="config-card">
         <div class="table-toolbar">
           <h3 class="config-card-title">Brackets</h3>
@@ -179,16 +143,7 @@
         </div>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Product</th>
-                <th>Bracket Name</th>
-                <th>Part No.</th>
-                <th>Price</th>
-                <th class="actions-th">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Part No.</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let b of filteredBrackets$ | async">
                 <td class="id-cell">{{ b.bracketId }}</td>
@@ -197,24 +152,11 @@
                 <td class="mono-cell">{{ b.partNumber || '—' }}</td>
                 <td class="price-cell">€{{ b.price | number:'1.2-2' }}</td>
                 <td class="actions-cell">
-                  <button class="btn-row btn-edit" (click)="openEditBracket(b)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                    </svg>
-                    Edit
-                  </button>
-                  <button class="btn-row btn-delete" (click)="confirmDeleteBracket(b)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/>
-                      <rect x="3" y="4" width="10" height="10" rx="1"/>
-                    </svg>
-                    Delete
-                  </button>
+                  <button class="btn-row btn-edit" (click)="openEditBracket(b)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteBracket(b)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredBrackets$ | async)?.length === 0">
-                <td colspan="6" class="empty-cell">No brackets found.</td>
-              </tr>
+              <tr *ngIf="(filteredBrackets$ | async)?.length === 0"><td colspan="6" class="empty-cell">No brackets found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -223,7 +165,6 @@
 
     <!-- ═══════════════  SUPPLIERS  ═══════════════════════════════════════════ -->
     <ng-container *ngIf="activeTab === 'suppliers'">
-
       <div class="config-card">
         <h3 class="config-card-title">Add Supplier</h3>
         <div class="form-grid form-grid-2">
@@ -233,49 +174,27 @@
           </div>
           <div class="form-group form-group--end">
             <button class="btn-add" (click)="addSupplier()" [disabled]="(isSaving$ | async) === true">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
               {{ (isSaving$ | async) ? 'Saving…' : 'Add Supplier' }}
             </button>
           </div>
         </div>
       </div>
-
       <div class="config-card">
         <h3 class="config-card-title">Suppliers</h3>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Supplier Name</th>
-                <th class="actions-th">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Supplier Name</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let s of suppliers$ | async">
                 <td class="id-cell">{{ s.supplierId }}</td>
                 <td>{{ s.supplierName }}</td>
                 <td class="actions-cell">
-                  <button class="btn-row btn-edit" (click)="openEditSupplier(s)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                    </svg>
-                    Edit
-                  </button>
-                  <button class="btn-row btn-delete" (click)="confirmDeleteSupplier(s)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/>
-                      <rect x="3" y="4" width="10" height="10" rx="1"/>
-                    </svg>
-                    Delete
-                  </button>
+                  <button class="btn-row btn-edit" (click)="openEditSupplier(s)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteSupplier(s)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(suppliers$ | async)?.length === 0">
-                <td colspan="3" class="empty-cell">No suppliers found.</td>
-              </tr>
+              <tr *ngIf="(suppliers$ | async)?.length === 0"><td colspan="3" class="empty-cell">No suppliers found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -284,7 +203,6 @@
 
     <!-- ═══════════════  PRODUCT TYPES  ═══════════════════════════════════════ -->
     <ng-container *ngIf="activeTab === 'productTypes'">
-
       <div class="config-card">
         <h3 class="config-card-title">Add Product Type</h3>
         <div class="form-grid form-grid-3">
@@ -301,15 +219,12 @@
           </div>
           <div class="form-group form-group--end">
             <button class="btn-add" (click)="addProductType()" [disabled]="(isSaving$ | async) === true">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
               {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
             </button>
           </div>
         </div>
       </div>
-
       <div class="config-card">
         <div class="table-toolbar">
           <h3 class="config-card-title">Product Types</h3>
@@ -323,38 +238,18 @@
         </div>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Supplier</th>
-                <th>Description</th>
-                <th class="actions-th">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Supplier</th><th>Description</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let pt of filteredProductTypes$ | async">
                 <td class="id-cell">{{ pt.productTypeId }}</td>
                 <td><span class="badge-category">{{ getSupplierName(pt.supplierId) }}</span></td>
                 <td>{{ pt.description }}</td>
                 <td class="actions-cell">
-                  <button class="btn-row btn-edit" (click)="openEditPt(pt)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                    </svg>
-                    Edit
-                  </button>
-                  <button class="btn-row btn-delete" (click)="confirmDeletePt(pt)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/>
-                      <rect x="3" y="4" width="10" height="10" rx="1"/>
-                    </svg>
-                    Delete
-                  </button>
+                  <button class="btn-row btn-edit" (click)="openEditPt(pt)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeletePt(pt)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredProductTypes$ | async)?.length === 0">
-                <td colspan="4" class="empty-cell">No product types found.</td>
-              </tr>
+              <tr *ngIf="(filteredProductTypes$ | async)?.length === 0"><td colspan="4" class="empty-cell">No product types found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -363,7 +258,6 @@
 
     <!-- ═══════════════  PRODUCTS  ════════════════════════════════════════════ -->
     <ng-container *ngIf="activeTab === 'products'">
-
       <div class="config-card">
         <h3 class="config-card-title">Add Product</h3>
         <div class="form-grid form-grid-4">
@@ -387,15 +281,12 @@
           </div>
           <div class="form-group form-group--end">
             <button class="btn-add" (click)="addProduct()" [disabled]="(isSaving$ | async) === true">
-              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
-                <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
-              </svg>
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
               {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
             </button>
           </div>
         </div>
       </div>
-
       <div class="config-card">
         <div class="table-toolbar">
           <h3 class="config-card-title">Products</h3>
@@ -409,15 +300,7 @@
         </div>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Supplier</th>
-                <th>Product Type</th>
-                <th>Description</th>
-                <th class="actions-th">Actions</th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Supplier</th><th>Product Type</th><th>Description</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let p of filteredProducts$ | async">
                 <td class="id-cell">{{ p.productId }}</td>
@@ -425,24 +308,392 @@
                 <td class="small-cell">{{ getProductTypeName(p.productTypeId) }}</td>
                 <td>{{ p.description }}</td>
                 <td class="actions-cell">
-                  <button class="btn-row btn-edit" (click)="openEditProd(p)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                    </svg>
-                    Edit
-                  </button>
-                  <button class="btn-row btn-delete" (click)="confirmDeleteProd(p)">
-                    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                      <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/>
-                      <rect x="3" y="4" width="10" height="10" rx="1"/>
-                    </svg>
-                    Delete
-                  </button>
+                  <button class="btn-row btn-edit" (click)="openEditProd(p)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteProd(p)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredProducts$ | async)?.length === 0">
-                <td colspan="5" class="empty-cell">No products found.</td>
+              <tr *ngIf="(filteredProducts$ | async)?.length === 0"><td colspan="5" class="empty-cell">No products found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  ARMS  ════════════════════════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'arms'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Arm</h3>
+        <div class="form-grid form-grid-5">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newArm.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span class="req">*</span></label>
+            <input class="form-input" type="text" [(ngModel)]="newArm.description" placeholder="e.g. Folding arm 3.5m" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Arm Type ID</label>
+            <input class="form-input" type="number" [(ngModel)]="newArm.armTypeId" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newArm.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addArm()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Arms</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="armFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Arm Type</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let a of filteredArms$ | async">
+                <td class="id-cell">{{ a.armId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(a.productId) }}</span></td>
+                <td>{{ a.description }}</td>
+                <td class="center-cell">{{ a.armTypeId }}</td>
+                <td class="price-cell">€{{ a.price | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditArm(a)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteArm(a)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
               </tr>
+              <tr *ngIf="(filteredArms$ | async)?.length === 0"><td colspan="6" class="empty-cell">No arms found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  MOTORS  ══════════════════════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'motors'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Motor</h3>
+        <div class="form-grid form-grid-4">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newMotor.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span class="req">*</span></label>
+            <input class="form-input" type="text" [(ngModel)]="newMotor.description" placeholder="e.g. Somfy LT50 Motor" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newMotor.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addMotor()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Motors</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="motorFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of filteredMotors$ | async">
+                <td class="id-cell">{{ m.motorId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(m.productId) }}</span></td>
+                <td>{{ m.description }}</td>
+                <td class="price-cell">€{{ m.price | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditMotor(m)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteMotor(m)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredMotors$ | async)?.length === 0"><td colspan="5" class="empty-cell">No motors found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  HEATERS  ═════════════════════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'heaters'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Heater</h3>
+        <div class="form-grid form-grid-5">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newHeater.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span class="req">*</span></label>
+            <input class="form-input" type="text" [(ngModel)]="newHeater.description" placeholder="e.g. Bromic Smart-Heat 2300W" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newHeater.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price Non-RAL (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newHeater.priceNonRALColour" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addHeater()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Heaters</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="heaterFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Price</th><th>Price Non-RAL</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let h of filteredHeaters$ | async">
+                <td class="id-cell">{{ h.heaterId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(h.productId) }}</span></td>
+                <td>{{ h.description }}</td>
+                <td class="price-cell">€{{ h.price | number:'1.2-2' }}</td>
+                <td class="price-cell">€{{ h.priceNonRALColour | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditHeater(h)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteHeater(h)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredHeaters$ | async)?.length === 0"><td colspan="6" class="empty-cell">No heaters found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  NON-STANDARD RAL COLOURS  ════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'ralColours'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Non-Standard RAL Colour Pricing</h3>
+        <div class="form-grid form-grid-4">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newRalColour.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Width (cm) <span class="req">*</span></label>
+            <input class="form-input" type="number" [(ngModel)]="newRalColour.widthCm" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newRalColour.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addRalColour()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Non-Standard RAL Colour Pricing</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="ralColourFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Width (cm)</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let c of filteredRalColours$ | async">
+                <td class="id-cell">{{ c.ralColourId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(c.productId) }}</span></td>
+                <td class="center-cell">{{ c.widthCm }}</td>
+                <td class="price-cell">€{{ c.price | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditRalColour(c)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteRalColour(c)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredRalColours$ | async)?.length === 0"><td colspan="5" class="empty-cell">No RAL colour entries found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  PROJECTIONS  ════════════════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'projections'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Projection</h3>
+        <div class="form-grid form-grid-5">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newProjection.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Width (cm) <span class="req">*</span></label>
+            <input class="form-input" type="number" [(ngModel)]="newProjection.widthCm" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Projection (cm) <span class="req">*</span></label>
+            <input class="form-input" type="number" [(ngModel)]="newProjection.projectionCm" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newProjection.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addProjection()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Projections</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="projectionFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Width (cm)</th><th>Projection (cm)</th><th>Arm Type</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of filteredProjections$ | async">
+                <td class="id-cell">{{ p.projectionId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(p.productId) }}</span></td>
+                <td class="center-cell">{{ p.widthCm }}</td>
+                <td class="center-cell">{{ p.projectionCm }}</td>
+                <td class="center-cell">{{ p.armTypeId }}</td>
+                <td class="price-cell">€{{ p.price | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditProjection(p)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteProjection(p)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredProjections$ | async)?.length === 0"><td colspan="7" class="empty-cell">No projections found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- ═══════════════  RADIO CONTROLLED MOTORS  ════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'radioMotors'">
+      <div class="config-card">
+        <h3 class="config-card-title">Add Radio Controlled Motor</h3>
+        <div class="form-grid form-grid-5">
+          <div class="form-group">
+            <label class="form-label">Product <span class="req">*</span></label>
+            <select class="form-input" [(ngModel)]="newRadioMotor.productId">
+              <option [ngValue]="0" disabled>Select product</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description <span class="req">*</span></label>
+            <input class="form-input" type="text" [(ngModel)]="newRadioMotor.description" placeholder="e.g. Somfy RTS 50/12 RC" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Width (cm)</label>
+            <input class="form-input" type="number" [(ngModel)]="newRadioMotor.widthCm" min="0" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Price (€)</label>
+            <input class="form-input" type="number" [(ngModel)]="newRadioMotor.price" min="0" step="0.01" />
+          </div>
+          <div class="form-group form-group--end">
+            <button class="btn-add" (click)="addRadioMotor()" [disabled]="(isSaving$ | async) === true">
+              <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/></svg>
+              {{ (isSaving$ | async) ? 'Saving…' : 'Add' }}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Radio Controlled Motors</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="radioMotorFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Width (cm)</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let m of filteredRadioMotors$ | async">
+                <td class="id-cell">{{ m.radioMotorId }}</td>
+                <td><span class="badge-category">{{ getProductLabel(m.productId) }}</span></td>
+                <td>{{ m.description }}</td>
+                <td class="center-cell">{{ m.widthCm }}</td>
+                <td class="price-cell">€{{ m.price | number:'1.2-2' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditRadioMotor(m)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteRadioMotor(m)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredRadioMotors$ | async)?.length === 0"><td colspan="6" class="empty-cell">No radio motors found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -467,9 +718,7 @@
 
     <div class="modal-header">
       <h3 class="modal-title">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-        </svg>
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>
         Edit {{ activeTabLabel }}
       </h3>
       <button class="modal-close" (click)="closeEditModal()">✕</button>
@@ -479,96 +728,98 @@
 
       <!-- Site Visit Values edit -->
       <ng-container *ngIf="activeTab === 'siteVisit' && editingSv">
-        <div class="modal-field">
-          <label class="modal-label">Category <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingSv.category" list="svCategoryListEdit" />
-          <datalist id="svCategoryListEdit">
-            <option *ngFor="let c of svCategories$ | async" [value]="c"></option>
-          </datalist>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Value <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingSv.value" />
-        </div>
+        <div class="modal-field"><label class="modal-label">Category <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSv.category" list="svCategoryListEdit" /><datalist id="svCategoryListEdit"><option *ngFor="let c of svCategories$ | async" [value]="c"></option></datalist></div>
+        <div class="modal-field"><label class="modal-label">Value <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSv.value" /></div>
         <div class="modal-row">
-          <div class="modal-field modal-field--half">
-            <label class="modal-label">Display Order</label>
-            <input class="modal-input" type="number" [(ngModel)]="editingSv.displayOrder" min="1" />
-          </div>
-          <div class="modal-field modal-field--half">
-            <label class="modal-label">Active</label>
-            <label class="toggle-switch">
-              <input type="checkbox" [(ngModel)]="editingSv.isActive" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Display Order</label><input class="modal-input" type="number" [(ngModel)]="editingSv.displayOrder" min="1" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Active</label><label class="toggle-switch"><input type="checkbox" [(ngModel)]="editingSv.isActive" /><span class="toggle-slider"></span></label></div>
         </div>
       </ng-container>
 
       <!-- Brackets edit -->
       <ng-container *ngIf="activeTab === 'brackets' && editingBracket">
-        <div class="modal-field">
-          <label class="modal-label">Product <span class="req">*</span></label>
-          <select class="modal-input" [(ngModel)]="editingBracket.productId">
-            <option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Bracket Name <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingBracket.bracketName" />
-        </div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingBracket.productId"><option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Bracket Name <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingBracket.bracketName" /></div>
         <div class="modal-row">
-          <div class="modal-field modal-field--half">
-            <label class="modal-label">Part Number</label>
-            <input class="modal-input" type="text" [(ngModel)]="editingBracket.partNumber" />
-          </div>
-          <div class="modal-field modal-field--half">
-            <label class="modal-label">Price (€)</label>
-            <input class="modal-input" type="number" [(ngModel)]="editingBracket.price" min="0" step="0.01" />
-          </div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Part Number</label><input class="modal-input" type="text" [(ngModel)]="editingBracket.partNumber" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingBracket.price" min="0" step="0.01" /></div>
         </div>
       </ng-container>
 
       <!-- Suppliers edit -->
       <ng-container *ngIf="activeTab === 'suppliers' && editingSupplier">
-        <div class="modal-field">
-          <label class="modal-label">Supplier Name <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingSupplier.supplierName" />
-        </div>
+        <div class="modal-field"><label class="modal-label">Supplier Name <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSupplier.supplierName" /></div>
       </ng-container>
 
       <!-- Product Types edit -->
       <ng-container *ngIf="activeTab === 'productTypes' && editingPt">
-        <div class="modal-field">
-          <label class="modal-label">Supplier <span class="req">*</span></label>
-          <select class="modal-input" [(ngModel)]="editingPt.supplierId">
-            <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
-          </select>
-        </div>
-        <div class="modal-field">
-          <label class="modal-label">Description <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingPt.description" />
-        </div>
+        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingPt.supplierId"><option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingPt.description" /></div>
       </ng-container>
 
       <!-- Products edit -->
       <ng-container *ngIf="activeTab === 'products' && editingProd">
-        <div class="modal-field">
-          <label class="modal-label">Supplier <span class="req">*</span></label>
-          <select class="modal-input" [(ngModel)]="editingProd.supplierId" (ngModelChange)="onEditProdSupplierChange()">
-            <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
-          </select>
+        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.supplierId" (ngModelChange)="onEditProdSupplierChange()"><option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product Type <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.productTypeId"><option [ngValue]="0" disabled>Select type</option><option *ngFor="let pt of filteredProductTypesForEdit$ | async" [ngValue]="pt.productTypeId">{{ pt.description }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingProd.description" /></div>
+      </ng-container>
+
+      <!-- Arms edit -->
+      <ng-container *ngIf="activeTab === 'arms' && editingArm">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingArm.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingArm.description" /></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Arm Type ID</label><input class="modal-input" type="number" [(ngModel)]="editingArm.armTypeId" min="0" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingArm.price" min="0" step="0.01" /></div>
         </div>
-        <div class="modal-field">
-          <label class="modal-label">Product Type <span class="req">*</span></label>
-          <select class="modal-input" [(ngModel)]="editingProd.productTypeId">
-            <option [ngValue]="0" disabled>Select type</option>
-            <option *ngFor="let pt of filteredProductTypesForEdit$ | async" [ngValue]="pt.productTypeId">{{ pt.description }}</option>
-          </select>
+      </ng-container>
+
+      <!-- Motors edit -->
+      <ng-container *ngIf="activeTab === 'motors' && editingMotor">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingMotor.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingMotor.description" /></div>
+        <div class="modal-field"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingMotor.price" min="0" step="0.01" /></div>
+      </ng-container>
+
+      <!-- Heaters edit -->
+      <ng-container *ngIf="activeTab === 'heaters' && editingHeater">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingHeater.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingHeater.description" /></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingHeater.price" min="0" step="0.01" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price Non-RAL (€)</label><input class="modal-input" type="number" [(ngModel)]="editingHeater.priceNonRALColour" min="0" step="0.01" /></div>
         </div>
-        <div class="modal-field">
-          <label class="modal-label">Description <span class="req">*</span></label>
-          <input class="modal-input" type="text" [(ngModel)]="editingProd.description" />
+      </ng-container>
+
+      <!-- RAL Colours edit -->
+      <ng-container *ngIf="activeTab === 'ralColours' && editingRalColour">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRalColour.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Width (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingRalColour.widthCm" min="0" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingRalColour.price" min="0" step="0.01" /></div>
+        </div>
+      </ng-container>
+
+      <!-- Projections edit -->
+      <ng-container *ngIf="activeTab === 'projections' && editingProjection">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProjection.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Width (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingProjection.widthCm" min="0" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Projection (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingProjection.projectionCm" min="0" /></div>
+        </div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Arm Type ID</label><input class="modal-input" type="number" [(ngModel)]="editingProjection.armTypeId" min="0" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingProjection.price" min="0" step="0.01" /></div>
+        </div>
+      </ng-container>
+
+      <!-- Radio Motors edit -->
+      <ng-container *ngIf="activeTab === 'radioMotors' && editingRadioMotor">
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRadioMotor.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingRadioMotor.description" /></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Width (cm)</label><input class="modal-input" type="number" [(ngModel)]="editingRadioMotor.widthCm" min="0" /></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingRadioMotor.price" min="0" step="0.01" /></div>
         </div>
       </ng-container>
 
@@ -586,27 +837,20 @@
 <!-- ══════════════════════  DELETE CONFIRM  ════════════════════════════════════ -->
 <div class="modal-backdrop" *ngIf="showDeleteModal" (click)="cancelDelete()">
   <div class="modal-card modal-card--danger" (click)="$event.stopPropagation()">
-
     <div class="modal-header">
       <h3 class="modal-title modal-title--danger">
-        <svg width="18" height="18" viewBox="0 0 20 20" fill="#dc2626">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-        </svg>
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="#dc2626"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
         Delete Item
       </h3>
       <button class="modal-close" (click)="cancelDelete()">✕</button>
     </div>
-
     <div class="modal-body" *ngIf="deleteTarget">
       <p class="delete-warning">Are you sure you want to delete this item? This action cannot be undone.</p>
-      <div class="delete-preview">
-        <strong>{{ deleteTarget.label }}</strong>
-      </div>
+      <div class="delete-preview"><strong>{{ deleteTarget.label }}</strong></div>
     </div>
-
     <div class="modal-footer">
-      <button class="btn-modal btn-cancel"     (click)="cancelDelete()" [disabled]="(isDeleting$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-del"  (click)="confirmDelete()" [disabled]="(isDeleting$ | async) === true">
+      <button class="btn-modal btn-cancel"    (click)="cancelDelete()"  [disabled]="(isDeleting$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-del" (click)="confirmDelete()" [disabled]="(isDeleting$ | async) === true">
         {{ (isDeleting$ | async) ? 'Deleting…' : 'Delete' }}
       </button>
     </div>

@@ -49,6 +49,66 @@ export interface ProductConfig {
   createdBy?: string;
 }
 
+export interface ArmConfig {
+  armId: number;
+  productId: number;
+  description: string;
+  price: number;
+  armTypeId: number;
+  bfId: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
+export interface MotorConfig {
+  motorId: number;
+  productId: number;
+  description: string;
+  price: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
+export interface HeaterConfig {
+  heaterId: number;
+  productId: number;
+  description: string;
+  price: number;
+  priceNonRALColour: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
+export interface NonStandardRALColourConfig {
+  ralColourId: number;
+  productId: number;
+  widthCm: number;
+  price: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
+export interface ProjectionConfig {
+  projectionId: number;
+  productId: number;
+  widthCm: number;
+  projectionCm: number;
+  price: number;
+  armTypeId: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
+export interface RadioControlledMotorConfig {
+  radioMotorId: number;
+  productId: number;
+  description: string;
+  widthCm: number;
+  price: number;
+  dateCreated?: string;
+  createdBy?: string;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable({ providedIn: 'root' })
@@ -146,5 +206,113 @@ export class ConfigurationService {
 
   deleteProduct(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/configuration/products/${id}`);
+  }
+
+  // ── Arms ──────────────────────────────────────────────────────────────────
+
+  getArms(): Observable<ArmConfig[]> {
+    return this.http.get<ArmConfig[]>(`${this.base}/api/configuration/arms`);
+  }
+
+  createArm(dto: Omit<ArmConfig, 'armId'>): Observable<ArmConfig> {
+    return this.http.post<ArmConfig>(`${this.base}/api/configuration/arms`, dto);
+  }
+
+  updateArm(id: number, dto: ArmConfig): Observable<ArmConfig> {
+    return this.http.put<ArmConfig>(`${this.base}/api/configuration/arms/${id}`, dto);
+  }
+
+  deleteArm(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/arms/${id}`);
+  }
+
+  // ── Motors ────────────────────────────────────────────────────────────────
+
+  getMotors(): Observable<MotorConfig[]> {
+    return this.http.get<MotorConfig[]>(`${this.base}/api/configuration/motors`);
+  }
+
+  createMotor(dto: Omit<MotorConfig, 'motorId'>): Observable<MotorConfig> {
+    return this.http.post<MotorConfig>(`${this.base}/api/configuration/motors`, dto);
+  }
+
+  updateMotor(id: number, dto: MotorConfig): Observable<MotorConfig> {
+    return this.http.put<MotorConfig>(`${this.base}/api/configuration/motors/${id}`, dto);
+  }
+
+  deleteMotor(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/motors/${id}`);
+  }
+
+  // ── Heaters ───────────────────────────────────────────────────────────────
+
+  getHeaters(): Observable<HeaterConfig[]> {
+    return this.http.get<HeaterConfig[]>(`${this.base}/api/configuration/heaters`);
+  }
+
+  createHeater(dto: Omit<HeaterConfig, 'heaterId'>): Observable<HeaterConfig> {
+    return this.http.post<HeaterConfig>(`${this.base}/api/configuration/heaters`, dto);
+  }
+
+  updateHeater(id: number, dto: HeaterConfig): Observable<HeaterConfig> {
+    return this.http.put<HeaterConfig>(`${this.base}/api/configuration/heaters/${id}`, dto);
+  }
+
+  deleteHeater(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/heaters/${id}`);
+  }
+
+  // ── Non-Standard RAL Colours ──────────────────────────────────────────────
+
+  getNonStandardRALColours(): Observable<NonStandardRALColourConfig[]> {
+    return this.http.get<NonStandardRALColourConfig[]>(`${this.base}/api/configuration/ral-colours`);
+  }
+
+  createNonStandardRALColour(dto: Omit<NonStandardRALColourConfig, 'ralColourId'>): Observable<NonStandardRALColourConfig> {
+    return this.http.post<NonStandardRALColourConfig>(`${this.base}/api/configuration/ral-colours`, dto);
+  }
+
+  updateNonStandardRALColour(id: number, dto: NonStandardRALColourConfig): Observable<NonStandardRALColourConfig> {
+    return this.http.put<NonStandardRALColourConfig>(`${this.base}/api/configuration/ral-colours/${id}`, dto);
+  }
+
+  deleteNonStandardRALColour(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/ral-colours/${id}`);
+  }
+
+  // ── Projections ───────────────────────────────────────────────────────────
+
+  getProjections(): Observable<ProjectionConfig[]> {
+    return this.http.get<ProjectionConfig[]>(`${this.base}/api/configuration/projections`);
+  }
+
+  createProjection(dto: Omit<ProjectionConfig, 'projectionId'>): Observable<ProjectionConfig> {
+    return this.http.post<ProjectionConfig>(`${this.base}/api/configuration/projections`, dto);
+  }
+
+  updateProjection(id: number, dto: ProjectionConfig): Observable<ProjectionConfig> {
+    return this.http.put<ProjectionConfig>(`${this.base}/api/configuration/projections/${id}`, dto);
+  }
+
+  deleteProjection(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/projections/${id}`);
+  }
+
+  // ── Radio Controlled Motors ───────────────────────────────────────────────
+
+  getRadioControlledMotors(): Observable<RadioControlledMotorConfig[]> {
+    return this.http.get<RadioControlledMotorConfig[]>(`${this.base}/api/configuration/radio-motors`);
+  }
+
+  createRadioControlledMotor(dto: Omit<RadioControlledMotorConfig, 'radioMotorId'>): Observable<RadioControlledMotorConfig> {
+    return this.http.post<RadioControlledMotorConfig>(`${this.base}/api/configuration/radio-motors`, dto);
+  }
+
+  updateRadioControlledMotor(id: number, dto: RadioControlledMotorConfig): Observable<RadioControlledMotorConfig> {
+    return this.http.put<RadioControlledMotorConfig>(`${this.base}/api/configuration/radio-motors/${id}`, dto);
+  }
+
+  deleteRadioControlledMotor(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/radio-motors/${id}`);
   }
 }

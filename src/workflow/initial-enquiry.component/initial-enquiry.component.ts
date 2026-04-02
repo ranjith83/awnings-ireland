@@ -8,27 +8,68 @@ import { takeUntil, finalize } from 'rxjs/operators';
 
 import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.service';
 import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload } from '../../service/email-task.service';
+import { SignatureService, UserSignatureDto } from '../../service/signature.service';
+//import { SignatureService, UserSignatureDto } from '../../service/signature.service';
 
 export interface CustomerEmailRow {
-  taskId: number;
-  subject: string;
-  fromEmail: string;
-  fromName: string;
-  dateAdded: Date;
-  status: string;
-  taskType: string;
-  priority: string;
-  emailBody: string;
-  category: string;
+  taskId: number; subject: string; fromEmail: string; fromName: string;
+  dateAdded: Date; status: string; taskType: string; priority: string;
+  emailBody: string; category: string;
 }
 
-/** Attachment staged in memory before save. Serialised as JSON into enquiry.images. */
 export interface PendingAttachment {
-  fileName: string;
-  contentType: string;
-  base64Content: string;
-  sizeBytes: number;
+  fileName: string; contentType: string; base64Content: string; sizeBytes: number;
 }
+
+/** All editable fields inside the signature format builder modal. */
+export interface SigFormState {
+  label:          string;
+  fullName:       string;
+  jobTitle:       string;
+  company:        string;
+  phone:          string;
+  mobile:         string;
+  email:          string;
+  website:        string;
+  greetingText:   string;
+  customGreeting: string;      // used when greetingText === 'custom'
+  separatorStyle: string;
+  layoutOrder:    string;
+  isDefault:      boolean;
+}
+
+const BLANK_SIG_FORM = (): SigFormState => ({
+  label: '', fullName: '', jobTitle: '', company: '',
+  phone: '', mobile: '', email: '', website: '',
+  greetingText: 'Kindest regards,', customGreeting: '',
+  separatorStyle: 'blank_line', layoutOrder: 'name_first',
+  isDefault: false
+});
+
+const GREETING_PRESETS = [
+  'Kindest regards,',
+  'Kind regards,',
+  'Best regards,',
+  'Best wishes,',
+  'Many thanks,',
+  'Thanks,',
+  'Warm regards,',
+  'Yours sincerely,',
+  'Cheers,',
+  'custom'
+];
+
+const SEPARATOR_OPTIONS = [
+  { value: 'blank_line',   label: 'Blank line'   },
+  { value: 'single_dash',  label: '—  (single dash)' },
+  { value: 'double_dash',  label: '— —  (double dash)' },
+  { value: 'none',         label: 'None'         },
+];
+
+const LAYOUT_OPTIONS = [
+  { value: 'name_first',    label: 'Name → Job Title → Company' },
+  { value: 'company_first', label: 'Company → Name → Job Title' },
+];
 
 @Component({
   selector: 'app-initial-enquiry',
@@ -42,57 +83,65 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Route context ──────────────────────────────────────────────────────────
   workflowId: number | null = null;
   customerId: number | null = null;
-  customerName  = '';
-  customerEmail = '';
-
-  /** Set when navigated from Follow-Up screen — shows a contextual banner. */
+  customerName = ''; customerEmail = '';
   fromFollowUp: number | null = null;
-  /** Set when navigated from Task screen — shows a contextual banner. */
   fromTask: number | null = null;
 
-  // ── State subjects ─────────────────────────────────────────────────────────
+  // ── Observable state ───────────────────────────────────────────────────────
   isLoadingEnquiries$ = new BehaviorSubject<boolean>(false);
   isLoadingEmails$    = new BehaviorSubject<boolean>(false);
   isSaving$           = new BehaviorSubject<boolean>(false);
   isSendingEmail$     = new BehaviorSubject<boolean>(false);
+  isLoadingSigs$      = new BehaviorSubject<boolean>(false);
+  isSavingSig$        = new BehaviorSubject<boolean>(false);
   successMessage$     = new BehaviorSubject<string>('');
   errorMessage$       = new BehaviorSubject<string>('');
 
   // ── Data ───────────────────────────────────────────────────────────────────
   enquiries: InitialEnquiryDto[] = [];
   customerEmails: CustomerEmailRow[] = [];
+  userSignatures: UserSignatureDto[] = [];
 
-  // ── Add form  (email FIRST, then comments) ─────────────────────────────────
+  // ── Exposed constants for template ────────────────────────────────────────
+  readonly greetingPresets  = GREETING_PRESETS;
+  readonly separatorOptions = SEPARATOR_OPTIONS;
+  readonly layoutOptions    = LAYOUT_OPTIONS;
+
+  // ── Add form ───────────────────────────────────────────────────────────────
   newEmail       = '';
   newComments    = '';
+  newSignature   = '';
   sendEmailOnAdd = true;
 
-  // ── Edit modal  (email FIRST, then comments) ───────────────────────────────
-  showEditModal      = false;
+  // ── Edit enquiry modal ─────────────────────────────────────────────────────
+  showEditModal     = false;
   editingEnquiry: InitialEnquiryDto | null = null;
-  editEmail          = '';
-  editComments       = '';
-  sendEmailOnUpdate  = true;   // ← NEW: send email when saving an update
+  editEmail         = '';
+  editComments      = '';
+  editSignature     = '';
+  sendEmailOnUpdate = true;
+
+  // ── Signature builder modal ────────────────────────────────────────────────
+  showSigBuilder      = false;
+  /** The signatureId we're editing; null = creating new. */
+  editingSigId: number | null = null;
+  sigForm: SigFormState = BLANK_SIG_FORM();
+  /** Live-rendered preview, updated on every keypress. */
+  sigPreview = '';
 
   // ── Email preview modal ────────────────────────────────────────────────────
-  showEmailModal   = false;
+  showEmailModal     = false;
   emailModalTask: CustomerEmailRow | null = null;
-  /** Sanitised HTML for [innerHTML] — prevents raw tags showing as text. */
   emailModalBodyHtml: SafeHtml | null = null;
 
   // ── Send-email modal ───────────────────────────────────────────────────────
-  showSendModal    = false;
+  showSendModal   = false;
   sendModalTaskId: number | null = null;
-  sendSubject      = '';
-  sendBody         = '';
-  sendToEmail      = '';
-  /** Attachments staged for the send-email modal. */
+  sendSubject = ''; sendBody = ''; sendToEmail = '';
   sendPendingAttachments: PendingAttachment[] = [];
 
-  // ── Attachment state for Add form & Edit modal ─────────────────────────────
-  /** Attachments staged for the next addEnquiry() call. */
+  // ── Attachments ────────────────────────────────────────────────────────────
   pendingAttachments: PendingAttachment[] = [];
-  /** Attachments staged for the current saveEdit() call. */
   editPendingAttachments: PendingAttachment[] = [];
 
   private destroy$ = new Subject<void>();
@@ -101,30 +150,217 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private workflowService: WorkflowService,
     private emailTaskService: EmailTaskService,
+    private signatureService: SignatureService,
     private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit() {
-    this.route.queryParams
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        this.workflowId    = params['workflowId']    ? +params['workflowId']    : null;
-        this.customerId    = params['customerId']    ? +params['customerId']    : null;
-        this.customerName  = params['customerName']  ?? '';
-        this.customerEmail = params['customerEmail'] ?? '';
-        this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
-        this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
-        this.newEmail      = this.customerEmail;
-        this.loadAll();
+    this.loadUserSignatures();
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      this.workflowId    = params['workflowId']    ? +params['workflowId']    : null;
+      this.customerId    = params['customerId']    ? +params['customerId']    : null;
+      this.customerName  = params['customerName']  ?? '';
+      this.customerEmail = params['customerEmail'] ?? '';
+      this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
+      this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
+      this.newEmail      = this.customerEmail;
+      this.loadAll();
+    });
+  }
+
+  ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
+
+  // ── Signature loading ──────────────────────────────────────────────────────
+
+  loadUserSignatures(): void {
+    this.isLoadingSigs$.next(true);
+    this.signatureService.getSignatures()
+      .pipe(takeUntil(this.destroy$), finalize(() => this.isLoadingSigs$.next(false)))
+      .subscribe({
+        next: (sigs) => {
+          this.userSignatures = sigs;
+          if (!this.newSignature) {
+            const def = sigs.find(s => s.isDefault);
+            this.newSignature = def?.signatureText ?? '';
+          }
+        },
+        error: () => { /* non-fatal */ }
       });
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
+  // ── Signature picker helpers ───────────────────────────────────────────────
+
+  applySignatureToAdd(sig: UserSignatureDto): void  { this.newSignature  = sig.signatureText; }
+  applySignatureToEdit(sig: UserSignatureDto): void { this.editSignature = sig.signatureText; }
+
+  get defaultSignature(): UserSignatureDto | undefined {
+    return this.userSignatures.find(s => s.isDefault);
   }
 
-  // ── Load ───────────────────────────────────────────────────────────────────
+  // ── Signature builder modal ────────────────────────────────────────────────
+
+  openBuilderForNew(): void {
+    this.editingSigId = null;
+    this.sigForm      = BLANK_SIG_FORM();
+    this.refreshPreview();
+    this.showSigBuilder = true;
+  }
+
+  openBuilderForEdit(sig: UserSignatureDto): void {
+    this.editingSigId = sig.signatureId ?? null;
+    this.sigForm = {
+      label:          sig.label,
+      fullName:       sig.fullName  ?? '',
+      jobTitle:       sig.jobTitle  ?? '',
+      company:        sig.company   ?? '',
+      phone:          sig.phone     ?? '',
+      mobile:         sig.mobile    ?? '',
+      email:          sig.email     ?? '',
+      website:        sig.website   ?? '',
+      greetingText:   GREETING_PRESETS.includes(sig.greetingText)
+                        ? sig.greetingText : 'custom',
+      customGreeting: GREETING_PRESETS.includes(sig.greetingText)
+                        ? '' : sig.greetingText,
+      separatorStyle: sig.separatorStyle ?? 'blank_line',
+      layoutOrder:    sig.layoutOrder    ?? 'name_first',
+      isDefault:      sig.isDefault
+    };
+    this.refreshPreview();
+    this.showSigBuilder = true;
+  }
+
+  closeSigBuilder(): void {
+    this.showSigBuilder = false;
+    this.editingSigId   = null;
+    this.sigForm        = BLANK_SIG_FORM();
+    this.sigPreview     = '';
+  }
+
+  /** Re-render the preview whenever any field changes (called via (ngModelChange)). */
+  refreshPreview(): void {
+    this.sigPreview = this.buildSignatureText(this.sigForm);
+  }
+
+  /** Compose the plain-text signature from the form fields. */
+  buildSignatureText(f: SigFormState): string {
+    const greeting = f.greetingText === 'custom'
+      ? (f.customGreeting.trim() || 'Kindest regards,')
+      : f.greetingText;
+
+    // Separator line
+    let sep = '';
+    if      (f.separatorStyle === 'blank_line')  sep = '\n';
+    else if (f.separatorStyle === 'single_dash') sep = '\n—';
+    else if (f.separatorStyle === 'double_dash') sep = '\n— —';
+    // 'none' → sep stays ''
+
+    // Contact block lines (only non-empty fields)
+    const nameBlock: string[] = [];
+    const companyBlock: string[] = [];
+
+    if (f.layoutOrder === 'name_first') {
+      if (f.fullName)  nameBlock.push(f.fullName.trim());
+      if (f.jobTitle)  nameBlock.push(f.jobTitle.trim());
+      if (f.company)   companyBlock.push(f.company.trim());
+    } else {
+      if (f.company)   companyBlock.push(f.company.trim());
+      if (f.fullName)  nameBlock.push(f.fullName.trim());
+      if (f.jobTitle)  nameBlock.push(f.jobTitle.trim());
+    }
+
+    const contactLines: string[] = [
+      ...(f.layoutOrder === 'name_first' ? [...nameBlock, ...companyBlock] : [...companyBlock, ...nameBlock]),
+      ...(f.phone   ? [`Tel: ${f.phone.trim()}`]    : []),
+      ...(f.mobile  ? [`Mob: ${f.mobile.trim()}`]   : []),
+      ...(f.email   ? [f.email.trim()]               : []),
+      ...(f.website ? [f.website.trim()]             : []),
+    ];
+
+    const parts: string[] = [greeting];
+    if (sep) parts.push(sep);
+    if (contactLines.length) parts.push(contactLines.join('\n'));
+
+    return parts.join('\n');
+  }
+
+  saveSigFromBuilder(): void {
+    if (!this.sigForm.label.trim()) { this.showError('Label is required.'); return; }
+
+    const resolvedGreeting = this.sigForm.greetingText === 'custom'
+      ? (this.sigForm.customGreeting.trim() || 'Kindest regards,')
+      : this.sigForm.greetingText;
+
+    const dto: UserSignatureDto = {
+      label:          this.sigForm.label.trim(),
+      fullName:       this.sigForm.fullName  || undefined,
+      jobTitle:       this.sigForm.jobTitle  || undefined,
+      company:        this.sigForm.company   || undefined,
+      phone:          this.sigForm.phone     || undefined,
+      mobile:         this.sigForm.mobile    || undefined,
+      email:          this.sigForm.email     || undefined,
+      website:        this.sigForm.website   || undefined,
+      greetingText:   resolvedGreeting,
+      separatorStyle: this.sigForm.separatorStyle,
+      layoutOrder:    this.sigForm.layoutOrder,
+      signatureText:  this.buildSignatureText(this.sigForm),
+      isDefault:      this.sigForm.isDefault
+    };
+
+    this.isSavingSig$.next(true);
+
+    const req$ = this.editingSigId
+      ? this.signatureService.updateSignature(this.editingSigId, dto)
+      : this.signatureService.createSignature(dto);
+
+    req$.pipe(takeUntil(this.destroy$), finalize(() => this.isSavingSig$.next(false)))
+      .subscribe({
+        next: (saved) => {
+          if (saved.isDefault) {
+            this.userSignatures = this.userSignatures.map(s => ({ ...s, isDefault: false }));
+          }
+          if (this.editingSigId) {
+            const idx = this.userSignatures.findIndex(s => s.signatureId === saved.signatureId);
+            if (idx !== -1) this.userSignatures[idx] = saved;
+            else this.userSignatures = [...this.userSignatures, saved];
+          } else {
+            this.userSignatures = [...this.userSignatures, saved];
+          }
+          this.userSignatures = [...this.userSignatures];
+          this.showSuccess(this.editingSigId ? 'Signature updated.' : 'Signature saved.');
+          this.closeSigBuilder();
+        },
+        error: () => this.showError('Failed to save signature.')
+      });
+  }
+
+  setDefaultSig(sig: UserSignatureDto): void {
+    if (!sig.signatureId) return;
+    this.signatureService.setDefault(sig.signatureId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.userSignatures = this.userSignatures.map(s =>
+            ({ ...s, isDefault: s.signatureId === sig.signatureId }));
+          this.showSuccess(`"${sig.label}" set as default.`);
+        },
+        error: () => this.showError('Failed to set default.')
+      });
+  }
+
+  deleteSig(sig: UserSignatureDto): void {
+    if (!sig.signatureId) return;
+    this.signatureService.deleteSignature(sig.signatureId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.userSignatures = this.userSignatures.filter(s => s.signatureId !== sig.signatureId);
+          this.showSuccess('Signature deleted.');
+        },
+        error: () => this.showError('Failed to delete signature.')
+      });
+  }
+
+  // ── Data loading ───────────────────────────────────────────────────────────
 
   loadAll() {
     if (this.workflowId) this.loadEnquiries(this.workflowId);
@@ -154,16 +390,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (tasks: EmailTask[]) => {
           this.customerEmails = tasks.map(t => ({
-            taskId:    t.taskId,
-            subject:   t.subject,
-            fromEmail: t.fromEmail,
-            fromName:  t.fromName,
-            dateAdded: new Date(t.dateAdded),
-            status:    t.status,
-            taskType:  t.taskType,
-            priority:  t.priority,
-            emailBody: t.emailBody,
-            category:  t.category
+            taskId: t.taskId, subject: t.subject, fromEmail: t.fromEmail,
+            fromName: t.fromName, dateAdded: new Date(t.dateAdded),
+            status: t.status, taskType: t.taskType, priority: t.priority,
+            emailBody: t.emailBody, category: t.category
           }));
           if (!this.newEmail && tasks.length) {
             const first = tasks.find(t => t.fromEmail);
@@ -180,26 +410,22 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     if (!this.workflowId) { this.showError('No workflow selected.'); return; }
     if (!this.newComments.trim()) { this.showError('Please enter enquiry comments.'); return; }
 
-    // Serialise staged attachments as JSON into the images field
     const imagesJson = this.pendingAttachments.length
       ? JSON.stringify(this.pendingAttachments.map(a => ({
           fileName: a.fileName, contentType: a.contentType,
-          sizeBytes: a.sizeBytes, base64Content: a.base64Content
-        })))
-      : undefined;
+          sizeBytes: a.sizeBytes, base64Content: a.base64Content }))) : undefined;
 
     const dto: InitialEnquiryDto = {
-      workflowId: this.workflowId,
-      email:      this.newEmail.trim(),
-      comments:   this.newComments.trim(),
-      images:     imagesJson
+      workflowId: this.workflowId, email: this.newEmail.trim(),
+      comments: this.newComments.trim(), images: imagesJson,
+      signature: this.newSignature.trim() || null
     };
 
-    // Capture before async — fields clear on success
-    const emailToSend    = this.newEmail.trim();
+    const emailToSend = this.newEmail.trim();
     const commentsToSend = this.newComments.trim();
-    const shouldSend     = this.sendEmailOnAdd;
-    const attachsToSend  = [...this.pendingAttachments];
+    const signatureToSend = this.newSignature.trim();
+    const shouldSend = this.sendEmailOnAdd;
+    const attachsToSend = [...this.pendingAttachments];
 
     this.isSaving$.next(true);
     this.workflowService.addInitialEnquiry(dto)
@@ -208,16 +434,13 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
         next: (saved) => {
           this.enquiries = [saved, ...this.enquiries];
           this.newComments = '';
+          this.newSignature = this.defaultSignature?.signatureText ?? '';
           this.pendingAttachments = [];
           this.showSuccess('Enquiry added successfully!');
-
           if (shouldSend && emailToSend) {
-            this.dispatchDirectEmail(
-              emailToSend,
+            this.dispatchDirectEmail(emailToSend,
               `Re: Initial Enquiry – ${this.customerName}`,
-              `Thank you for your enquiry.\n\n${commentsToSend}\n\nKind regards`,
-              attachsToSend
-            );
+              this.buildEmailBody(commentsToSend, signatureToSend), attachsToSend);
           }
         },
         error: () => this.showError('Failed to add enquiry.')
@@ -227,20 +450,19 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
 
   openEditModal(enquiry: InitialEnquiryDto) {
-    this.editingEnquiry         = { ...enquiry };
-    this.editEmail              = enquiry.email;
-    this.editComments           = enquiry.comments;
-    this.sendEmailOnUpdate      = true;
+    this.editingEnquiry = { ...enquiry };
+    this.editEmail      = enquiry.email;
+    this.editComments   = enquiry.comments;
+    this.editSignature  = enquiry.signature ?? this.defaultSignature?.signatureText ?? '';
+    this.sendEmailOnUpdate = true;
     this.editPendingAttachments = [];
-    this.showEditModal          = true;
+    this.showEditModal = true;
     this.errorMessage$.next('');
   }
 
   closeEditModal() {
-    this.showEditModal          = false;
-    this.editingEnquiry         = null;
-    this.editEmail              = '';
-    this.editComments           = '';
+    this.showEditModal = false; this.editingEnquiry = null;
+    this.editEmail = this.editComments = this.editSignature = '';
     this.editPendingAttachments = [];
   }
 
@@ -248,17 +470,15 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     if (!this.editingEnquiry) return;
     if (!this.editComments.trim()) { this.showError('Comments are required.'); return; }
 
-    // Merge new uploads with any attachments already saved in images
     let existingAtts: PendingAttachment[] = [];
-    try { if (this.editingEnquiry.images) existingAtts = JSON.parse(this.editingEnquiry.images); } catch { /* ignore */ }
-    const allAtts    = [...existingAtts, ...this.editPendingAttachments];
+    try { if (this.editingEnquiry.images) existingAtts = JSON.parse(this.editingEnquiry.images); } catch {}
+    const allAtts = [...existingAtts, ...this.editPendingAttachments];
     const imagesJson = allAtts.length ? JSON.stringify(allAtts) : undefined;
 
     const dto: InitialEnquiryDto = {
       ...this.editingEnquiry,
-      email:    this.editEmail.trim(),
-      comments: this.editComments.trim(),
-      images:   imagesJson
+      email: this.editEmail.trim(), comments: this.editComments.trim(),
+      images: imagesJson, signature: this.editSignature.trim() || null
     };
 
     this.isSaving$.next(true);
@@ -269,17 +489,12 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
           const idx = this.enquiries.findIndex(e => e.enquiryId === updated.enquiryId);
           if (idx !== -1) this.enquiries[idx] = updated;
           this.enquiries = [...this.enquiries];
-
-          // ── Send email to customer on update ──────────────────────────────
           if (this.sendEmailOnUpdate && this.editEmail.trim()) {
-            this.dispatchDirectEmail(
-              this.editEmail.trim(),
+            this.dispatchDirectEmail(this.editEmail.trim(),
               `Enquiry Update – ${this.customerName}`,
-              `Your enquiry details have been updated.\n\n${this.editComments.trim()}\n\nKind regards`,
-              this.editPendingAttachments
-            );
+              this.buildEmailBody(this.editComments.trim(), this.editSignature.trim()),
+              this.editPendingAttachments);
           }
-
           this.showSuccess('Enquiry updated successfully!');
           this.closeEditModal();
         },
@@ -290,33 +505,21 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Email preview ──────────────────────────────────────────────────────────
 
   openEmailPreview(row: CustomerEmailRow) {
-    this.emailModalTask     = row;
-    this.emailModalBodyHtml = row.emailBody
-      ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody)
-      : null;
-    this.showEmailModal     = true;
+    this.emailModalTask = row;
+    this.emailModalBodyHtml = row.emailBody ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody) : null;
+    this.showEmailModal = true;
   }
-
-  closeEmailPreview() {
-    this.showEmailModal     = false;
-    this.emailModalTask     = null;
-    this.emailModalBodyHtml = null;
-  }
+  closeEmailPreview() { this.showEmailModal = false; this.emailModalTask = null; this.emailModalBodyHtml = null; }
 
   // ── Send-email modal ───────────────────────────────────────────────────────
 
   openSendModal(row: CustomerEmailRow) {
-    this.sendModalTaskId = row.taskId;
-    this.sendToEmail     = row.fromEmail;
-    this.sendSubject     = `Re: ${row.subject}`;
-    this.sendBody        = '';
-    this.showSendModal   = true;
-    this.errorMessage$.next('');
+    this.sendModalTaskId = row.taskId; this.sendToEmail = row.fromEmail;
+    this.sendSubject = `Re: ${row.subject}`; this.sendBody = '';
+    this.showSendModal = true; this.errorMessage$.next('');
   }
-
   closeSendModal() {
-    this.showSendModal          = false;
-    this.sendModalTaskId        = null;
+    this.showSendModal = false; this.sendModalTaskId = null;
     this.sendSubject = this.sendBody = this.sendToEmail = '';
     this.sendPendingAttachments = [];
   }
@@ -324,12 +527,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   sendEmail() {
     if (!this.sendModalTaskId) return;
     if (!this.sendBody.trim()) { this.showError('Please enter an email body.'); return; }
-
-    // Reply modal always has a real taskId — use the task-threaded send endpoint
     const payload: SendTaskEmailPayload = {
-      toEmail:     this.sendToEmail,
-      subject:     this.sendSubject,
-      body:        this.sendBody,
+      toEmail: this.sendToEmail, subject: this.sendSubject, body: this.sendBody,
       attachments: this.sendPendingAttachments.length
         ? this.sendPendingAttachments.map(a => ({ fileName: a.fileName, base64Content: a.base64Content, contentType: a.contentType }))
         : undefined
@@ -338,27 +537,20 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.emailTaskService.sendTaskEmail(this.sendModalTaskId, payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({
-        next:  () => { this.showSuccess('Email sent successfully!'); this.closeSendModal(); },
+        next: () => { this.showSuccess('Email sent successfully!'); this.closeSendModal(); },
         error: () => this.showError('Failed to send email.')
       });
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
 
-  /**
-   * Send a fresh outbound email with no task context required.
-   * Used for automatic notifications when adding or updating enquiries.
-   * Calls POST /api/EmailTask/send-direct — always a new email, never threaded.
-   */
-  private dispatchDirectEmail(
-    toEmail: string,
-    subject: string,
-    body: string,
-    attachments: PendingAttachment[] = [],
-    onSuccess?: () => void
-  ) {
-    if (!toEmail?.trim()) { onSuccess?.(); return; }
+  private buildEmailBody(body: string, sig: string): string {
+    return sig?.trim() ? `${body}\n\n-- \n${sig.trim()}` : body;
+  }
 
+  private dispatchDirectEmail(toEmail: string, subject: string, body: string,
+      attachments: PendingAttachment[] = [], onSuccess?: () => void) {
+    if (!toEmail?.trim()) { onSuccess?.(); return; }
     const payload: SendDirectEmailPayload = {
       toEmail, subject, body,
       attachments: attachments.length
@@ -368,14 +560,62 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendDirectEmail(payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
-      .subscribe({
-        next:  () => onSuccess?.(),
-        error: () => this.showError('Enquiry saved, but the email notification could not be sent.')
-      });
+      .subscribe({ next: () => onSuccess?.(), error: () => this.showError('Enquiry saved, but the email could not be sent.') });
   }
 
   private showSuccess(msg: string) { this.successMessage$.next(msg); setTimeout(() => this.successMessage$.next(''), 3500); }
   private showError(msg: string)   { this.errorMessage$.next(msg);   setTimeout(() => this.errorMessage$.next(''),   4000); }
+
+  // ── Attachment helpers ─────────────────────────────────────────────────────
+
+  onFilesSelected(event: Event, target: 'add' | 'edit' | 'send'): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    Array.from(input.files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const att: PendingAttachment = { fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          base64Content: (reader.result as string).split(',')[1], sizeBytes: file.size };
+        if (target === 'add')  this.pendingAttachments     = [...this.pendingAttachments, att];
+        if (target === 'edit') this.editPendingAttachments = [...this.editPendingAttachments, att];
+        if (target === 'send') this.sendPendingAttachments = [...this.sendPendingAttachments, att];
+      };
+      reader.readAsDataURL(file);
+    });
+    input.value = '';
+  }
+
+  removeAttachment(index: number, target: 'add' | 'edit' | 'send'): void {
+    if (target === 'add')  this.pendingAttachments     = this.pendingAttachments.filter((_,i) => i !== index);
+    if (target === 'edit') this.editPendingAttachments = this.editPendingAttachments.filter((_,i) => i !== index);
+    if (target === 'send') this.sendPendingAttachments = this.sendPendingAttachments.filter((_,i) => i !== index);
+  }
+
+  getEnquiryAttachments(enq: InitialEnquiryDto): PendingAttachment[] {
+    if (!enq.images) return [];
+    try { return JSON.parse(enq.images); } catch { return []; }
+  }
+
+  downloadEnquiryAttachment(att: PendingAttachment): void {
+    const link = document.createElement('a');
+    link.href = `data:${att.contentType};base64,${att.base64Content}`;
+    link.download = att.fileName; link.click();
+  }
+
+  formatBytes(b: number): string {
+    if (b < 1024) return `${b} B`;
+    if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+    return `${(b/1048576).toFixed(1)} MB`;
+  }
+
+  fileIcon(ct: string): string {
+    if (ct?.includes('pdf'))   return '📄';
+    if (ct?.includes('image')) return '🖼️';
+    if (ct?.includes('word'))  return '📝';
+    if (ct?.includes('excel') || ct?.includes('spreadsheet')) return '📊';
+    return '📎';
+  }
 
   getPriorityClass(p: string): string {
     switch (p?.toUpperCase()) {
@@ -390,66 +630,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ── Attachment helpers ────────────────────────────────────────────────────
-
-  /**
-   * File-input change handler. Reads each file as base64 and pushes into the
-   * correct pending list: 'add' | 'edit' | 'send'
-   */
-  onFilesSelected(event: Event, target: 'add' | 'edit' | 'send'): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.length) return;
-    Array.from(input.files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const att: PendingAttachment = {
-          fileName:      file.name,
-          contentType:   file.type || 'application/octet-stream',
-          base64Content: (reader.result as string).split(',')[1],
-          sizeBytes:     file.size
-        };
-        if (target === 'add')  this.pendingAttachments      = [...this.pendingAttachments,      att];
-        if (target === 'edit') this.editPendingAttachments  = [...this.editPendingAttachments,  att];
-        if (target === 'send') this.sendPendingAttachments  = [...this.sendPendingAttachments,  att];
-      };
-      reader.readAsDataURL(file);
-    });
-    input.value = ''; // reset so same file can be re-selected
-  }
-
-  removeAttachment(index: number, target: 'add' | 'edit' | 'send'): void {
-    if (target === 'add')  this.pendingAttachments      = this.pendingAttachments.filter((_,i) => i !== index);
-    if (target === 'edit') this.editPendingAttachments  = this.editPendingAttachments.filter((_,i) => i !== index);
-    if (target === 'send') this.sendPendingAttachments  = this.sendPendingAttachments.filter((_,i) => i !== index);
-  }
-
-  /** Parse saved JSON from enquiry.images back into attachment objects for display. */
-  getEnquiryAttachments(enquiry: InitialEnquiryDto): PendingAttachment[] {
-    if (!enquiry.images) return [];
-    try { return JSON.parse(enquiry.images); } catch { return []; }
-  }
-
-  downloadEnquiryAttachment(att: PendingAttachment): void {
-    const link    = document.createElement('a');
-    link.href     = `data:${att.contentType};base64,${att.base64Content}`;
-    link.download = att.fileName;
-    link.click();
-  }
-
-  formatBytes(bytes: number): string {
-    if (bytes < 1024)    return `${bytes} B`;
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1048576).toFixed(1)} MB`;
-  }
-
-  fileIcon(contentType: string): string {
-    if (contentType?.includes('pdf'))   return '📄';
-    if (contentType?.includes('image')) return '🖼️';
-    if (contentType?.includes('word'))  return '📝';
-    if (contentType?.includes('excel') || contentType?.includes('spreadsheet')) return '📊';
-    return '📎';
-  }
-
   trackByEnquiry(_: number, e: InitialEnquiryDto) { return e.enquiryId; }
-  trackByEmail  (_: number, e: CustomerEmailRow)   { return e.taskId;   }
+  trackByEmail  (_: number, e: CustomerEmailRow)   { return e.taskId; }
+  trackBySig    (_: number, s: UserSignatureDto)   { return s.signatureId; }
 }

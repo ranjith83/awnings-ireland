@@ -11,6 +11,13 @@ $muted:     #6b7280;
 $bg-light:  #f9fafb;
 $bg-page:   #f1f5f9;
 
+// ── Calendar palette ──────────────────────────────────────────────────────────
+$cal-free:    #10b981;
+$cal-busy:    #ef4444;
+$cal-past:    #d1d5db;
+$cal-today:   #3b82f6;
+$cal-select:  #1d4ed8;
+
 // ── Container ────────────────────────────────────────────────────────────────
 
 .workflow-container {
@@ -95,7 +102,7 @@ $bg-page:   #f1f5f9;
   }
 }
 
-// ── Add New button — top-level so Angular encapsulation never breaks it ───────
+// ── Add New button ────────────────────────────────────────────────────────────
 
 .btn-add-new {
   display: inline-flex;
@@ -120,10 +127,44 @@ $bg-page:   #f1f5f9;
     transform: translateY(-1px);
     box-shadow: 0 3px 8px rgba(16,185,129,0.3);
   }
+  &:active { transform: translateY(0); box-shadow: none; }
+}
 
-  &:active {
-    transform: translateY(0);
-    box-shadow: none;
+// ── Check Availability button ─────────────────────────────────────────────────
+
+.btn-check-availability {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 38px;
+  background: #eff6ff;
+  color: $primary;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: flex-end;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+
+  svg { flex-shrink: 0; }
+
+  &:hover {
+    background: #dbeafe;
+    border-color: $primary;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(59,130,246,0.2);
+  }
+  &:active { transform: translateY(0); box-shadow: none; }
+
+  &.active {
+    background: $primary;
+    color: #fff;
+    border-color: $primary;
+    box-shadow: 0 2px 6px rgba(59,130,246,0.35);
   }
 }
 
@@ -239,10 +280,7 @@ textarea.form-control {
   }
 }
 
-.action-buttons {
-  display: flex;
-  gap: 6px;
-}
+.action-buttons { display: flex; gap: 6px; }
 
 .btn-edit,
 .btn-delete {
@@ -325,21 +363,11 @@ textarea.form-control {
   white-space: nowrap;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 
-  &:hover {
-    color: $primary;
-    background: $bg-light;
-  }
-
-  &.active {
-    color: $primary;
-    border-bottom-color: $primary;
-    font-weight: 600;
-  }
+  &:hover { color: $primary; background: $bg-light; }
+  &.active { color: $primary; border-bottom-color: $primary; font-weight: 600; }
 }
 
-.tab-content {
-  padding: 14px 0;
-}
+.tab-content { padding: 14px 0; }
 
 // ── Dynamic fields grid ───────────────────────────────────────────────────────
 
@@ -409,27 +437,383 @@ textarea.form-control {
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
 }
 
 .btn-primary {
   background: $primary;
   color: #fff;
-
-  &:hover:not(:disabled) {
-    background: #2563eb;
-    transform: translateY(-1px);
-  }
+  &:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
 }
 
 .btn-secondary {
   background: #e5e7eb;
   color: $text;
-
   &:hover { background: #d1d5db; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Outlook Calendar Panel ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+.calendar-panel {
+  border-bottom: 1px solid $border;
+  background: #fff;
+  animation: cal-slide-in 0.2s ease;
+}
+
+@keyframes cal-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ── Panel header row ──────────────────────────────────────────────────────────
+
+.calendar-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px 0;
+  flex-wrap: wrap;
+}
+
+.calendar-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: $text;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex: 1;
+
+  svg { color: $primary; flex-shrink: 0; }
+}
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: $muted;
+  font-weight: 500;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.legend-free  .legend-dot { background: $cal-free; }
+.legend-busy  .legend-dot { background: $cal-busy; }
+.legend-past  .legend-dot { background: $cal-past; }
+
+.calendar-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid $border;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  color: $muted;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+
+  &:hover { background: #fee2e2; color: $danger; border-color: #fca5a5; }
+}
+
+// ── Loading & Error states ────────────────────────────────────────────────────
+
+.calendar-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 18px;
+  color: $muted;
+  font-size: 13px;
+}
+
+.calendar-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid $border;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.calendar-error-banner {
+  margin: 8px 18px;
+  padding: 8px 12px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #92400e;
+}
+
+// ── Calendar body ─────────────────────────────────────────────────────────────
+
+.calendar-body {
+  padding: 12px 18px 16px;
+}
+
+// ── Month navigation ──────────────────────────────────────────────────────────
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cal-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: $bg-light;
+  border: 1px solid $border;
+  border-radius: 6px;
+  font-size: 18px;
+  line-height: 1;
+  color: $text;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+
+  &:hover { background: #dbeafe; border-color: #93c5fd; }
+}
+
+.cal-month-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: $text;
+  min-width: 160px;
+  text-align: center;
+}
+
+// ── Summary pills ─────────────────────────────────────────────────────────────
+
+.calendar-summary {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.pill-free { background: #d1fae5; color: #065f46; }
+  &.pill-busy { background: #fee2e2; color: #991b1b; }
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────────────
+
+.calendar-grid-wrap {
+  border: 1px solid $border;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: $bg-light;
+  border-bottom: 1px solid $border;
+}
+
+.cal-weekday {
+  padding: 6px 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: $muted;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.cal-weeks { background: #fff; }
+
+.cal-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+
+  &:not(:last-child) { border-bottom: 1px solid $border; }
+}
+
+.cal-day {
+  position: relative;
+  min-height: 52px;
+  padding: 6px 6px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid $border;
+  transition: background 0.12s;
+
+  &:last-child { border-right: none; }
+
+  // States
+  &.other-month { background: $bg-light; }
+
+  &.past:not(.today) {
+    .cal-day-num { color: $cal-past; }
+  }
+
+  &.free.clickable:hover {
+    background: #ecfdf5;
+    cursor: pointer;
+  }
+
+  &.busy {
+    background: #fff1f2;
+    &.clickable:hover { background: #fee2e2; cursor: pointer; }
+  }
+
+  &.today {
+    .cal-day-num {
+      background: $cal-today;
+      color: #fff;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+  }
+
+  &.selected {
+    background: #eff6ff;
+    outline: 2px solid $cal-select;
+    outline-offset: -2px;
+    border-radius: 0;
+  }
+
+  &.clickable { cursor: pointer; }
+}
+
+.cal-day-num {
+  font-size: 13px;
+  font-weight: 500;
+  color: $text;
+  line-height: 24px;
+  min-width: 24px;
+  text-align: center;
+}
+
+// Free indicator — subtle green bar at top
+.cal-day.free.current-month::before,
+.cal-day.free:not(.other-month)::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: $cal-free;
+  border-radius: 0;
+}
+
+.cal-event-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: $cal-busy;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+// ── Selected day detail ───────────────────────────────────────────────────────
+
+.cal-day-detail {
+  margin-top: 12px;
+  border: 1px solid $border;
+  border-radius: 8px;
+  overflow: hidden;
+  animation: cal-slide-in 0.18s ease;
+}
+
+.cal-day-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  background: $bg-light;
+  border-bottom: 1px solid $border;
+  font-size: 13px;
+  font-weight: 700;
+  color: $text;
+
+  svg { color: $primary; flex-shrink: 0; }
+}
+
+.cal-day-free-msg {
+  padding: 14px;
+  font-size: 13px;
+  color: #065f46;
+  background: #f0fdf4;
+}
+
+.cal-events-list { padding: 6px 0; }
+
+.cal-event-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid $border;
+
+  &:last-child { border-bottom: none; }
+
+  &::before {
+    content: '';
+    width: 3px;
+    min-height: 32px;
+    border-radius: 2px;
+    background: $cal-busy;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+}
+
+.cal-event-time {
+  font-size: 12px;
+  font-weight: 600;
+  color: $primary;
+  white-space: nowrap;
+  min-width: 90px;
+  padding-top: 1px;
+}
+
+.cal-event-subject {
+  font-size: 13px;
+  color: $text;
+  line-height: 1.4;
 }
 
 // ── Responsive ────────────────────────────────────────────────────────────────
@@ -454,11 +838,22 @@ textarea.form-control {
     align-items: stretch;
   }
 
-  .btn-add-new {
+  .btn-add-new,
+  .btn-check-availability {
     width: 100%;
     justify-content: center;
   }
 
   .data-table th,
   .data-table td { padding: 6px 8px; }
+
+  .cal-day { min-height: 42px; }
+
+  .calendar-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .cal-month-label { min-width: unset; }
 }

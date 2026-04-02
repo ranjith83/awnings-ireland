@@ -12,6 +12,7 @@ import {
 } from '../../service/setup-site-visit.service';
 import { WorkflowService, WorkflowDto } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
+import { OutlookCalendarService } from '../../service/outlook-calendar.service';
 
 interface ProductModel {
   id: string;
@@ -23,9 +24,29 @@ interface FieldConfig {
   name: string;
   label: string;
   type: 'dropdown' | 'text' | 'checkbox' | 'number';
-  category?: string; // For dropdown values from DB
-  values?: string[]; // For hardcoded values
+  category?: string;
+  values?: string[];
   visibleFor: string[];
+}
+
+// ── Calendar types ────────────────────────────────────────────────────────────
+
+export interface CalendarDay {
+  date: Date;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  isFree: boolean;
+  isBusy: boolean;
+  isSelected: boolean;
+  isPast: boolean;
+  events: CalendarEvent[];
+}
+
+export interface CalendarEvent {
+  subject: string;
+  start: string;
+  end: string;
 }
 
 @Component({
@@ -61,9 +82,25 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   customerId: number | null = null;
   editMode = false;
   editingSiteVisitId: number | null = null;
-  showForm = false; // Controls whether to show form or grid
+  showForm = false;
   
   private destroy$ = new Subject<void>();
+
+  // ── Calendar state ──────────────────────────────────────────────────────────
+  showCalendar = false;
+  calendarLoading = false;
+  calendarError = '';
+  calendarViewDate: Date = new Date();
+  calendarWeeks: CalendarDay[][] = [];
+  selectedDate: Date | null = null;
+  selectedDateEvents: CalendarEvent[] = [];
+  rawCalendarEvents: any[] = [];
+
+  readonly WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  readonly MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   productModels: ProductModel[] = [
     { id: '1', name: 'Awning', key: 'awning' },
@@ -76,309 +113,60 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     { id: '8', name: 'Other', key: 'other' }
   ];
 
-  // Product Model Section Fields - Updated based on Excel
   productModelFields: FieldConfig[] = [
-    {
-      name: 'siteLayout',
-      label: 'Site Survey layout',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'structure',
-      label: 'Structure',
-      type: 'dropdown',
-      category: 'Structure',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'passageHeight',
-      label: 'Passage Height (m)',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'width',
-      label: 'Width (m)',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'projection',
-      label: 'Projection (m)',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'heightAvailable',
-      label: 'Height Available',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'wallType',
-      label: 'Wall Type',
-      type: 'dropdown',
-      category: 'WallType',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'externalInsulation',
-      label: 'External Insulation',
-      type: 'dropdown',
-      category: 'ExternalInsulation',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'wallFinish',
-      label: 'Wall Finish',
-      type: 'dropdown',
-      category: 'WallFinish',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'wallThickness',
-      label: 'Wall Thickness',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'specialBrackets',
-      label: 'Special Brackets',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'sideInfills',
-      label: 'Side Infills',
-      type: 'dropdown',
-      category: 'SideInfills',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'flashingRequired',
-      label: 'Flashing Required',
-      type: 'dropdown',
-      category: 'FlashingRequired',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'flashingDimensions',
-      label: 'Flashing Dimensions',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'standOfBrackets',
-      label: 'Stand of Brackets',
-      type: 'dropdown',
-      category: 'StandOfBrackets',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'standOfBracketDimension',
-      label: 'Stand of Bracket Dimension',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'electrician',
-      label: 'Electrician',
-      type: 'dropdown',
-      category: 'Electrician',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'electricalConnection',
-      label: 'Electrical Connection',
-      type: 'dropdown',
-      category: 'ElectricalConnection',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'location',
-      label: 'Location',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    },
-    {
-      name: 'otherSiteSurveyNotes',
-      label: 'Other Site Survey Notes',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other']
-    }
+    { name: 'siteLayout', label: 'Site Survey layout', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'structure', label: 'Structure', type: 'dropdown', category: 'Structure', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'passageHeight', label: 'Passage Height (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'width', label: 'Width (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'projection', label: 'Projection (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'heightAvailable', label: 'Height Available', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'wallType', label: 'Wall Type', type: 'dropdown', category: 'WallType', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'externalInsulation', label: 'External Insulation', type: 'dropdown', category: 'ExternalInsulation', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'wallFinish', label: 'Wall Finish', type: 'dropdown', category: 'WallFinish', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'wallThickness', label: 'Wall Thickness', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'specialBrackets', label: 'Special Brackets', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'sideInfills', label: 'Side Infills', type: 'dropdown', category: 'SideInfills', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'flashingRequired', label: 'Flashing Required', type: 'dropdown', category: 'FlashingRequired', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'flashingDimensions', label: 'Flashing Dimensions', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'standOfBrackets', label: 'Stand of Brackets', type: 'dropdown', category: 'StandOfBrackets', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'standOfBracketDimension', label: 'Stand of Bracket Dimension', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'electrician', label: 'Electrician', type: 'dropdown', category: 'Electrician', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'electricalConnection', label: 'Electrical Connection', type: 'dropdown', category: 'ElectricalConnection', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'location', label: 'Location', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'otherSiteSurveyNotes', label: 'Other Site Survey Notes', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] }
   ];
 
-  // Model Details Section Fields - Updated based on Excel
   modelDetailsFields: FieldConfig[] = [
-    {
-      name: 'fixtureType',
-      label: 'Fixture Type',
-      type: 'dropdown',
-      category: 'FixtureType',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'operation',
-      label: 'Operation',
-      type: 'dropdown',
-      category: 'Operation',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'crankLength',
-      label: 'Crank Length',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'operationSide',
-      label: 'Operation Side',
-      type: 'dropdown',
-      category: 'OperationSide',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'fabric',
-      label: 'Fabric',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'ral',
-      label: 'RAL',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'valanceChoice',
-      label: 'Valance Choice',
-      type: 'dropdown',
-      category: 'ValanceChoice',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'valance',
-      label: 'Valance',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'windSensor',
-      label: 'Wind Sensor',
-      type: 'dropdown',
-      category: 'WindSensor',
-      visibleFor: ['awning', 'roofSystem']
-    }
+    { name: 'fixtureType', label: 'Fixture Type', type: 'dropdown', category: 'FixtureType', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'operation', label: 'Operation', type: 'dropdown', category: 'Operation', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'crankLength', label: 'Crank Length', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'operationSide', label: 'Operation Side', type: 'dropdown', category: 'OperationSide', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'fabric', label: 'Fabric', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'ral', label: 'RAL', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'valanceChoice', label: 'Valance Choice', type: 'dropdown', category: 'ValanceChoice', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'valance', label: 'Valance', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'windSensor', label: 'Wind Sensor', type: 'dropdown', category: 'WindSensor', visibleFor: ['awning', 'roofSystem'] }
   ];
 
-  // ShadePlus & Lights Combined Section Fields - Updated based on Excel
   shadePlusLightsFields: FieldConfig[] = [
-    // ShadePlus
-    {
-      name: 'shadePlusRequired',
-      label: 'ShadePlus Required',
-      type: 'dropdown',
-      category: 'ShadePlusRequired',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'shadeType',
-      label: 'Shade Type',
-      type: 'dropdown',
-      category: 'ShadeType',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'shadeplusFabric',
-      label: 'Shadeplus Fabric',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'shadePlusAnyOtherDetail',
-      label: 'ShadePlus - Any other details',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    // Lights
-    {
-      name: 'lights',
-      label: 'Lights',
-      type: 'dropdown',
-      category: 'Lights',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'lightsType',
-      label: 'Lights Type',
-      type: 'dropdown',
-      category: 'LightsType',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'lightsAnyOtherDetails',
-      label: 'Lights - Any Other Details',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    }
+    { name: 'shadePlusRequired', label: 'ShadePlus Required', type: 'dropdown', category: 'ShadePlusRequired', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'shadeType', label: 'Shade Type', type: 'dropdown', category: 'ShadeType', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'shadeplusFabric', label: 'Shadeplus Fabric', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'shadePlusAnyOtherDetail', label: 'ShadePlus - Any other details', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'lights', label: 'Lights', type: 'dropdown', category: 'Lights', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'lightsType', label: 'Lights Type', type: 'dropdown', category: 'LightsType', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'lightsAnyOtherDetails', label: 'Lights - Any Other Details', type: 'text', visibleFor: ['awning', 'roofSystem'] }
   ];
 
-  // Heater Section Fields - Updated based on Excel
   heaterFields: FieldConfig[] = [
-    {
-      name: 'heater',
-      label: 'Heater',
-      type: 'dropdown',
-      category: 'Heater',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'heaterManufacturer',
-      label: 'Heater Manufacturer',
-      type: 'dropdown',
-      category: 'HeaterManufacturer',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'numberRequired',
-      label: 'Number Required',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'heaterOutput',
-      label: 'Heater Output',
-      type: 'dropdown',
-      category: 'HeaterOutput',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'heaterColour',
-      label: 'Heater Colour',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'remoteControl',
-      label: 'Remote Control',
-      type: 'dropdown',
-      category: 'RemoteControl',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'controllerBox',
-      label: 'Controller Box',
-      type: 'dropdown',
-      category: 'ControllerBox',
-      visibleFor: ['awning', 'roofSystem']
-    },
-    {
-      name: 'heaterAnyOtherDetails',
-      label: 'Heater - Any Other Details',
-      type: 'text',
-      visibleFor: ['awning', 'roofSystem']
-    }
+    { name: 'heater', label: 'Heater', type: 'dropdown', category: 'Heater', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'heaterManufacturer', label: 'Heater Manufacturer', type: 'dropdown', category: 'HeaterManufacturer', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'numberRequired', label: 'Number Required', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'heaterOutput', label: 'Heater Output', type: 'dropdown', category: 'HeaterOutput', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'heaterColour', label: 'Heater Colour', type: 'text', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'remoteControl', label: 'Remote Control', type: 'dropdown', category: 'RemoteControl', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'controllerBox', label: 'Controller Box', type: 'dropdown', category: 'ControllerBox', visibleFor: ['awning', 'roofSystem'] },
+    { name: 'heaterAnyOtherDetails', label: 'Heater - Any Other Details', type: 'text', visibleFor: ['awning', 'roofSystem'] }
   ];
 
   constructor(
@@ -388,13 +176,13 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private workflowStateService: WorkflowStateService,
+    private outlookCalendarService: OutlookCalendarService
   ) {
     this.siteVisitForm = this.fb.group({
       workflow: ['', Validators.required],
       productModel: [''],
       model: [''],
       otherPleaseSpecify: [''],
-      // Product Model Section
       siteLayout: [''],
       structure: [''],
       passageHeight: [''],
@@ -415,7 +203,6 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       electricalConnection: [''],
       location: [''],
       otherSiteSurveyNotes: [''],
-      // Model Details Section
       fixtureType: [''],
       operation: [''],
       crankLength: [''],
@@ -425,16 +212,13 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       valanceChoice: [''],
       valance: [''],
       windSensor: [''],
-      // ShadePlus Section
       shadePlusRequired: [''],
       shadeType: [''],
       shadeplusFabric: [''],
       shadePlusAnyOtherDetail: [''],
-      // Lights Section
       lights: [''],
       lightsType: [''],
       lightsAnyOtherDetails: [''],
-      // Heater Section
       heater: [''],
       heaterManufacturer: [''],
       numberRequired: [''],
@@ -451,34 +235,24 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Get customerId from route params
- /**this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      if (params['customerId']) {
-        this.customerId = +params['customerId'];
-        this.loadWorkflows();
-      }
-    });
- */   
     this.route.queryParams
-          .pipe(takeUntil(this.destroy$))
-          .subscribe(params => {
-            this.customerId = params['customerId'] ? +params['customerId'] : null;
-            this.loadWorkflows();
-            const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
-            let workflowId = 0;
-    
-            if (!this.customerId) {
-              this.errorMessage$.next('No customer selected. Please select a customer first.');
-              return;
-            }
-    
-            if (this.customerId) {
-              const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-              this.customerId = selectedWorkflow?.customerId || null;
-             // this.customerName = selectedWorkflow?.customerName || '';
-              this.selectedWorkflowId = selectedWorkflow?.id || 0;
-            }
-          });
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        this.customerId = params['customerId'] ? +params['customerId'] : null;
+        this.loadWorkflows();
+        const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
+
+        if (!this.customerId) {
+          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          return;
+        }
+
+        if (this.customerId) {
+          const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
+          this.customerId = selectedWorkflow?.customerId || null;
+          this.selectedWorkflowId = selectedWorkflow?.id || 0;
+        }
+      });
     this.loadDropdownValues();
     this.setupFormSubscriptions();
   }
@@ -489,37 +263,36 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   private setupFormSubscriptions(): void {
-    // ✅ FIX: Watch for workflow selection changes
+    // Workflow change subscription (preserve original logic)
     this.siteVisitForm.get('workflow')?.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe((workflowId: string) => {
+      .subscribe(workflowId => {
         if (workflowId) {
-          this.currentWorkflowId = parseInt(workflowId);
+          this.currentWorkflowId = +workflowId;
           this.loadSiteVisits(this.currentWorkflowId);
-          // ✅ FIX: Don't call resetForm() here - it creates infinite loop!
-          // Instead, just reset the form fields manually without triggering events
           this.resetFormWithoutEvent();
+        } else {
+          this.currentWorkflowId = null;
+          this.siteVisitsSubject$.next([]);
         }
       });
 
-    // Watch for product model changes
+    // Product model change subscription
     this.siteVisitForm.get('productModel')?.valueChanges
       .pipe(takeUntil(this.destroy$))
-      .subscribe((productModelId: string) => {
-        const model = this.productModels.find(m => m.id === productModelId);
+      .subscribe(modelId => {
+        const model = this.productModels.find(m => m.id === modelId);
         if (model) {
           this.selectedProductModel = model.key;
           this.showFullTabs = model.key === 'awning' || model.key === 'roofSystem';
-          
-          if (this.showFullTabs) {
-            this.activeTab = 'product-model';
-          }
+          this.activeTab = 'product-model';
         } else {
           this.selectedProductModel = '';
           this.showFullTabs = false;
         }
       });
   }
+
 
  private loadWorkflows(): void {
   if (!this.customerId) {
@@ -543,6 +316,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     });
 }
 
+
   private loadSiteVisits(workflowId: number): void {
     this.isLoading$.next(true);
     this.siteVisitService.getSiteVisitsByWorkflowId(workflowId)
@@ -551,12 +325,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         finalize(() => this.isLoading$.next(false))
       )
       .subscribe({
-        next: (siteVisits) => {
-          this.siteVisitsSubject$.next(siteVisits);
-        },
-        error: (error) => {
-          this.showError('Failed to load site visits: ' + error.message);
-        }
+        next: (siteVisits) => this.siteVisitsSubject$.next(siteVisits),
+        error: (error) => this.showError('Failed to load site visits: ' + error.message)
       });
   }
 
@@ -564,14 +334,187 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.siteVisitService.getAllDropdownValues()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (values) => {
-          this.dropdownValuesSubject$.next(values);
+        next: (values) => this.dropdownValuesSubject$.next(values),
+        error: (error) => console.error('Failed to load dropdown values:', error)
+      });
+  }
+
+  // ── Calendar methods ────────────────────────────────────────────────────────
+
+  toggleCalendar(): void {
+    this.showCalendar = !this.showCalendar;
+    if (this.showCalendar && this.calendarWeeks.length === 0) {
+      this.loadCalendarMonth(this.calendarViewDate);
+    }
+  }
+
+  closeCalendar(): void {
+    this.showCalendar = false;
+  }
+
+  get calendarMonthLabel(): string {
+    return `${this.MONTHS[this.calendarViewDate.getMonth()]} ${this.calendarViewDate.getFullYear()}`;
+  }
+
+  prevMonth(): void {
+    const d = new Date(this.calendarViewDate);
+    d.setMonth(d.getMonth() - 1);
+    this.calendarViewDate = d;
+    this.selectedDate = null;
+    this.selectedDateEvents = [];
+    this.loadCalendarMonth(d);
+  }
+
+  nextMonth(): void {
+    const d = new Date(this.calendarViewDate);
+    d.setMonth(d.getMonth() + 1);
+    this.calendarViewDate = d;
+    this.selectedDate = null;
+    this.selectedDateEvents = [];
+    this.loadCalendarMonth(d);
+  }
+
+  loadCalendarMonth(viewDate: Date): void {
+    this.calendarLoading = true;
+    this.calendarError = '';
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
+
+    const startStr = startDate.toISOString().split('T')[0];
+    const endStr = endDate.toISOString().split('T')[0];
+
+    this.outlookCalendarService.getCalendarEvents(startStr, endStr)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.calendarLoading = false)
+      )
+      .subscribe({
+        next: (response) => {
+          // Support both { value: [...] } and direct array responses
+          this.rawCalendarEvents = response?.value ?? (Array.isArray(response) ? response : []);
+          this.buildCalendarGrid(viewDate);
         },
-        error: (error) => {
-          console.error('Failed to load dropdown values:', error);
+        error: (err) => {
+          this.calendarError = 'Unable to load calendar. Please try again.';
+          console.error('Calendar load error:', err);
+          // Still build the grid — all days will appear as free
+          this.rawCalendarEvents = [];
+          this.buildCalendarGrid(viewDate);
         }
       });
   }
+
+  private buildCalendarGrid(viewDate: Date): void {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const year = viewDate.getFullYear();
+    const month = viewDate.getMonth();
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Build a map: dateString -> events[]
+    const eventsByDate = new Map<string, CalendarEvent[]>();
+    for (const ev of this.rawCalendarEvents) {
+      const evStart = new Date(ev.start?.dateTime ?? ev.start);
+      const key = this.toDateKey(evStart);
+      if (!eventsByDate.has(key)) eventsByDate.set(key, []);
+      eventsByDate.get(key)!.push({
+        subject: ev.subject ?? '(No title)',
+        start: ev.start?.dateTime ?? ev.start ?? '',
+        end: ev.end?.dateTime ?? ev.end ?? ''
+      });
+    }
+
+    // Calendar grid: pad to full weeks
+    const grid: CalendarDay[] = [];
+    const startPad = firstDay.getDay(); // 0=Sun
+    // Previous month padding
+    for (let i = startPad - 1; i >= 0; i--) {
+      const d = new Date(year, month, -i);
+      grid.push(this.makeDay(d, false, today, eventsByDate));
+    }
+    // Current month days
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      grid.push(this.makeDay(new Date(year, month, d), true, today, eventsByDate));
+    }
+    // Next month padding to complete last week
+    const endPad = 6 - lastDay.getDay();
+    for (let i = 1; i <= endPad; i++) {
+      grid.push(this.makeDay(new Date(year, month + 1, i), false, today, eventsByDate));
+    }
+
+    // Chunk into weeks
+    this.calendarWeeks = [];
+    for (let i = 0; i < grid.length; i += 7) {
+      this.calendarWeeks.push(grid.slice(i, i + 7));
+    }
+  }
+
+  private makeDay(
+    date: Date,
+    isCurrentMonth: boolean,
+    today: Date,
+    eventsByDate: Map<string, CalendarEvent[]>
+  ): CalendarDay {
+    const key = this.toDateKey(date);
+    const events = eventsByDate.get(key) ?? [];
+    const isPast = date < today;
+    const isToday = date.getTime() === today.getTime();
+    const isBusy = events.length > 0;
+
+    return {
+      date,
+      dayNumber: date.getDate(),
+      isCurrentMonth,
+      isToday,
+      isFree: !isBusy && !isPast,
+      isBusy,
+      isSelected: this.selectedDate ? this.toDateKey(this.selectedDate) === key : false,
+      isPast,
+      events
+    };
+  }
+
+  private toDateKey(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  selectDay(day: CalendarDay): void {
+    if (day.isPast && !day.isToday) return;
+    this.selectedDate = day.date;
+    this.selectedDateEvents = day.events;
+    // Rebuild grid to update isSelected flags
+    this.buildCalendarGrid(this.calendarViewDate);
+  }
+
+  get selectedDateLabel(): string {
+    if (!this.selectedDate) return '';
+    return this.selectedDate.toLocaleDateString('en-IE', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  }
+
+  formatEventTime(isoString: string): string {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleTimeString('en-IE', {
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  }
+
+  get freeDaysCount(): number {
+    return this.calendarWeeks.flat().filter(d => d.isCurrentMonth && d.isFree).length;
+  }
+
+  get busyDaysCount(): number {
+    return this.calendarWeeks.flat().filter(d => d.isCurrentMonth && d.isBusy).length;
+  }
+
+  // ── Existing form methods (unchanged) ─────────────────────────────────────
 
   setActiveTab(tab: string): void {
     this.activeTab = tab;
@@ -582,15 +525,11 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   getFieldValues(field: FieldConfig): string[] {
-    if (field.values) {
-      return field.values;
-    }
-    
+    if (field.values) return field.values;
     if (field.category) {
       const dropdownValues = this.dropdownValuesSubject$.getValue();
       return dropdownValues[field.category] || [];
     }
-    
     return [];
   }
 
@@ -599,26 +538,18 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     return model ? model.name : productModelType;
   }
 
-  // ✅ FIX: Use emitEvent: false throughout editSiteVisit
   editSiteVisit(siteVisit: SiteVisitDto): void {
     this.editMode = true;
     this.editingSiteVisitId = siteVisit.siteVisitId!;
-    this.showForm = true; // ✅ Show the form when editing
-    
-    // Find and set the product model
+    this.showForm = true;
+
     const model = this.productModels.find(m => m.name === siteVisit.productModelType);
     if (model) {
-      // ✅ FIX: Use emitEvent: false to prevent triggering valueChanges
-      this.siteVisitForm.patchValue({
-        productModel: model.id
-      }, { emitEvent: false });
-      
-      // ✅ Update selectedProductModel and showFullTabs manually
+      this.siteVisitForm.patchValue({ productModel: model.id }, { emitEvent: false });
       this.selectedProductModel = model.key;
       this.showFullTabs = model.key === 'awning' || model.key === 'roofSystem';
     }
-    
-    // ✅ FIX: Patch all form values with emitEvent: false in ONE call
+
     this.siteVisitForm.patchValue({
       model: siteVisit.model,
       otherPleaseSpecify: siteVisit.otherPleaseSpecify,
@@ -666,7 +597,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       remoteControl: siteVisit.remoteControl,
       controllerBox: siteVisit.controllerBox,
       heaterAnyOtherDetails: siteVisit.heaterAnyOtherDetails
-    }, { emitEvent: false }); // ✅ FIX: Critical - prevents infinite loop
+    }, { emitEvent: false });
   }
 
   deleteSiteVisit(siteVisitId: number): void {
@@ -676,66 +607,39 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.showSuccess('Site visit deleted successfully');
-            if (this.currentWorkflowId) {
-              this.loadSiteVisits(this.currentWorkflowId);
-            }
+            if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId);
           },
-          error: (error) => {
-            this.showError('Failed to delete site visit: ' + error.message);
-          }
+          error: (error) => this.showError('Failed to delete site visit: ' + error.message)
         });
     }
   }
 
   onSubmit(): void {
-    if (!this.currentWorkflowId) {
-      this.showError('Please select a workflow');
-      return;
-    }
-
-    if (!this.siteVisitForm.get('productModel')?.value) {
-      this.showError('Please select a product model');
-      return;
-    }
+    if (!this.currentWorkflowId) { this.showError('Please select a workflow'); return; }
+    if (!this.siteVisitForm.get('productModel')?.value) { this.showError('Please select a product model'); return; }
 
     this.isSaving$.next(true);
     const formValue = this.siteVisitForm.value;
-    
-    // Get product model name
     const model = this.productModels.find(m => m.id === formValue.productModel);
     const productModelType = model ? model.name : '';
 
     if (this.editMode && this.editingSiteVisitId) {
-      // Update existing site visit
       const updateDto: SiteVisitDto = {
         siteVisitId: this.editingSiteVisitId,
         workflowId: this.currentWorkflowId,
-        productModelType: productModelType,
+        productModelType,
         ...formValue
       };
-
       this.siteVisitService.updateSiteVisit(this.editingSiteVisitId, updateDto)
-        .pipe(
-          takeUntil(this.destroy$),
-          finalize(() => this.isSaving$.next(false))
-        )
+        .pipe(takeUntil(this.destroy$), finalize(() => this.isSaving$.next(false)))
         .subscribe({
-          next: () => {
-            this.showSuccess('Site visit updated successfully');
-            this.resetForm();
-            if (this.currentWorkflowId) {
-              this.loadSiteVisits(this.currentWorkflowId);
-            }
-          },
-          error: (error) => {
-            this.showError('Failed to update site visit: ' + error.message);
-          }
+          next: () => { this.showSuccess('Site visit updated successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
+          error: (error) => this.showError('Failed to update site visit: ' + error.message)
         });
     } else {
-      // Create new site visit
       const createDto: CreateSiteVisitDto = {
         workflowId: this.currentWorkflowId,
-        productModelType: productModelType,
+        productModelType,
         model: formValue.model,
         otherPleaseSpecify: formValue.otherPleaseSpecify,
         siteLayout: formValue.siteLayout,
@@ -783,243 +687,47 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         controllerBox: formValue.controllerBox,
         heaterAnyOtherDetails: formValue.heaterAnyOtherDetails
       };
-
       this.siteVisitService.createSiteVisit(createDto)
-        .pipe(
-          takeUntil(this.destroy$),
-          finalize(() => this.isSaving$.next(false))
-        )
+        .pipe(takeUntil(this.destroy$), finalize(() => this.isSaving$.next(false)))
         .subscribe({
-          next: () => {
-            this.showSuccess('Site visit created successfully');
-            this.resetForm();
-            if (this.currentWorkflowId) {
-              this.loadSiteVisits(this.currentWorkflowId);
-            }
-          },
-          error: (error) => {
-            this.showError('Failed to create site visit: ' + error.message);
-          }
+          next: () => { this.showSuccess('Site visit created successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
+          error: (error) => this.showError('Failed to create site visit: ' + error.message)
         });
     }
   }
 
-  // ✅ FIX: Replace reset() with patchValue + emitEvent: false
   resetForm(): void {
     this.editMode = false;
     this.editingSiteVisitId = null;
-    this.showForm = false; // ✅ Hide form (grid always visible)
-    
-    // Get current workflow value
+    this.showForm = false;
     const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
-    
-    // ✅ FIX: Use patchValue with emitEvent: false instead of reset()
-    // This prevents triggering the workflow valueChanges subscription
-    this.siteVisitForm.patchValue({
-      workflow: currentWorkflow,
-      productModel: '',
-      model: '',
-      otherPleaseSpecify: '',
-      siteLayout: '',
-      structure: '',
-      passageHeight: '',
-      width: '',
-      projection: '',
-      heightAvailable: '',
-      wallType: '',
-      externalInsulation: '',
-      wallFinish: '',
-      wallThickness: '',
-      specialBrackets: '',
-      sideInfills: '',
-      flashingRequired: '',
-      flashingDimensions: '',
-      standOfBrackets: '',
-      standOfBracketDimension: '',
-      electrician: '',
-      electricalConnection: '',
-      location: '',
-      otherSiteSurveyNotes: '',
-      fixtureType: '',
-      operation: '',
-      crankLength: '',
-      operationSide: '',
-      fabric: '',
-      ral: '',
-      valanceChoice: '',
-      valance: '',
-      windSensor: '',
-      shadePlusRequired: '',
-      shadeType: '',
-      shadeplusFabric: '',
-      shadePlusAnyOtherDetail: '',
-      lights: '',
-      lightsType: '',
-      lightsAnyOtherDetails: '',
-      heater: '',
-      heaterManufacturer: '',
-      numberRequired: '',
-      heaterOutput: '',
-      heaterColour: '',
-      remoteControl: '',
-      controllerBox: '',
-      heaterAnyOtherDetails: ''
-    }, { emitEvent: false }); // ✅ CRITICAL - prevents infinite loop
-    
-    // Manually reset form state
-    Object.keys(this.siteVisitForm.controls).forEach(key => {
-      const control = this.siteVisitForm.get(key);
-      control?.markAsUntouched();
-      control?.markAsPristine();
-    });
-    
+    this.siteVisitForm.patchValue({ workflow: currentWorkflow, productModel: '', model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
+    Object.keys(this.siteVisitForm.controls).forEach(key => { const control = this.siteVisitForm.get(key); control?.markAsUntouched(); control?.markAsPristine(); });
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';
   }
 
-  // ✅ NEW METHOD: Add new site visit - shows form in add mode
   addNewSiteVisit(): void {
-    if (!this.currentWorkflowId) {
-      this.showError('Please select a workflow first');
-      return;
-    }
-
-    // Preserve workflow AND productModel — only wipe the data entry fields
+    if (!this.currentWorkflowId) { this.showError('Please select a workflow first'); return; }
     const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
     const currentProductModel = this.siteVisitForm.get('productModel')?.value;
-
     this.editMode = false;
     this.editingSiteVisitId = null;
     this.showForm = true;
-
-    this.siteVisitForm.patchValue({
-      workflow: currentWorkflow,
-      productModel: currentProductModel, // retain the model the user already chose
-      model: '',
-      otherPleaseSpecify: '',
-      siteLayout: '',
-      structure: '',
-      passageHeight: '',
-      width: '',
-      projection: '',
-      heightAvailable: '',
-      wallType: '',
-      externalInsulation: '',
-      wallFinish: '',
-      wallThickness: '',
-      specialBrackets: '',
-      sideInfills: '',
-      flashingRequired: '',
-      flashingDimensions: '',
-      standOfBrackets: '',
-      standOfBracketDimension: '',
-      electrician: '',
-      electricalConnection: '',
-      location: '',
-      otherSiteSurveyNotes: '',
-      fixtureType: '',
-      operation: '',
-      crankLength: '',
-      operationSide: '',
-      fabric: '',
-      ral: '',
-      valanceChoice: '',
-      valance: '',
-      windSensor: '',
-      shadePlusRequired: '',
-      shadeType: '',
-      shadeplusFabric: '',
-      shadePlusAnyOtherDetail: '',
-      lights: '',
-      lightsType: '',
-      lightsAnyOtherDetails: '',
-      heater: '',
-      heaterManufacturer: '',
-      numberRequired: '',
-      heaterOutput: '',
-      heaterColour: '',
-      remoteControl: '',
-      controllerBox: '',
-      heaterAnyOtherDetails: ''
-    }, { emitEvent: false });
-
-    // Reset validation state on data fields only (not productModel / workflow)
-    Object.keys(this.siteVisitForm.controls).forEach(key => {
-      if (key !== 'workflow' && key !== 'productModel') {
-        const control = this.siteVisitForm.get(key);
-        control?.markAsUntouched();
-        control?.markAsPristine();
-      }
-    });
-
-    // selectedProductModel / showFullTabs / activeTab are already correct
-    // because the productModel valueChanges subscriber set them when the user
-    // first picked the model — we must NOT reset them here.
+    this.siteVisitForm.patchValue({ workflow: currentWorkflow, productModel: currentProductModel, model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
+    Object.keys(this.siteVisitForm.controls).forEach(key => { if (key !== 'workflow' && key !== 'productModel') { const control = this.siteVisitForm.get(key); control?.markAsUntouched(); control?.markAsPristine(); } });
   }
 
-  // ✅ NEW METHOD: Cancel form and return to grid
   cancelForm(): void {
     this.resetForm();
   }
 
-  // ✅ NEW METHOD: Reset form without triggering events (for workflow change)
   private resetFormWithoutEvent(): void {
     this.editMode = false;
     this.editingSiteVisitId = null;
-    this.showForm = false; // ✅ Hide form when workflow changes (grid always visible)
-    
-    // ✅ Reset only the form fields, NOT the workflow field
-    this.siteVisitForm.patchValue({
-      productModel: '',
-      model: '',
-      otherPleaseSpecify: '',
-      siteLayout: '',
-      structure: '',
-      passageHeight: '',
-      width: '',
-      projection: '',
-      heightAvailable: '',
-      wallType: '',
-      externalInsulation: '',
-      wallFinish: '',
-      wallThickness: '',
-      specialBrackets: '',
-      sideInfills: '',
-      flashingRequired: '',
-      flashingDimensions: '',
-      standOfBrackets: '',
-      standOfBracketDimension: '',
-      electrician: '',
-      electricalConnection: '',
-      location: '',
-      otherSiteSurveyNotes: '',
-      fixtureType: '',
-      operation: '',
-      crankLength: '',
-      operationSide: '',
-      fabric: '',
-      ral: '',
-      valanceChoice: '',
-      valance: '',
-      windSensor: '',
-      shadePlusRequired: '',
-      shadeType: '',
-      shadeplusFabric: '',
-      shadePlusAnyOtherDetail: '',
-      lights: '',
-      lightsType: '',
-      lightsAnyOtherDetails: '',
-      heater: '',
-      heaterManufacturer: '',
-      numberRequired: '',
-      heaterOutput: '',
-      heaterColour: '',
-      remoteControl: '',
-      controllerBox: '',
-      heaterAnyOtherDetails: ''
-    }, { emitEvent: false });
-    
+    this.showForm = false;
+    this.siteVisitForm.patchValue({ productModel: '', model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';
