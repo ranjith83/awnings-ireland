@@ -75,19 +75,25 @@
         <button type="button" class="calendar-close-btn" (click)="closeCalendar()" title="Close">✕</button>
       </div>
 
-      <!-- Loading -->
-      <div *ngIf="calendarLoading" class="calendar-loading">
+      <!-- Loading — waiting for first response -->
+      <div *ngIf="calendarLoading$ | async" class="calendar-loading">
         <div class="calendar-spinner"></div>
-        Loading calendar...
+        Connecting to calendar…
+      </div>
+
+      <!-- Streaming — events being processed progressively -->
+      <div *ngIf="calendarStreaming$ | async" class="calendar-streaming-bar">
+        <div class="streaming-pulse"></div>
+        Loading events… {{ calendarStreamedCount$ | async }} received
       </div>
 
       <!-- Error banner (non-blocking) -->
-      <div *ngIf="calendarError && !calendarLoading" class="calendar-error-banner">
+      <div *ngIf="calendarError$ | async as calendarError" class="calendar-error-banner">
         ⚠️ {{ calendarError }}
       </div>
 
-      <!-- Calendar body -->
-      <div class="calendar-body" *ngIf="!calendarLoading">
+      <!-- Calendar body — shown once loading completes or streaming starts -->
+      <div class="calendar-body" *ngIf="!(calendarLoading$ | async) || (calendarStreaming$ | async)">
 
         <!-- Month navigation -->
         <div class="calendar-nav">
@@ -98,8 +104,12 @@
 
         <!-- Summary pills -->
         <div class="calendar-summary">
-          <span class="summary-pill pill-free">{{ freeDaysCount }} free day{{ freeDaysCount !== 1 ? 's' : '' }}</span>
-          <span class="summary-pill pill-busy">{{ busyDaysCount }} busy day{{ busyDaysCount !== 1 ? 's' : '' }}</span>
+          <span class="summary-pill pill-free">
+            {{ (freeDaysCount$ | async) }} free day{{ (freeDaysCount$ | async) !== 1 ? 's' : '' }}
+          </span>
+          <span class="summary-pill pill-busy">
+            {{ (busyDaysCount$ | async) }} busy day{{ (busyDaysCount$ | async) !== 1 ? 's' : '' }}
+          </span>
         </div>
 
         <div class="calendar-grid-wrap">
@@ -110,7 +120,7 @@
 
           <!-- Day grid -->
           <div class="cal-weeks">
-            <div class="cal-week" *ngFor="let week of calendarWeeks">
+            <div class="cal-week" *ngFor="let week of calendarWeeks$ | async">
               <div
                 *ngFor="let day of week"
                 class="cal-day"
@@ -139,17 +149,19 @@
             </svg>
             {{ selectedDateLabel }}
           </div>
-          <div *ngIf="selectedDateEvents.length === 0" class="cal-day-free-msg">
-            ✅ No events — this day is free for a site visit.
-          </div>
-          <div *ngIf="selectedDateEvents.length > 0" class="cal-events-list">
-            <div class="cal-event-item" *ngFor="let ev of selectedDateEvents">
-              <div class="cal-event-time">
-                {{ formatEventTime(ev.start) }} – {{ formatEventTime(ev.end) }}
-              </div>
-              <div class="cal-event-subject">{{ ev.subject }}</div>
+          <ng-container *ngIf="selectedDateEvents$ | async as dayEvents">
+            <div *ngIf="dayEvents.length === 0" class="cal-day-free-msg">
+              ✅ No events — this day is free for a site visit.
             </div>
-          </div>
+            <div *ngIf="dayEvents.length > 0" class="cal-events-list">
+              <div class="cal-event-item" *ngFor="let ev of dayEvents">
+                <div class="cal-event-time">
+                  {{ formatEventTime(ev.start) }} – {{ formatEventTime(ev.end) }}
+                </div>
+                <div class="cal-event-subject">{{ ev.subject }}</div>
+              </div>
+            </div>
+          </ng-container>
         </div>
 
       </div>

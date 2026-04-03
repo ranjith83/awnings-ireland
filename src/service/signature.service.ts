@@ -17,7 +17,7 @@ export interface UserSignatureDto {
   email?: string;
   website?: string;
 
-  // ── Format choices ─────────────────────────────────────────────────────────
+  // ── Format choices ────────────────────────────────────────────────────────
   /** Greeting line e.g. "Kindest regards," */
   greetingText: string;
   /** "blank_line" | "single_dash" | "double_dash" | "none" */
@@ -25,7 +25,7 @@ export interface UserSignatureDto {
   /** "name_first" | "company_first" */
   layoutOrder: string;
 
-  // ── Final rendered plain-text (used in emails) ────────────────────────────
+  // ── Final rendered plain-text (appended to outgoing emails) ──────────────
   signatureText: string;
 
   isDefault: boolean;
@@ -33,31 +33,49 @@ export interface UserSignatureDto {
   dateUpdated?: string | Date | null;
 }
 
+/**
+ * Signature endpoints are now served by WorkflowController under
+ * /api/workflow/signatures/...  (UserSignatureController has been removed).
+ */
 @Injectable({ providedIn: 'root' })
 export class SignatureService {
-  private apiUrl = `${environment.apiUrl}/api/signatures`;
+
+  /** Base URL now lives under the workflow controller. */
+  private readonly apiUrl = `${environment.apiUrl}/api/workflow/signatures`;
 
   constructor(private http: HttpClient) {}
 
+  /** GET /api/workflow/signatures */
   getSignatures(): Observable<UserSignatureDto[]> {
-    return this.http.get<UserSignatureDto[]>(this.apiUrl).pipe(catchError(this.handleError));
+    return this.http.get<UserSignatureDto[]>(this.apiUrl)
+      .pipe(catchError(this.handleError));
   }
 
+  /** POST /api/workflow/signatures */
   createSignature(dto: UserSignatureDto): Observable<UserSignatureDto> {
-    return this.http.post<UserSignatureDto>(this.apiUrl, dto).pipe(catchError(this.handleError));
+    return this.http.post<UserSignatureDto>(this.apiUrl, dto)
+      .pipe(catchError(this.handleError));
   }
 
+  /** PUT /api/workflow/signatures/{id} */
   updateSignature(id: number, dto: UserSignatureDto): Observable<UserSignatureDto> {
-    return this.http.put<UserSignatureDto>(`${this.apiUrl}/${id}`, dto).pipe(catchError(this.handleError));
+    return this.http.put<UserSignatureDto>(`${this.apiUrl}/${id}`, dto)
+      .pipe(catchError(this.handleError));
   }
 
+  /** PUT /api/workflow/signatures/{id}/default */
   setDefault(id: number): Observable<UserSignatureDto> {
-    return this.http.put<UserSignatureDto>(`${this.apiUrl}/${id}/default`, {}).pipe(catchError(this.handleError));
+    return this.http.put<UserSignatureDto>(`${this.apiUrl}/${id}/default`, {})
+      .pipe(catchError(this.handleError));
   }
 
-  deleteSignature(id: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${id}`).pipe(catchError(this.handleError));
+  /** DELETE /api/workflow/signatures/{id} */
+  deleteSignature(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`)
+      .pipe(catchError(this.handleError));
   }
+
+  // ── Error handler ─────────────────────────────────────────────────────────
 
   private handleError(error: HttpErrorResponse): Observable<never> {
     let msg = 'An error occurred';
@@ -73,6 +91,7 @@ export class SignatureService {
         default:  msg = `Error ${error.status}: ${error.message}`;
       }
     }
+    console.error('SignatureService error:', msg, error);
     return throwError(() => new Error(msg));
   }
 }

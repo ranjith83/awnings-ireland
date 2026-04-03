@@ -88,13 +88,20 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   // ── Calendar state ──────────────────────────────────────────────────────────
   showCalendar = false;
-  calendarLoading = false;
-  calendarError = '';
+  calendarLoading$ = new BehaviorSubject<boolean>(false);
+  calendarStreaming$ = new BehaviorSubject<boolean>(false);
+  calendarStreamedCount$ = new BehaviorSubject<number>(0);
+  calendarError$ = new BehaviorSubject<string>('');
   calendarViewDate: Date = new Date();
-  calendarWeeks: CalendarDay[][] = [];
+  calendarWeeks$ = new BehaviorSubject<CalendarDay[][]>([]);
   selectedDate: Date | null = null;
-  selectedDateEvents: CalendarEvent[] = [];
-  rawCalendarEvents: any[] = [];
+  selectedDateEvents$ = new BehaviorSubject<CalendarEvent[]>([]);
+
+  /** Accumulated raw events; grows as each response page is processed */
+  private calendarEvents$ = new BehaviorSubject<any[]>([]);
+
+  /** Cancels any in-flight calendar request when navigating months or closing */
+  private cancelCalendar$ = new Subject<void>();
 
   readonly WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   readonly MONTHS = [
@@ -258,6 +265,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.cancelCalendar$.next();
+    this.cancelCalendar$.complete();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -343,12 +352,15 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   toggleCalendar(): void {
     this.showCalendar = !this.showCalendar;
-    if (this.showCalendar && this.calendarWeeks.length === 0) {
+    if (this.showCalendar && this.calendarWeeks$.getValue().length === 0) {
       this.loadCalendarMonth(this.calendarViewDate);
     }
   }
 
   closeCalendar(): void {
+    this.cancelCalendar$.next();
+    this.calendarLoading$.next(false);
+    this.calendarStreaming$.next(false);
     this.showCalendar = false;
   }
 
@@ -361,7 +373,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     d.setMonth(d.getMonth() - 1);
     this.calendarViewDate = d;
     this.selectedDate = null;
-    this.selectedDateEvents = [];
+    this.selectedDateEvents$.next([]);
     this.loadCalendarMonth(d);
   }
 
@@ -370,89 +382,116 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     d.setMonth(d.getMonth() + 1);
     this.calendarViewDate = d;
     this.selectedDate = null;
-    this.selectedDateEvents = [];
+    this.selectedDateEvents$.next([]);
     this.loadCalendarMonth(d);
   }
 
   loadCalendarMonth(viewDate: Date): void {
-    this.calendarLoading = true;
-    this.calendarError = '';
+    // Cancel any previous in-flight request
+    this.cancelCalendar$.next();
+
+    // Reset state
+    this.calendarLoading$.next(true);
+    this.calendarStreaming$.next(false);
+    this.calendarStreamedCount$.next(0);
+    this.calendarError$.next('');
+    this.calendarEvents$.next([]);
+
+    // Render empty skeleton grid immediately
+    this.buildCalendarGrid(viewDate, []);
 
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-
-    const startStr = startDate.toISOString().split('T')[0];
-    const endStr = endDate.toISOString().split('T')[0];
+    const startStr = new Date(year, month, 1).toISOString().split('T')[0];
+    const endStr   = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
     this.outlookCalendarService.getCalendarEvents(startStr, endStr)
       .pipe(
+        takeUntil(this.cancelCalendar$),
         takeUntil(this.destroy$),
-        finalize(() => this.calendarLoading = false)
+        finalize(() => {
+          this.calendarLoading$.next(false);
+          this.calendarStreaming$.next(false);
+        })
       )
       .subscribe({
         next: (response) => {
-          // Support both { value: [...] } and direct array responses
-          this.rawCalendarEvents = response?.value ?? (Array.isArray(response) ? response : []);
-          this.buildCalendarGrid(viewDate);
+          // Support both { value: [...] } and a direct array
+          const events: any[] = response?.value ?? (Array.isArray(response) ? response : []);
+
+          // Switch to streaming mode and push events one by one
+          this.calendarLoading$.next(false);
+          this.calendarStreaming$.next(true);
+
+          events.forEach((ev, i) => {
+            const accumulated = [...this.calendarEvents$.getValue(), ev];
+            this.calendarEvents$.next(accumulated);
+            this.calendarStreamedCount$.next(i + 1);
+            // Re-render grid after every appended event
+            this.buildCalendarGrid(viewDate, accumulated);
+          });
+
+          this.calendarStreaming$.next(false);
+          // Final sync for the selected-day detail panel
+          this.refreshSelectedDay();
         },
         error: (err) => {
-          this.calendarError = 'Unable to load calendar. Please try again.';
+          this.calendarError$.next('Unable to load calendar. Please try again.');
+          this.calendarLoading$.next(false);
+          this.calendarStreaming$.next(false);
           console.error('Calendar load error:', err);
-          // Still build the grid — all days will appear as free
-          this.rawCalendarEvents = [];
-          this.buildCalendarGrid(viewDate);
         }
       });
   }
 
-  private buildCalendarGrid(viewDate: Date): void {
+  private refreshSelectedDay(): void {
+    if (!this.selectedDate) return;
+    const key = this.toDateKey(this.selectedDate);
+    const allDays = this.calendarWeeks$.getValue().flat();
+    const found = allDays.find(d => this.toDateKey(d.date) === key);
+    if (found) this.selectedDateEvents$.next(found.events);
+  }
+
+  private buildCalendarGrid(viewDate: Date, rawEvents: any[]): void {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
-
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+    const lastDay  = new Date(year, month + 1, 0);
 
-    // Build a map: dateString -> events[]
+    // Map date-key → CalendarEvent[]
     const eventsByDate = new Map<string, CalendarEvent[]>();
-    for (const ev of this.rawCalendarEvents) {
+    for (const ev of rawEvents) {
       const evStart = new Date(ev.start?.dateTime ?? ev.start);
       const key = this.toDateKey(evStart);
       if (!eventsByDate.has(key)) eventsByDate.set(key, []);
       eventsByDate.get(key)!.push({
         subject: ev.subject ?? '(No title)',
         start: ev.start?.dateTime ?? ev.start ?? '',
-        end: ev.end?.dateTime ?? ev.end ?? ''
+        end:   ev.end?.dateTime   ?? ev.end   ?? ''
       });
     }
 
-    // Calendar grid: pad to full weeks
     const grid: CalendarDay[] = [];
-    const startPad = firstDay.getDay(); // 0=Sun
-    // Previous month padding
+    const startPad = firstDay.getDay();
     for (let i = startPad - 1; i >= 0; i--) {
-      const d = new Date(year, month, -i);
-      grid.push(this.makeDay(d, false, today, eventsByDate));
+      grid.push(this.makeDay(new Date(year, month, -i), false, today, eventsByDate));
     }
-    // Current month days
     for (let d = 1; d <= lastDay.getDate(); d++) {
       grid.push(this.makeDay(new Date(year, month, d), true, today, eventsByDate));
     }
-    // Next month padding to complete last week
     const endPad = 6 - lastDay.getDay();
     for (let i = 1; i <= endPad; i++) {
       grid.push(this.makeDay(new Date(year, month + 1, i), false, today, eventsByDate));
     }
 
-    // Chunk into weeks
-    this.calendarWeeks = [];
+    const weeks: CalendarDay[][] = [];
     for (let i = 0; i < grid.length; i += 7) {
-      this.calendarWeeks.push(grid.slice(i, i + 7));
+      weeks.push(grid.slice(i, i + 7));
     }
+    this.calendarWeeks$.next(weeks);
   }
 
   private makeDay(
@@ -461,11 +500,11 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     today: Date,
     eventsByDate: Map<string, CalendarEvent[]>
   ): CalendarDay {
-    const key = this.toDateKey(date);
+    const key    = this.toDateKey(date);
     const events = eventsByDate.get(key) ?? [];
     const isPast = date < today;
     const isToday = date.getTime() === today.getTime();
-    const isBusy = events.length > 0;
+    const isBusy  = events.length > 0;
 
     return {
       date,
@@ -487,9 +526,9 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   selectDay(day: CalendarDay): void {
     if (day.isPast && !day.isToday) return;
     this.selectedDate = day.date;
-    this.selectedDateEvents = day.events;
-    // Rebuild grid to update isSelected flags
-    this.buildCalendarGrid(this.calendarViewDate);
+    this.selectedDateEvents$.next(day.events);
+    // Rebuild to refresh isSelected flags
+    this.buildCalendarGrid(this.calendarViewDate, this.calendarEvents$.getValue());
   }
 
   get selectedDateLabel(): string {
@@ -506,12 +545,20 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     });
   }
 
-  get freeDaysCount(): number {
-    return this.calendarWeeks.flat().filter(d => d.isCurrentMonth && d.isFree).length;
+  get freeDaysCount$(): Observable<number> {
+    return new Observable(observer => {
+      this.calendarWeeks$.subscribe(weeks =>
+        observer.next(weeks.flat().filter(d => d.isCurrentMonth && d.isFree).length)
+      );
+    });
   }
 
-  get busyDaysCount(): number {
-    return this.calendarWeeks.flat().filter(d => d.isCurrentMonth && d.isBusy).length;
+  get busyDaysCount$(): Observable<number> {
+    return new Observable(observer => {
+      this.calendarWeeks$.subscribe(weeks =>
+        observer.next(weeks.flat().filter(d => d.isCurrentMonth && d.isBusy).length)
+      );
+    });
   }
 
   // ── Existing form methods (unchanged) ─────────────────────────────────────
