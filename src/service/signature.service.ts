@@ -25,6 +25,14 @@ export interface UserSignatureDto {
   /** "name_first" | "company_first" */
   layoutOrder: string;
 
+  // ── Font choice (applies to preview textarea & builder preview) ──────────
+  /**
+   * Short font token stored in DB, e.g. "georgia", "times", "arial", "verdana",
+   * "trebuchet", "courier", "palatino", "garamond".
+   * Defaults to "georgia".
+   */
+  fontFamily: string;
+
   // ── Final rendered plain-text (appended to outgoing emails) ──────────────
   signatureText: string;
 

@@ -53,14 +53,10 @@
             <td class="col-date">{{ row.dateAdded | date:'dd MMM yyyy' }}</td>
             <td class="col-actions">
               <button class="btn-icon btn-view" (click)="openEmailPreview(row)">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/>
-                </svg>View
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 8s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><circle cx="8" cy="8" r="2"/></svg>View
               </button>
               <button class="btn-icon btn-reply" (click)="openSendModal(row)">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/>
-                </svg>Reply
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="14,2 2,8 14,14"/><polyline points="2,8 8,8 8,14"/></svg>Reply
               </button>
             </td>
           </tr>
@@ -68,10 +64,7 @@
       </table>
       <ng-template #noEmails>
         <div class="empty-state">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M8 12h48c2.2 0 4 1.8 4 4v32c0 2.2-1.8 4-4 4H8c-2.2 0-4-1.8-4-4V16c0-2.2 1.8-4 4-4z"/>
-            <polyline points="60,16 32,36 4,16"/>
-          </svg>
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h48c2.2 0 4 1.8 4 4v32c0 2.2-1.8 4-4 4H8c-2.2 0-4-1.8-4-4V16c0-2.2 1.8-4 4-4z"/><polyline points="60,16 32,36 4,16"/></svg>
           <p>No emails found for this customer.</p>
         </div>
       </ng-template>
@@ -85,30 +78,25 @@
     <div class="section-header">
       <div class="section-title-row">
         <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
         </svg>
         <h3 class="section-title">Add Enquiry</h3>
       </div>
     </div>
-
     <div class="add-form">
-      <!-- Email row -->
       <div class="form-group">
         <label class="form-label">Customer Email</label>
-        <input type="email" class="form-input" [(ngModel)]="newEmail"
-          placeholder="customer@example.com" [disabled]="(isSaving$ | async) === true" />
+        <input type="email" class="form-input" [(ngModel)]="newEmail" placeholder="customer@example.com" [disabled]="(isSaving$ | async) === true" />
       </div>
 
       <!-- Side-by-side: Comments | Signature -->
       <div class="ie-two-col" style="margin-top:14px;">
-
         <!-- Comments -->
         <div class="form-group ie-col">
           <label class="form-label">Comments <span class="required">*</span></label>
-          <textarea class="form-input form-textarea ie-textarea-fill"
-            [(ngModel)]="newComments" placeholder="Enter enquiry details…"
-            rows="7" maxlength="2000" [disabled]="(isSaving$ | async) === true"></textarea>
+          <textarea class="form-input form-textarea ie-textarea-fill" [(ngModel)]="newComments"
+            placeholder="Enter enquiry details…" rows="7" maxlength="2000"
+            [disabled]="(isSaving$ | async) === true"></textarea>
           <span class="char-hint">{{ newComments.length }}/2000</span>
         </div>
 
@@ -116,14 +104,11 @@
         <div class="form-group ie-col">
           <div class="sig-label-row">
             <label class="form-label">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"
-                   width="13" height="13" style="vertical-align:middle;margin-right:3px">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" width="13" height="13" style="vertical-align:middle;margin-right:3px">
                 <path d="M2 12c1-2 3-3 5-1s4 1 5-1"/><line x1="2" y1="14" x2="14" y2="14"/>
               </svg>Email Signature
             </label>
-
             <div class="sig-toolbar">
-              <!-- Saved signature picker -->
               <select class="sig-select" *ngIf="userSignatures.length"
                 (change)="applySignatureToAdd(userSignatures[$any($event.target).selectedIndex - 1])"
                 [disabled]="(isSaving$ | async) === true">
@@ -132,27 +117,30 @@
                   {{ s.label }}{{ s.isDefault ? ' ★' : '' }}
                 </option>
               </select>
-
-              <!-- Format builder button -->
-              <button class="sig-builder-btn" type="button" (click)="openBuilderForNew()"
-                title="Create / manage signatures with the format builder">
+              <button class="sig-builder-btn" type="button" (click)="openBuilderForNew()">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
                   <rect x="2" y="2" width="12" height="12" rx="2"/>
-                  <line x1="5" y1="6" x2="11" y2="6"/>
-                  <line x1="5" y1="9" x2="9"  y2="9"/>
+                  <line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/>
                 </svg>
                 {{ userSignatures.length ? 'Manage' : 'Create Signature' }}
               </button>
             </div>
           </div>
 
+          <!-- ── Signature textarea — font applied dynamically ── -->
           <textarea class="form-input form-textarea ie-textarea-fill ie-sig-textarea"
             [(ngModel)]="newSignature"
+            [style.font-family]="fontCss(newSigFontFamily)"
             placeholder="Select a saved signature above, or type one here…"
             rows="7" [disabled]="(isSaving$ | async) === true"></textarea>
-        </div>
 
-      </div><!-- /ie-two-col -->
+          <!-- Active font badge -->
+          <div class="sig-font-badge" *ngIf="newSignature.trim()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" width="11" height="11"><path d="M2 12 L5 2 L8 12 M3.5 9 h3"/><line x1="10" y1="3" x2="10" y2="11"/></svg>
+            {{ fontOption(newSigFontFamily).label }}
+          </div>
+        </div>
+      </div>
 
       <!-- Attachments -->
       <div class="form-group" style="margin-top:14px;">
@@ -162,10 +150,8 @@
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
               <path d="M13.5 10v2.5a1 1 0 01-1 1h-9a1 1 0 01-1-1V10"/>
               <polyline points="10.5,4.5 8,2 5.5,4.5"/><line x1="8" y1="2" x2="8" y2="10.5"/>
-            </svg>
-            Choose files
-            <input type="file" multiple hidden (change)="onFilesSelected($event,'add')"
-              [disabled]="(isSaving$ | async) === true" />
+            </svg>Choose files
+            <input type="file" multiple hidden (change)="onFilesSelected($event,'add')" [disabled]="(isSaving$ | async) === true" />
           </label>
           <span class="ie-attach-hint">PDF, images, Word, Excel — any file type</span>
         </div>
@@ -181,12 +167,10 @@
 
       <div class="form-footer">
         <label class="checkbox-label">
-          <input type="checkbox" [(ngModel)]="sendEmailOnAdd"
-            [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
+          <input type="checkbox" [(ngModel)]="sendEmailOnAdd" [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
           <span>Send email notification to customer on save</span>
         </label>
-        <button class="btn-primary" (click)="addEnquiry()"
-          [disabled]="!newComments.trim() || (isSaving$ | async) === true">
+        <button class="btn-primary" (click)="addEnquiry()" [disabled]="!newComments.trim() || (isSaving$ | async) === true">
           <svg *ngIf="(isSaving$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/>
           </svg>
@@ -212,9 +196,7 @@
         <span class="badge-count">{{ enquiries.length }}</span>
       </div>
     </div>
-    <div class="loading-row" *ngIf="isLoadingEnquiries$ | async">
-      <div class="spinner"></div><span>Loading enquiries…</span>
-    </div>
+    <div class="loading-row" *ngIf="isLoadingEnquiries$ | async"><div class="spinner"></div><span>Loading enquiries…</span></div>
     <div class="table-wrapper" *ngIf="(isLoadingEnquiries$ | async) === false">
       <table class="data-table" *ngIf="enquiries.length; else noEnquiries">
         <thead>
@@ -229,9 +211,7 @@
               <ng-container *ngIf="getEnquiryAttachments(enq) as atts">
                 <span class="ie-no-attach" *ngIf="!atts.length">—</span>
                 <div class="ie-attach-pills" *ngIf="atts.length">
-                  <button class="ie-attach-pill" *ngFor="let a of atts"
-                    [title]="a.fileName + ' (' + formatBytes(a.sizeBytes) + ')'"
-                    (click)="downloadEnquiryAttachment(a)">{{ fileIcon(a.contentType) }} {{ a.fileName }}</button>
+                  <button class="ie-attach-pill" *ngFor="let a of atts" [title]="a.fileName + ' (' + formatBytes(a.sizeBytes) + ')'" (click)="downloadEnquiryAttachment(a)">{{ fileIcon(a.contentType) }} {{ a.fileName }}</button>
                 </div>
               </ng-container>
             </td>
@@ -239,9 +219,7 @@
             <td class="col-user">{{ enq.createdBy || '—' }}</td>
             <td class="col-actions">
               <button class="btn-icon btn-edit" (click)="openEditModal(enq)">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-                </svg>Edit
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit
               </button>
             </td>
           </tr>
@@ -249,11 +227,7 @@
       </table>
       <ng-template #noEnquiries>
         <div class="empty-state">
-          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M12 8h40a4 4 0 014 4v32a4 4 0 01-4 4H12a4 4 0 01-4-4V12a4 4 0 014-4z"/>
-            <line x1="20" y1="24" x2="44" y2="24"/><line x1="20" y1="32" x2="44" y2="32"/>
-            <line x1="20" y1="40" x2="32" y2="40"/>
-          </svg>
+          <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 8h40a4 4 0 014 4v32a4 4 0 01-4 4H12a4 4 0 01-4-4V12a4 4 0 014-4z"/><line x1="20" y1="24" x2="44" y2="24"/><line x1="20" y1="32" x2="44" y2="32"/><line x1="20" y1="40" x2="32" y2="40"/></svg>
           <p>No enquiries recorded yet. Add one above.</p>
         </div>
       </ng-template>
@@ -277,153 +251,155 @@
         {{ editingSigId ? 'Edit Signature' : 'Create Signature' }}
       </h3>
       <button class="modal-close" (click)="closeSigBuilder()">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18">
-          <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/>
-        </svg>
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
       </button>
     </div>
 
     <div class="sig-builder-body">
 
-      <!-- ── LEFT: Saved signatures list + form ────────────────────────────── -->
+      <!-- ── LEFT: Saved list + format options ─────────────────────── -->
       <div class="sig-builder-left">
-
-        <!-- Saved list -->
         <div class="sig-saved-list" *ngIf="userSignatures.length">
           <p class="sig-saved-heading">Saved Signatures</p>
-          <div class="sig-saved-item"
-               *ngFor="let s of userSignatures; trackBy: trackBySig"
-               [class.sig-saved-item--default]="s.isDefault">
+          <div class="sig-saved-item" *ngFor="let s of userSignatures; trackBy: trackBySig" [class.sig-saved-item--default]="s.isDefault">
             <div class="sig-saved-info">
               <span class="sig-saved-label">{{ s.label }}</span>
               <span class="sig-default-badge" *ngIf="s.isDefault">Default</span>
             </div>
             <div class="sig-saved-actions">
-              <button class="sab sab--use"  type="button" (click)="applySignatureToAdd(s); closeSigBuilder()" title="Use">✓ Use</button>
-              <button class="sab sab--edit" type="button" (click)="openBuilderForEdit(s)" title="Edit">✎ Edit</button>
-              <button class="sab sab--def"  type="button" *ngIf="!s.isDefault" (click)="setDefaultSig(s)" title="Set default">★</button>
-              <button class="sab sab--del"  type="button" (click)="deleteSig(s)" title="Delete">✕</button>
+              <button class="sab sab--use"  type="button" (click)="applySignatureToAdd(s); closeSigBuilder()">✓ Use</button>
+              <button class="sab sab--edit" type="button" (click)="openBuilderForEdit(s)">✎ Edit</button>
+              <button class="sab sab--def"  type="button" *ngIf="!s.isDefault" (click)="setDefaultSig(s)">★</button>
+              <button class="sab sab--del"  type="button" (click)="deleteSig(s)">✕</button>
             </div>
           </div>
         </div>
 
-        <!-- Label + options -->
         <div class="sig-form-section">
           <h4 class="sig-section-title">{{ editingSigId ? 'Edit Details' : 'New Signature' }}</h4>
 
           <div class="sb-field">
             <label class="sb-label">Label <span class="required">*</span></label>
-            <input class="sb-input" type="text" [(ngModel)]="sigForm.label"
-              (ngModelChange)="refreshPreview()" placeholder="e.g. Formal, Quick reply" />
+            <input class="sb-input" type="text" [(ngModel)]="sigForm.label" (ngModelChange)="refreshPreview()" placeholder="e.g. Formal, Quick reply" />
           </div>
 
-          <!-- Greeting -->
           <div class="sb-field">
             <label class="sb-label">Greeting</label>
             <select class="sb-select" [(ngModel)]="sigForm.greetingText" (ngModelChange)="refreshPreview()">
-              <option *ngFor="let g of greetingPresets" [value]="g">
-                {{ g === 'custom' ? 'Custom…' : g }}
-              </option>
+              <option *ngFor="let g of greetingPresets" [value]="g">{{ g === 'custom' ? 'Custom…' : g }}</option>
             </select>
-            <input *ngIf="sigForm.greetingText === 'custom'" class="sb-input" type="text"
-              style="margin-top:6px"
-              [(ngModel)]="sigForm.customGreeting" (ngModelChange)="refreshPreview()"
-              placeholder="Type your greeting…" />
+            <input *ngIf="sigForm.greetingText === 'custom'" class="sb-input" type="text" style="margin-top:6px"
+              [(ngModel)]="sigForm.customGreeting" (ngModelChange)="refreshPreview()" placeholder="Type your greeting…" />
           </div>
 
-          <!-- Separator -->
           <div class="sb-field">
             <label class="sb-label">Separator after greeting</label>
             <div class="sb-radio-group">
               <label class="sb-radio" *ngFor="let opt of separatorOptions">
-                <input type="radio" [(ngModel)]="sigForm.separatorStyle"
-                  [value]="opt.value" (change)="refreshPreview()" />
+                <input type="radio" [(ngModel)]="sigForm.separatorStyle" [value]="opt.value" (change)="refreshPreview()" />
                 <span>{{ opt.label }}</span>
               </label>
             </div>
           </div>
 
-          <!-- Layout -->
           <div class="sb-field">
             <label class="sb-label">Contact layout</label>
             <div class="sb-radio-group">
               <label class="sb-radio" *ngFor="let opt of layoutOptions">
-                <input type="radio" [(ngModel)]="sigForm.layoutOrder"
-                  [value]="opt.value" (change)="refreshPreview()" />
+                <input type="radio" [(ngModel)]="sigForm.layoutOrder" [value]="opt.value" (change)="refreshPreview()" />
                 <span>{{ opt.label }}</span>
               </label>
             </div>
           </div>
 
-          <!-- Default -->
           <label class="checkbox-label" style="margin-top:4px">
             <input type="checkbox" [(ngModel)]="sigForm.isDefault" (ngModelChange)="refreshPreview()" />
             <span>Set as my default signature</span>
           </label>
         </div>
-      </div><!-- /sig-builder-left -->
+      </div>
 
-      <!-- ── CENTRE: Contact fields ─────────────────────────────────────── -->
+      <!-- ── CENTRE: Contact fields + Font picker ──────────────────── -->
       <div class="sig-builder-centre">
         <h4 class="sig-section-title">Contact Details</h4>
 
         <div class="sb-field">
           <label class="sb-label">Full Name</label>
-          <input class="sb-input" type="text" [(ngModel)]="sigForm.fullName"
-            (ngModelChange)="refreshPreview()" placeholder="Michael Maguire" />
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.fullName" (ngModelChange)="refreshPreview()" placeholder="Michael Maguire" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Job Title</label>
-          <input class="sb-input" type="text" [(ngModel)]="sigForm.jobTitle"
-            (ngModelChange)="refreshPreview()" placeholder="Sales Manager" />
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.jobTitle" (ngModelChange)="refreshPreview()" placeholder="Sales Manager" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Company</label>
-          <input class="sb-input" type="text" [(ngModel)]="sigForm.company"
-            (ngModelChange)="refreshPreview()" placeholder="Awnings of Ireland" />
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.company" (ngModelChange)="refreshPreview()" placeholder="Awnings of Ireland" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Phone</label>
-          <input class="sb-input" type="tel" [(ngModel)]="sigForm.phone"
-            (ngModelChange)="refreshPreview()" placeholder="+353 1652 3014" />
+          <input class="sb-input" type="tel" [(ngModel)]="sigForm.phone" (ngModelChange)="refreshPreview()" placeholder="+353 1652 3014" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Mobile</label>
-          <input class="sb-input" type="tel" [(ngModel)]="sigForm.mobile"
-            (ngModelChange)="refreshPreview()" placeholder="+353 (0)86 0891816" />
+          <input class="sb-input" type="tel" [(ngModel)]="sigForm.mobile" (ngModelChange)="refreshPreview()" placeholder="+353 (0)86 0891816" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Email</label>
-          <input class="sb-input" type="email" [(ngModel)]="sigForm.email"
-            (ngModelChange)="refreshPreview()" placeholder="michael@awningsofireland.com" />
+          <input class="sb-input" type="email" [(ngModel)]="sigForm.email" (ngModelChange)="refreshPreview()" placeholder="michael@awningsofireland.com" />
         </div>
         <div class="sb-field">
           <label class="sb-label">Website</label>
-          <input class="sb-input" type="text" [(ngModel)]="sigForm.website"
-            (ngModelChange)="refreshPreview()" placeholder="www.awningsofireland.com" />
+          <input class="sb-input" type="text" [(ngModel)]="sigForm.website" (ngModelChange)="refreshPreview()" placeholder="www.awningsofireland.com" />
+        </div>
+
+        <!-- ── FONT PICKER ──────────────────────────────────────────── -->
+        <div class="sb-field" style="margin-top:6px;">
+          <label class="sb-label">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" width="12" height="12" style="vertical-align:middle;margin-right:3px">
+              <path d="M2 12 L5 2 L8 12 M3.5 9 h3"/><line x1="10" y1="3" x2="10" y2="11"/>
+            </svg>
+            Signature Font
+          </label>
+          <div class="font-picker-grid">
+            <button
+              *ngFor="let f of fontOptions"
+              type="button"
+              class="font-card"
+              [class.font-card--active]="sigForm.fontFamily === f.value"
+              [style.font-family]="f.css"
+              (click)="sigForm.fontFamily = f.value; refreshPreview()"
+              [title]="f.label">
+              <span class="font-card-sample">Ag</span>
+              <span class="font-card-name">{{ f.label }}</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- ── RIGHT: Live preview ────────────────────────────────────────── -->
+      <!-- ── RIGHT: Live preview in chosen font ────────────────────── -->
       <div class="sig-builder-right">
         <h4 class="sig-section-title">Live Preview</h4>
         <div class="sig-preview-card">
-          <div class="sig-preview-label">Email signature</div>
-          <pre class="sig-preview-text" *ngIf="sigPreview">{{ sigPreview }}</pre>
+          <div class="sig-preview-label">
+            Email signature
+            <span class="sig-preview-font-name">· {{ fontOption(sigForm.fontFamily).label }}</span>
+          </div>
+          <!-- Preview rendered in the selected font -->
+          <pre class="sig-preview-text"
+               [style.font-family]="fontCss(sigForm.fontFamily)"
+               *ngIf="sigPreview">{{ sigPreview }}</pre>
           <p class="sig-preview-empty" *ngIf="!sigPreview">Fill in the fields to see a preview.</p>
         </div>
         <p class="sig-preview-hint">
-          This plain-text signature will be appended below your email message, separated by a line break.
+          The chosen font will be shown in the signature field. The plain-text sent in emails is always readable regardless of font.
         </p>
       </div>
 
     </div><!-- /sig-builder-body -->
 
     <div class="modal-footer">
-      <button class="btn-modal btn-modal-secondary" (click)="closeSigBuilder()"
-        [disabled]="(isSavingSig$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-primary" (click)="saveSigFromBuilder()"
-        [disabled]="!sigForm.label.trim() || (isSavingSig$ | async) === true">
+      <button class="btn-modal btn-modal-secondary" (click)="closeSigBuilder()" [disabled]="(isSavingSig$ | async) === true">Cancel</button>
+      <button class="btn-modal btn-modal-primary" (click)="saveSigFromBuilder()" [disabled]="!sigForm.label.trim() || (isSavingSig$ | async) === true">
         <span *ngIf="(isSavingSig$ | async) === false">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:4px">
             <path d="M13 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1z"/>
@@ -445,13 +421,9 @@
   <div class="modal-card modal-card--lg" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3 class="modal-title">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18">
-          <path d="M3 4h14c.6 0 1 .4 1 1v10c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1z"/>
-        </svg>Email Detail
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><path d="M3 4h14c.6 0 1 .4 1 1v10c0 .6-.4 1-1 1H3c-.6 0-1-.4-1-1V5c0-.6.4-1 1-1z"/></svg>Email Detail
       </h3>
-      <button class="modal-close" (click)="closeEmailPreview()">
-        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
-      </button>
+      <button class="modal-close" (click)="closeEmailPreview()"><svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg></button>
     </div>
     <div class="modal-body" *ngIf="emailModalTask">
       <div class="email-meta-grid">
@@ -481,9 +453,7 @@
 <div class="modal-backdrop" *ngIf="showSendModal" (click)="closeSendModal()">
   <div class="modal-card" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 class="modal-title">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><line x1="2" y1="3" x2="13" y2="12"/><line x1="2" y1="17" x2="13" y2="12"/><polyline points="5,3 18,3 18,17 5,17"/></svg>Send Email
-      </h3>
+      <h3 class="modal-title"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="18" height="18"><line x1="2" y1="3" x2="13" y2="12"/><line x1="2" y1="17" x2="13" y2="12"/><polyline points="5,3 18,3 18,17 5,17"/></svg>Send Email</h3>
       <button class="modal-close" (click)="closeSendModal()"><svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg></button>
     </div>
     <div class="modal-body">
@@ -540,7 +510,7 @@
           <textarea class="modal-input modal-textarea ie-textarea-fill" [(ngModel)]="editComments" rows="7" maxlength="2000" [disabled]="(isSaving$ | async) === true"></textarea>
           <span class="char-hint">{{ editComments.length }}/2000</span>
         </div>
-        <!-- Signature -->
+        <!-- Signature — font applied dynamically -->
         <div class="modal-field ie-col">
           <div class="sig-label-row">
             <label class="modal-label">
@@ -555,15 +525,19 @@
                 <option *ngFor="let s of userSignatures; trackBy: trackBySig" [value]="s.signatureId">{{ s.label }}{{ s.isDefault ? ' ★' : '' }}</option>
               </select>
               <button class="sig-builder-btn" type="button" (click)="openBuilderForNew()" [disabled]="(isSaving$ | async) === true">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg>
-                Manage
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="12" height="12"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg>Manage
               </button>
             </div>
           </div>
           <textarea class="modal-input modal-textarea ie-textarea-fill ie-sig-textarea"
-            [(ngModel)]="editSignature" rows="7"
-            placeholder="Select a saved signature or type one here…"
+            [(ngModel)]="editSignature"
+            [style.font-family]="fontCss(editSigFontFamily)"
+            rows="7" placeholder="Select a saved signature or type one here…"
             [disabled]="(isSaving$ | async) === true"></textarea>
+          <div class="sig-font-badge" *ngIf="editSignature.trim()">
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" width="11" height="11"><path d="M2 12 L5 2 L8 12 M3.5 9 h3"/><line x1="10" y1="3" x2="10" y2="11"/></svg>
+            {{ fontOption(editSigFontFamily).label }}
+          </div>
         </div>
       </div>
 
@@ -577,7 +551,6 @@
           </div>
         </div>
       </div>
-      <!-- New attachments -->
       <div class="modal-field">
         <label class="modal-label">Add Attachments</label>
         <div class="ie-attach-zone ie-attach-zone--compact">

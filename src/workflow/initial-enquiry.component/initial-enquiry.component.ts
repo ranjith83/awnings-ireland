@@ -9,7 +9,6 @@ import { takeUntil, finalize } from 'rxjs/operators';
 import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.service';
 import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload } from '../../service/email-task.service';
 import { SignatureService, UserSignatureDto } from '../../service/signature.service';
-//import { SignatureService, UserSignatureDto } from '../../service/signature.service';
 
 export interface CustomerEmailRow {
   taskId: number; subject: string; fromEmail: string; fromName: string;
@@ -32,38 +31,53 @@ export interface SigFormState {
   email:          string;
   website:        string;
   greetingText:   string;
-  customGreeting: string;      // used when greetingText === 'custom'
+  customGreeting: string;
   separatorStyle: string;
   layoutOrder:    string;
+  fontFamily:     string;   // ← NEW
   isDefault:      boolean;
 }
+
+// ── Font options ──────────────────────────────────────────────────────────────
+export interface FontOption {
+  value:     string;   // token stored in DB
+  label:     string;   // display name
+  css:       string;   // actual CSS font-family value
+  preview:   string;   // sample text shown in the font card
+}
+
+const FONT_OPTIONS: FontOption[] = [
+  { value: 'georgia',   label: 'Georgia',         css: 'Georgia, "Times New Roman", serif',                           preview: 'Aa — Classic & Elegant'   },
+  { value: 'times',     label: 'Times New Roman',  css: '"Times New Roman", Times, serif',                             preview: 'Aa — Traditional Serif'    },
+  { value: 'palatino',  label: 'Palatino',         css: '"Palatino Linotype", Palatino, "Book Antiqua", serif',        preview: 'Aa — Refined & Literary'   },
+  { value: 'garamond',  label: 'Garamond',         css: 'Garamond, "EB Garamond", Georgia, serif',                     preview: 'Aa — Timeless & Scholarly' },
+  { value: 'arial',     label: 'Arial',            css: 'Arial, Helvetica, sans-serif',                                preview: 'Aa — Clean & Modern'       },
+  { value: 'verdana',   label: 'Verdana',          css: 'Verdana, Geneva, sans-serif',                                 preview: 'Aa — Friendly & Readable'  },
+  { value: 'trebuchet', label: 'Trebuchet MS',     css: '"Trebuchet MS", Trebuchet, Arial, sans-serif',                preview: 'Aa — Informal & Fresh'     },
+  { value: 'calibri',   label: 'Calibri',          css: 'Calibri, Candara, Segoe, sans-serif',                         preview: 'Aa — Contemporary Office'  },
+  { value: 'courier',   label: 'Courier New',      css: '"Courier New", Courier, monospace',                           preview: 'Aa — Typewriter Mono'      },
+];
 
 const BLANK_SIG_FORM = (): SigFormState => ({
   label: '', fullName: '', jobTitle: '', company: '',
   phone: '', mobile: '', email: '', website: '',
   greetingText: 'Kindest regards,', customGreeting: '',
   separatorStyle: 'blank_line', layoutOrder: 'name_first',
+  fontFamily: 'georgia',
   isDefault: false
 });
 
 const GREETING_PRESETS = [
-  'Kindest regards,',
-  'Kind regards,',
-  'Best regards,',
-  'Best wishes,',
-  'Many thanks,',
-  'Thanks,',
-  'Warm regards,',
-  'Yours sincerely,',
-  'Cheers,',
-  'custom'
+  'Kindest regards,', 'Kind regards,', 'Best regards,',
+  'Best wishes,', 'Many thanks,', 'Thanks,',
+  'Warm regards,', 'Yours sincerely,', 'Cheers,', 'custom'
 ];
 
 const SEPARATOR_OPTIONS = [
-  { value: 'blank_line',   label: 'Blank line'   },
-  { value: 'single_dash',  label: '—  (single dash)' },
-  { value: 'double_dash',  label: '— —  (double dash)' },
-  { value: 'none',         label: 'None'         },
+  { value: 'blank_line',  label: 'Blank line'       },
+  { value: 'single_dash', label: '—  (single dash)' },
+  { value: 'double_dash', label: '— —  (double dash)' },
+  { value: 'none',        label: 'None'              },
 ];
 
 const LAYOUT_OPTIONS = [
@@ -106,12 +120,14 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   readonly greetingPresets  = GREETING_PRESETS;
   readonly separatorOptions = SEPARATOR_OPTIONS;
   readonly layoutOptions    = LAYOUT_OPTIONS;
+  readonly fontOptions      = FONT_OPTIONS;   // ← NEW
 
   // ── Add form ───────────────────────────────────────────────────────────────
-  newEmail       = '';
-  newComments    = '';
-  newSignature   = '';
-  sendEmailOnAdd = true;
+  newEmail          = '';
+  newComments       = '';
+  newSignature      = '';
+  newSigFontFamily  = 'georgia';   // ← tracks active font for add-form textarea
+  sendEmailOnAdd    = true;
 
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
   showEditModal     = false;
@@ -119,14 +135,13 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   editEmail         = '';
   editComments      = '';
   editSignature     = '';
+  editSigFontFamily = 'georgia';   // ← tracks active font for edit-modal textarea
   sendEmailOnUpdate = true;
 
   // ── Signature builder modal ────────────────────────────────────────────────
-  showSigBuilder      = false;
-  /** The signatureId we're editing; null = creating new. */
+  showSigBuilder    = false;
   editingSigId: number | null = null;
   sigForm: SigFormState = BLANK_SIG_FORM();
-  /** Live-rendered preview, updated on every keypress. */
   sigPreview = '';
 
   // ── Email preview modal ────────────────────────────────────────────────────
@@ -170,6 +185,19 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
 
+  // ── Font helpers ───────────────────────────────────────────────────────────
+
+  /** Resolve a font token to its CSS font-family string. */
+  fontCss(token: string): string {
+    return FONT_OPTIONS.find(f => f.value === token)?.css
+      ?? 'Georgia, "Times New Roman", serif';
+  }
+
+  /** Get the FontOption object for a token. */
+  fontOption(token: string): FontOption {
+    return FONT_OPTIONS.find(f => f.value === token) ?? FONT_OPTIONS[0];
+  }
+
   // ── Signature loading ──────────────────────────────────────────────────────
 
   loadUserSignatures(): void {
@@ -181,7 +209,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
           this.userSignatures = sigs;
           if (!this.newSignature) {
             const def = sigs.find(s => s.isDefault);
-            this.newSignature = def?.signatureText ?? '';
+            if (def) {
+              this.newSignature     = def.signatureText;
+              this.newSigFontFamily = def.fontFamily ?? 'georgia';
+            }
           }
         },
         error: () => { /* non-fatal */ }
@@ -190,8 +221,15 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
   // ── Signature picker helpers ───────────────────────────────────────────────
 
-  applySignatureToAdd(sig: UserSignatureDto): void  { this.newSignature  = sig.signatureText; }
-  applySignatureToEdit(sig: UserSignatureDto): void { this.editSignature = sig.signatureText; }
+  applySignatureToAdd(sig: UserSignatureDto): void {
+    this.newSignature     = sig.signatureText;
+    this.newSigFontFamily = sig.fontFamily ?? 'georgia';   // ← apply font
+  }
+
+  applySignatureToEdit(sig: UserSignatureDto): void {
+    this.editSignature     = sig.signatureText;
+    this.editSigFontFamily = sig.fontFamily ?? 'georgia';  // ← apply font
+  }
 
   get defaultSignature(): UserSignatureDto | undefined {
     return this.userSignatures.find(s => s.isDefault);
@@ -200,8 +238,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Signature builder modal ────────────────────────────────────────────────
 
   openBuilderForNew(): void {
-    this.editingSigId = null;
-    this.sigForm      = BLANK_SIG_FORM();
+    this.editingSigId   = null;
+    this.sigForm        = BLANK_SIG_FORM();
     this.refreshPreview();
     this.showSigBuilder = true;
   }
@@ -217,12 +255,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       mobile:         sig.mobile    ?? '',
       email:          sig.email     ?? '',
       website:        sig.website   ?? '',
-      greetingText:   GREETING_PRESETS.includes(sig.greetingText)
-                        ? sig.greetingText : 'custom',
-      customGreeting: GREETING_PRESETS.includes(sig.greetingText)
-                        ? '' : sig.greetingText,
+      greetingText:   GREETING_PRESETS.includes(sig.greetingText) ? sig.greetingText : 'custom',
+      customGreeting: GREETING_PRESETS.includes(sig.greetingText) ? '' : sig.greetingText,
       separatorStyle: sig.separatorStyle ?? 'blank_line',
       layoutOrder:    sig.layoutOrder    ?? 'name_first',
+      fontFamily:     sig.fontFamily     ?? 'georgia',     // ← restore saved font
       isDefault:      sig.isDefault
     };
     this.refreshPreview();
@@ -236,50 +273,44 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.sigPreview     = '';
   }
 
-  /** Re-render the preview whenever any field changes (called via (ngModelChange)). */
   refreshPreview(): void {
     this.sigPreview = this.buildSignatureText(this.sigForm);
   }
 
-  /** Compose the plain-text signature from the form fields. */
   buildSignatureText(f: SigFormState): string {
     const greeting = f.greetingText === 'custom'
       ? (f.customGreeting.trim() || 'Kindest regards,')
       : f.greetingText;
 
-    // Separator line
     let sep = '';
     if      (f.separatorStyle === 'blank_line')  sep = '\n';
     else if (f.separatorStyle === 'single_dash') sep = '\n—';
     else if (f.separatorStyle === 'double_dash') sep = '\n— —';
-    // 'none' → sep stays ''
 
-    // Contact block lines (only non-empty fields)
-    const nameBlock: string[] = [];
+    const nameBlock: string[]    = [];
     const companyBlock: string[] = [];
 
     if (f.layoutOrder === 'name_first') {
-      if (f.fullName)  nameBlock.push(f.fullName.trim());
-      if (f.jobTitle)  nameBlock.push(f.jobTitle.trim());
-      if (f.company)   companyBlock.push(f.company.trim());
+      if (f.fullName) nameBlock.push(f.fullName.trim());
+      if (f.jobTitle) nameBlock.push(f.jobTitle.trim());
+      if (f.company)  companyBlock.push(f.company.trim());
     } else {
-      if (f.company)   companyBlock.push(f.company.trim());
-      if (f.fullName)  nameBlock.push(f.fullName.trim());
-      if (f.jobTitle)  nameBlock.push(f.jobTitle.trim());
+      if (f.company)  companyBlock.push(f.company.trim());
+      if (f.fullName) nameBlock.push(f.fullName.trim());
+      if (f.jobTitle) nameBlock.push(f.jobTitle.trim());
     }
 
     const contactLines: string[] = [
       ...(f.layoutOrder === 'name_first' ? [...nameBlock, ...companyBlock] : [...companyBlock, ...nameBlock]),
-      ...(f.phone   ? [`Tel: ${f.phone.trim()}`]    : []),
-      ...(f.mobile  ? [`Mob: ${f.mobile.trim()}`]   : []),
-      ...(f.email   ? [f.email.trim()]               : []),
-      ...(f.website ? [f.website.trim()]             : []),
+      ...(f.phone   ? [`Tel: ${f.phone.trim()}`]  : []),
+      ...(f.mobile  ? [`Mob: ${f.mobile.trim()}`] : []),
+      ...(f.email   ? [f.email.trim()]             : []),
+      ...(f.website ? [f.website.trim()]           : []),
     ];
 
     const parts: string[] = [greeting];
     if (sep) parts.push(sep);
     if (contactLines.length) parts.push(contactLines.join('\n'));
-
     return parts.join('\n');
   }
 
@@ -302,12 +333,12 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       greetingText:   resolvedGreeting,
       separatorStyle: this.sigForm.separatorStyle,
       layoutOrder:    this.sigForm.layoutOrder,
+      fontFamily:     this.sigForm.fontFamily,              // ← save chosen font
       signatureText:  this.buildSignatureText(this.sigForm),
       isDefault:      this.sigForm.isDefault
     };
 
     this.isSavingSig$.next(true);
-
     const req$ = this.editingSigId
       ? this.signatureService.updateSignature(this.editingSigId, dto)
       : this.signatureService.createSignature(dto);
@@ -315,9 +346,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     req$.pipe(takeUntil(this.destroy$), finalize(() => this.isSavingSig$.next(false)))
       .subscribe({
         next: (saved) => {
-          if (saved.isDefault) {
+          if (saved.isDefault)
             this.userSignatures = this.userSignatures.map(s => ({ ...s, isDefault: false }));
-          }
+
           if (this.editingSigId) {
             const idx = this.userSignatures.findIndex(s => s.signatureId === saved.signatureId);
             if (idx !== -1) this.userSignatures[idx] = saved;
@@ -335,29 +366,21 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
   setDefaultSig(sig: UserSignatureDto): void {
     if (!sig.signatureId) return;
-    this.signatureService.setDefault(sig.signatureId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          this.userSignatures = this.userSignatures.map(s =>
-            ({ ...s, isDefault: s.signatureId === sig.signatureId }));
-          this.showSuccess(`"${sig.label}" set as default.`);
-        },
-        error: () => this.showError('Failed to set default.')
-      });
+    this.signatureService.setDefault(sig.signatureId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.userSignatures = this.userSignatures.map(s => ({ ...s, isDefault: s.signatureId === sig.signatureId }));
+        this.showSuccess(`"${sig.label}" set as default.`);
+      },
+      error: () => this.showError('Failed to set default.')
+    });
   }
 
   deleteSig(sig: UserSignatureDto): void {
     if (!sig.signatureId) return;
-    this.signatureService.deleteSignature(sig.signatureId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: () => {
-          this.userSignatures = this.userSignatures.filter(s => s.signatureId !== sig.signatureId);
-          this.showSuccess('Signature deleted.');
-        },
-        error: () => this.showError('Failed to delete signature.')
-      });
+    this.signatureService.deleteSignature(sig.signatureId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => { this.userSignatures = this.userSignatures.filter(s => s.signatureId !== sig.signatureId); this.showSuccess('Signature deleted.'); },
+      error: () => this.showError('Failed to delete signature.')
+    });
   }
 
   // ── Data loading ───────────────────────────────────────────────────────────
@@ -421,11 +444,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       signature: this.newSignature.trim() || null
     };
 
-    const emailToSend = this.newEmail.trim();
-    const commentsToSend = this.newComments.trim();
+    const emailToSend     = this.newEmail.trim();
+    const commentsToSend  = this.newComments.trim();
     const signatureToSend = this.newSignature.trim();
-    const shouldSend = this.sendEmailOnAdd;
-    const attachsToSend = [...this.pendingAttachments];
+    const shouldSend      = this.sendEmailOnAdd;
+    const attachsToSend   = [...this.pendingAttachments];
 
     this.isSaving$.next(true);
     this.workflowService.addInitialEnquiry(dto)
@@ -434,14 +457,14 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
         next: (saved) => {
           this.enquiries = [saved, ...this.enquiries];
           this.newComments = '';
-          this.newSignature = this.defaultSignature?.signatureText ?? '';
+          const def = this.defaultSignature;
+          this.newSignature     = def?.signatureText  ?? '';
+          this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
           this.pendingAttachments = [];
           this.showSuccess('Enquiry added successfully!');
-          if (shouldSend && emailToSend) {
-            this.dispatchDirectEmail(emailToSend,
-              `Re: Initial Enquiry – ${this.customerName}`,
+          if (shouldSend && emailToSend)
+            this.dispatchDirectEmail(emailToSend, `Re: Initial Enquiry – ${this.customerName}`,
               this.buildEmailBody(commentsToSend, signatureToSend), attachsToSend);
-          }
         },
         error: () => this.showError('Failed to add enquiry.')
       });
@@ -450,19 +473,21 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
 
   openEditModal(enquiry: InitialEnquiryDto) {
-    this.editingEnquiry = { ...enquiry };
-    this.editEmail      = enquiry.email;
-    this.editComments   = enquiry.comments;
-    this.editSignature  = enquiry.signature ?? this.defaultSignature?.signatureText ?? '';
+    this.editingEnquiry    = { ...enquiry };
+    this.editEmail         = enquiry.email;
+    this.editComments      = enquiry.comments;
+    this.editSignature     = enquiry.signature ?? this.defaultSignature?.signatureText ?? '';
+    this.editSigFontFamily = this.defaultSignature?.fontFamily ?? 'georgia';
     this.sendEmailOnUpdate = true;
     this.editPendingAttachments = [];
-    this.showEditModal = true;
+    this.showEditModal     = true;
     this.errorMessage$.next('');
   }
 
   closeEditModal() {
     this.showEditModal = false; this.editingEnquiry = null;
     this.editEmail = this.editComments = this.editSignature = '';
+    this.editSigFontFamily = 'georgia';
     this.editPendingAttachments = [];
   }
 
@@ -472,7 +497,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
     let existingAtts: PendingAttachment[] = [];
     try { if (this.editingEnquiry.images) existingAtts = JSON.parse(this.editingEnquiry.images); } catch {}
-    const allAtts = [...existingAtts, ...this.editPendingAttachments];
+    const allAtts    = [...existingAtts, ...this.editPendingAttachments];
     const imagesJson = allAtts.length ? JSON.stringify(allAtts) : undefined;
 
     const dto: InitialEnquiryDto = {
@@ -489,14 +514,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
           const idx = this.enquiries.findIndex(e => e.enquiryId === updated.enquiryId);
           if (idx !== -1) this.enquiries[idx] = updated;
           this.enquiries = [...this.enquiries];
-          if (this.sendEmailOnUpdate && this.editEmail.trim()) {
-            this.dispatchDirectEmail(this.editEmail.trim(),
-              `Enquiry Update – ${this.customerName}`,
+          if (this.sendEmailOnUpdate && this.editEmail.trim())
+            this.dispatchDirectEmail(this.editEmail.trim(), `Enquiry Update – ${this.customerName}`,
               this.buildEmailBody(this.editComments.trim(), this.editSignature.trim()),
               this.editPendingAttachments);
-          }
-          this.showSuccess('Enquiry updated successfully!');
-          this.closeEditModal();
+          this.showSuccess('Enquiry updated successfully!'); this.closeEditModal();
         },
         error: () => this.showError('Failed to update enquiry.')
       });
