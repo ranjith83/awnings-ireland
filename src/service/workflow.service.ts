@@ -10,17 +10,33 @@ export interface WorkflowDto {
   workflowName: string;
   productName: string;
   description: string;
+
+  // ── Stage enabled flags (user-controlled) ────────────────────────────────
   initialEnquiry: boolean;
   createQuotation: boolean;
   inviteShowRoomVisit: boolean;
   setupSiteVisit: boolean;
   invoiceSent: boolean;
+
+  // ── Stage completed flags (server-computed from real activity records) ────
+  /** True when at least one InitialEnquiry record exists for this workflow. */
+  initialEnquiryCompleted: boolean;
+  /** True when at least one Quote record exists for this workflow. */
+  createQuotationCompleted: boolean;
+  /** True when at least one ShowroomInvite record exists for this workflow. */
+  inviteShowRoomCompleted: boolean;
+  /** True when at least one SiteVisit record exists for this workflow. */
+  setupSiteVisitCompleted: boolean;
+  /** True when at least one Invoice record exists for this workflow. */
+  invoiceSentCompleted: boolean;
+
   dateAdded: string | Date;
   addedBy: string;
   customerId: number;
   supplierId: number;
   productId: number;
   productTypeId: number;
+  companyId: number;
   taskId?: number;
 }
 

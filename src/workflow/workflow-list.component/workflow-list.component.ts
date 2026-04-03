@@ -4,17 +4,25 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest } from 'rxjs';
 import { takeUntil, tap, catchError, finalize, map, switchMap } from 'rxjs/operators';
-import { 
-  WorkflowService, 
-  WorkflowDto, 
-  SupplierDto, 
-  ProductTypeDto, 
-  ProductDto 
+import {
+  WorkflowService,
+  WorkflowDto,
+  SupplierDto,
+  ProductTypeDto,
+  ProductDto
 } from '../../service/workflow.service';
-import { 
-  WorkflowStateService, 
-  SelectedWorkflow 
+import {
+  WorkflowStateService,
+  SelectedWorkflow
 } from '../../service/workflow-state.service';
+
+/**
+ * Three states for each workflow stage pill:
+ *  'disabled'   – stage not enabled for this workflow   (grey ring)
+ *  'pending'    – stage enabled but no activity yet     (blue ring)
+ *  'completed'  – stage has real activity records       (green check)
+ */
+export type StageStatus = 'disabled' | 'pending' | 'completed';
 
 @Component({
   selector: 'app-workflow-list',
@@ -24,6 +32,7 @@ import {
   styleUrl: './workflow-list.component.css'
 })
 export class WorkflowListComponent implements OnInit, OnDestroy {
+
   // Observables
   workflows$!: Observable<WorkflowDto[]>;
   suppliers$!: Observable<SupplierDto[]>;
@@ -32,31 +41,31 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   paginatedWorkflows$!: Observable<WorkflowDto[]>;
 
   // State subjects
-  isLoading$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
+  isLoading$      = new BehaviorSubject<boolean>(false);
+  errorMessage$   = new BehaviorSubject<string>('');
   successMessage$ = new BehaviorSubject<string>('');
 
   // Cascade select subjects
-  private selectedSupplierSubject$ = new BehaviorSubject<number | null>(null);
+  private selectedSupplierSubject$    = new BehaviorSubject<number | null>(null);
   private selectedProductTypeSubject$ = new BehaviorSubject<number | null>(null);
-  private selectedProductSubject$ = new BehaviorSubject<number | null>(null);
+  private selectedProductSubject$     = new BehaviorSubject<number | null>(null);
 
   // Pagination
   currentPage$ = new BehaviorSubject<number>(1);
-  pageSize = 10;
-  totalPages$ = new BehaviorSubject<number>(1);
+  pageSize     = 10;
+  totalPages$  = new BehaviorSubject<number>(1);
 
-  // Form bindings — "Add" form
-  selectedSupplier: number | null = null;
+  // Form bindings — Add form
+  selectedSupplier: number | null    = null;
   selectedProductType: number | null = null;
-  selectedProduct: number | null = null;
-  newWorkflowName: string = '';
-  newWorkflowDescription: string = '';
+  selectedProduct: number | null     = null;
+  newWorkflowName        = '';
+  newWorkflowDescription = '';
 
   // Edit modal state
-  showEditModal = false;
+  showEditModal         = false;
   editingWorkflow: WorkflowDto | null = null;
-  editWorkflowName = '';
+  editWorkflowName      = '';
   editWorkflowDescription = '';
   isSavingEdit$ = new BehaviorSubject<boolean>(false);
 
@@ -66,12 +75,13 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   isDeleting$ = new BehaviorSubject<boolean>(false);
 
   customerId: number | null = null;
-  customerName: string = '';
-  customerEmail: string = '';    // ← preserved through workflow selection
-  taskId: number | null = null;
+  customerName  = '';
+  customerEmail = '';
+  taskId: number | null       = null;
   fromFollowUp: number | null = null;
-  fromTask: number | null = null;
-  private destroy$ = new Subject<void>();
+  fromTask: number | null     = null;
+
+  private destroy$        = new Subject<void>();
   private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
 
   constructor(
@@ -83,9 +93,9 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
-      this.customerId   = params['customerId']   ? +params['customerId']   : null;
+      this.customerId    = params['customerId']   ? +params['customerId']   : null;
       this.customerName  = params['customerName']  || '';
-      this.customerEmail = params['customerEmail'] || '';   // ← capture email
+      this.customerEmail = params['customerEmail'] || '';
       this.taskId        = params['taskId']        ? +params['taskId']        : null;
       this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
       this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
@@ -122,22 +132,35 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     );
   }
 
-  ngOnDestroy() {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  ngOnDestroy() { this.destroy$.next(); this.destroy$.complete(); }
+
+  // ── Loaders ───────────────────────────────────────────────────────────────
 
   loadSuppliers() {
     this.suppliers$ = this.workflowService.getAllSuppliers().pipe(
-      tap(s => console.log('✅ Suppliers loaded:', s.length)),
       catchError(() => { this.errorMessage$.next('Failed to load suppliers.'); return new BehaviorSubject<SupplierDto[]>([]); })
     );
   }
 
+  loadWorkflows(customerId: number) {
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.workflowService.getWorkflowsForCustomer(customerId).pipe(
+      takeUntil(this.destroy$),
+      map(workflows => workflows.map(w => ({ ...w, dateAdded: new Date(w.dateAdded) }))),
+      finalize(() => this.isLoading$.next(false))
+    ).subscribe({
+      next: (workflows) => { this.workflowsSubject$.next(workflows); this.calculateTotalPages(workflows.length); },
+      error: () => this.errorMessage$.next('Failed to load workflows. Please try again.')
+    });
+  }
+
+  // ── Cascade select handlers ───────────────────────────────────────────────
+
   onSupplierChange(supplierId: number) {
-    this.selectedSupplier = supplierId;
-    this.selectedProductType = null;
-    this.selectedProduct = null;
+    this.selectedSupplier     = supplierId;
+    this.selectedProductType  = null;
+    this.selectedProduct      = null;
     this.selectedSupplierSubject$.next(supplierId);
     this.selectedProductTypeSubject$.next(null);
     this.selectedProductSubject$.next(null);
@@ -145,7 +168,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   onProductTypeChange(productTypeId: number) {
     this.selectedProductType = productTypeId;
-    this.selectedProduct = null;
+    this.selectedProduct     = null;
     this.selectedProductTypeSubject$.next(productTypeId);
     this.selectedProductSubject$.next(null);
   }
@@ -155,33 +178,44 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     this.selectedProductSubject$.next(productId);
   }
 
-  loadWorkflows(customerId: number) {
-    this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.workflowService.getWorkflowsForCustomer(customerId).pipe(
-      takeUntil(this.destroy$),
-      tap(w => console.log('✅ Workflows loaded:', w.length)),
-      map(workflows => workflows.map(w => ({ ...w, dateAdded: new Date(w.dateAdded) }))),
-      finalize(() => this.isLoading$.next(false))
-    ).subscribe({
-      next: (workflows) => { this.workflowsSubject$.next(workflows); this.calculateTotalPages(workflows.length); },
-      error: () => this.errorMessage$.next('Failed to load workflows. Please try again.')
-    });
+  // ── Stage status helpers ──────────────────────────────────────────────────
+
+  /**
+   * Returns the three-way status for a stage:
+   *  'disabled'  — the stage flag is not enabled
+   *  'completed' — enabled AND the server confirmed real activity exists
+   *  'pending'   — enabled but no activity yet
+   */
+  stageStatus(enabled: boolean, completed: boolean): StageStatus {
+    if (!enabled)   return 'disabled';
+    if (completed)  return 'completed';
+    return 'pending';
   }
+
+  /** CSS class applied to the stage pill button. */
+  stageCssClass(status: StageStatus): string {
+    return `stage-btn stage-btn--${status}`;
+  }
+
+  /** Tooltip text for each state. */
+  stageTooltip(label: string, status: StageStatus): string {
+    if (status === 'disabled')  return `${label}: Not enabled`;
+    if (status === 'completed') return `${label}: Completed ✓`;
+    return `${label}: In progress`;
+  }
+
+  // ── Add workflow ──────────────────────────────────────────────────────────
 
   addNewWorkflow() {
     if (!this.selectedSupplier || !this.selectedProductType || !this.selectedProduct || !this.customerId) {
       this.errorMessage$.next('Please select supplier, product type, and product');
-      this.clearMessagesAfterDelay();
-      return;
+      this.clearMessagesAfterDelay(); return;
     }
     if (!this.newWorkflowName.trim()) {
       this.errorMessage$.next('Please enter a workflow name');
-      this.clearMessagesAfterDelay();
-      return;
+      this.clearMessagesAfterDelay(); return;
     }
 
-    // Snapshot current observable values synchronously
     let suppliers: SupplierDto[] = [];
     let productTypes: ProductTypeDto[] = [];
     let products: ProductDto[] = [];
@@ -189,34 +223,32 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     this.productTypes$.pipe(takeUntil(this.destroy$)).subscribe(pt => productTypes = pt);
     this.products$.pipe(takeUntil(this.destroy$)).subscribe(p => products = p);
 
-    const supplier = suppliers.find(s => s.supplierId === this.selectedSupplier);
+    const supplier    = suppliers.find(s => s.supplierId === this.selectedSupplier);
     const productType = productTypes.find(pt => pt.productTypeId === this.selectedProductType);
-    const product = products.find(p => p.productId === this.selectedProduct);
+    const product     = products.find(p => p.productId === this.selectedProduct);
 
     const dto: WorkflowDto = {
       workflowId: 0,
       workflowName: this.newWorkflowName.trim(),
       productName: product?.productName || '',
       description: this.newWorkflowDescription.trim() ||
-      `${supplier?.supplierName || ''} - ${productType?.description || ''} - ${product?.productName || ''}`,
-      initialEnquiry: false,
-      createQuotation: false,
-      inviteShowRoomVisit: false,
-      setupSiteVisit: false,
-      invoiceSent: false,
+        `${supplier?.supplierName || ''} - ${productType?.description || ''} - ${product?.productName || ''}`,
+      initialEnquiry: false, createQuotation: false,
+      inviteShowRoomVisit: false, setupSiteVisit: false, invoiceSent: false,
+      // completed flags are server-computed; send false on create
+      initialEnquiryCompleted: false, createQuotationCompleted: false,
+      inviteShowRoomCompleted: false, setupSiteVisitCompleted: false, invoiceSentCompleted: false,
       dateAdded: new Date().toISOString(),
       addedBy: 'Current User',
       customerId: this.customerId,
       supplierId: this.selectedSupplier,
       productId: this.selectedProduct,
       productTypeId: this.selectedProductType,
+      companyId: 0,
       taskId: this.taskId || undefined
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
-
     this.workflowService.createWorkflow(dto).pipe(
       takeUntil(this.destroy$),
       finalize(() => this.isLoading$.next(false))
@@ -224,15 +256,9 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       next: () => {
         this.successMessage$.next('Workflow created successfully!');
         this.loadWorkflows(this.customerId!);
-        // Reset add form
-        this.selectedSupplier = null;
-        this.selectedProductType = null;
-        this.selectedProduct = null;
-        this.newWorkflowName = '';
-        this.newWorkflowDescription = '';
-        this.selectedSupplierSubject$.next(null);
-        this.selectedProductTypeSubject$.next(null);
-        this.selectedProductSubject$.next(null);
+        this.selectedSupplier = null; this.selectedProductType = null; this.selectedProduct = null;
+        this.newWorkflowName = ''; this.newWorkflowDescription = '';
+        this.selectedSupplierSubject$.next(null); this.selectedProductTypeSubject$.next(null); this.selectedProductSubject$.next(null);
         this.clearMessagesAfterDelay();
       },
       error: () => this.errorMessage$.next('Failed to create workflow. Please try again.')
@@ -243,33 +269,28 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   openEditModal(workflow: WorkflowDto, event: Event) {
     event.stopPropagation();
-    this.editingWorkflow = { ...workflow };
-    this.editWorkflowName = workflow.workflowName || '';
+    this.editingWorkflow        = { ...workflow };
+    this.editWorkflowName       = workflow.workflowName || '';
     this.editWorkflowDescription = workflow.description || '';
     this.showEditModal = true;
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.errorMessage$.next(''); this.successMessage$.next('');
   }
 
   closeEditModal() {
-    this.showEditModal = false;
-    this.editingWorkflow = null;
-    this.editWorkflowName = '';
-    this.editWorkflowDescription = '';
+    this.showEditModal = false; this.editingWorkflow = null;
+    this.editWorkflowName = ''; this.editWorkflowDescription = '';
   }
 
   saveEdit() {
     if (!this.editingWorkflow) return;
     if (!this.editWorkflowName.trim()) {
-      this.errorMessage$.next('Workflow name is required');
-      this.clearMessagesAfterDelay();
-      return;
+      this.errorMessage$.next('Workflow name is required'); this.clearMessagesAfterDelay(); return;
     }
 
     const updated: WorkflowDto = {
       ...this.editingWorkflow,
       workflowName: this.editWorkflowName.trim(),
-      description: this.editWorkflowDescription.trim()
+      description:  this.editWorkflowDescription.trim()
     };
 
     this.isSavingEdit$.next(true);
@@ -278,13 +299,11 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       finalize(() => this.isSavingEdit$.next(false))
     ).subscribe({
       next: () => {
-        // Update local list without a full reload
         const current = this.workflowsSubject$.value;
         const idx = current.findIndex(w => w.workflowId === updated.workflowId);
         if (idx !== -1) { current[idx] = updated; this.workflowsSubject$.next([...current]); }
         this.successMessage$.next('Workflow updated successfully!');
-        this.closeEditModal();
-        this.clearMessagesAfterDelay();
+        this.closeEditModal(); this.clearMessagesAfterDelay();
       },
       error: () => this.errorMessage$.next('Failed to update workflow. Please try again.')
     });
@@ -294,31 +313,24 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   openDeleteConfirm(workflow: WorkflowDto, event: Event) {
     event.stopPropagation();
-    this.deletingWorkflow = workflow;
-    this.showDeleteConfirm = true;
+    this.deletingWorkflow = workflow; this.showDeleteConfirm = true;
   }
 
-  cancelDelete() {
-    this.showDeleteConfirm = false;
-    this.deletingWorkflow = null;
-  }
+  cancelDelete() { this.showDeleteConfirm = false; this.deletingWorkflow = null; }
 
   confirmDelete() {
     if (!this.deletingWorkflow) return;
-    const id = this.deletingWorkflow.workflowId;
+    const id   = this.deletingWorkflow.workflowId;
     const name = this.deletingWorkflow.workflowName || this.deletingWorkflow.description;
 
-    this.isDeleting$.next(true);
-    this.showDeleteConfirm = false;
-
+    this.isDeleting$.next(true); this.showDeleteConfirm = false;
     this.workflowService.deleteWorkflow(id).pipe(
       takeUntil(this.destroy$),
       finalize(() => { this.isDeleting$.next(false); this.deletingWorkflow = null; })
     ).subscribe({
       next: () => {
         const current = this.workflowsSubject$.value.filter(w => w.workflowId !== id);
-        this.workflowsSubject$.next(current);
-        this.calculateTotalPages(current.length);
+        this.workflowsSubject$.next(current); this.calculateTotalPages(current.length);
         this.successMessage$.next(`Workflow "${name}" deleted successfully!`);
         this.clearMessagesAfterDelay();
       },
@@ -326,17 +338,17 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Stage toggle ──────────────────────────────────────────────────────────
+  // ── Stage toggle (enabled flag only — completed is server-computed) ───────
 
   toggleStage(workflow: WorkflowDto, stage: string, event?: Event) {
     if (event) event.stopPropagation();
     const updatedWorkflow: WorkflowDto = { ...workflow };
     const stageMapping: { [key: string]: keyof WorkflowDto } = {
-      'initialEnquiry': 'initialEnquiry',
-      'createQuote': 'createQuotation',
-      'inviteShowroom': 'inviteShowRoomVisit',
-      'setupSiteVisit': 'setupSiteVisit',
-      'invoice': 'invoiceSent'
+      'initialEnquiry':  'initialEnquiry',
+      'createQuote':     'createQuotation',
+      'inviteShowroom':  'inviteShowRoomVisit',
+      'setupSiteVisit':  'setupSiteVisit',
+      'invoice':         'invoiceSent'
     };
     const dtoProperty = stageMapping[stage];
     if (!dtoProperty) return;
@@ -352,20 +364,18 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── Navigate ──────────────────────────────────────────────────────────────
+  // ── Navigate on row click ─────────────────────────────────────────────────
 
   selectWorkflow(workflow: WorkflowDto) {
     const selected: SelectedWorkflow = {
-      id: workflow.workflowId,
-      productId: workflow.productId,
-      product: workflow.productName,
-      description: workflow.description,
+      id: workflow.workflowId, productId: workflow.productId,
+      product: workflow.productName, description: workflow.description,
       stages: {
-        initialEnquiry: workflow.initialEnquiry,
-        createQuote: workflow.createQuotation,
-        inviteShowroom: workflow.inviteShowRoomVisit,
-        setupSiteVisit: workflow.setupSiteVisit,
-        invoice: workflow.invoiceSent
+        initialEnquiry:  workflow.initialEnquiry,
+        createQuote:     workflow.createQuotation,
+        inviteShowroom:  workflow.inviteShowRoomVisit,
+        setupSiteVisit:  workflow.setupSiteVisit,
+        invoice:         workflow.invoiceSent
       },
       customerId: this.customerId || undefined,
       customerName: this.customerName
@@ -373,18 +383,13 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     this.workflowStateService.setSelectedWorkflow(selected);
     const enabledStages = this.workflowStateService.getEnabledStages();
     if (enabledStages.length > 0) {
-      // Build query params — include ALL values so downstream screens never lose context
       const qp: Record<string, any> = {
-        customerId:    this.customerId,
-        customerName:  this.customerName,
-        workflowId:    workflow.workflowId
+        customerId: this.customerId, customerName: this.customerName, workflowId: workflow.workflowId
       };
-      // Only add optional params when they carry a value
       if (this.customerEmail) qp['customerEmail'] = this.customerEmail;
       if (this.taskId)        qp['taskId']        = this.taskId;
       if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
       if (this.fromTask)      qp['fromTask']      = this.fromTask;
-
       this.router.navigate([`/workflow/${enabledStages[0]}`], { queryParams: qp });
     } else {
       this.errorMessage$.next('Please enable at least one stage for this workflow');
@@ -402,14 +407,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     if (page >= 1 && page <= this.totalPages$.value) this.currentPage$.next(page);
   }
 
-  previousPage() {
-    if (this.currentPage$.value > 1) this.currentPage$.next(this.currentPage$.value - 1);
-  }
-
-  nextPage() {
-    if (this.currentPage$.value < this.totalPages$.value) this.currentPage$.next(this.currentPage$.value + 1);
-  }
-
+  previousPage() { if (this.currentPage$.value > 1) this.currentPage$.next(this.currentPage$.value - 1); }
+  nextPage()     { if (this.currentPage$.value < this.totalPages$.value) this.currentPage$.next(this.currentPage$.value + 1); }
   goToLastPage() { this.goToPage(this.totalPages$.value); }
 
   private clearMessagesAfterDelay(): void {

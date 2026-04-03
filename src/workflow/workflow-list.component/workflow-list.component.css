@@ -210,42 +210,7 @@
   padding: 12px 8px;
 }
 
-.stage-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid #d1d5db;
-  background-color: white;
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
 
-.stage-btn:hover:not(:disabled) {
-  border-color: #5a9fd4;
-  transform: scale(1.1);
-}
-
-.stage-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.stage-btn.active {
-  background-color: #10b981;
-  border-color: #10b981;
-}
-
-.stage-btn.active::after {
-  content: '✓';
-  color: white;
-  font-size: 14px;
-  font-weight: bold;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
 
 .date-cell,
 .user-cell {
@@ -782,3 +747,97 @@
     max-width: calc(100vw - 32px);
   }
 }
+/* ═══════════════════════════════════════════════════════════════
+   STAGE PILLS — three states: disabled | pending | completed
+═══════════════════════════════════════════════════════════════ */
+
+/* Shared base */
+.stage-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s, border-color 0.15s;
+  position: relative;
+}
+
+.stage-btn:hover:not(:disabled) {
+  transform: scale(1.15);
+  box-shadow: 0 2px 6px rgba(0,0,0,.15);
+}
+
+.stage-btn:disabled { cursor: not-allowed; opacity: 0.5; transform: none; }
+
+/* ── DISABLED — grey ring, no fill ── */
+.stage-btn--disabled {
+  border-color: #d1d5db;
+  background: white;
+}
+.stage-btn--disabled:hover:not(:disabled) {
+  border-color: #9ca3af;
+}
+
+/* ── PENDING — blue ring with small filled dot ── */
+.stage-btn--pending {
+  border-color: #5a9fd4;
+  background: #eff6ff;
+}
+.stage-btn--pending:hover:not(:disabled) {
+  background: #dbeafe;
+  border-color: #2563eb;
+}
+
+.stage-dot-inner {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #5a9fd4;
+}
+
+/* ── COMPLETED — green fill with white checkmark ── */
+.stage-btn--completed {
+  border-color: #10b981;
+  background: #10b981;
+  color: white;
+}
+.stage-btn--completed:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
+}
+.stage-btn--completed svg { stroke: white; }
+
+/* ═══════════════════════════════════════════════════════════════
+   STAGE LEGEND
+═══════════════════════════════════════════════════════════════ */
+.stage-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 4px 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+}
+
+.legend-dot--disabled  { border-color: #d1d5db; background: white; }
+.legend-dot--pending   { border-color: #5a9fd4; background: #eff6ff; }
+.legend-dot--completed { border-color: #10b981; background: #10b981; }

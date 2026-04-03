@@ -76,6 +76,19 @@
     </div>
   </div>
 
+  <!-- ══════════════ STAGE LEGEND ══════════════ -->
+  <div class="stage-legend">
+    <span class="legend-item">
+      <span class="legend-dot legend-dot--disabled"></span> Not enabled
+    </span>
+    <span class="legend-item">
+      <span class="legend-dot legend-dot--pending"></span> In progress
+    </span>
+    <span class="legend-item">
+      <span class="legend-dot legend-dot--completed"></span> Completed
+    </span>
+  </div>
+
   <!-- ══════════════ WORKFLOW TABLE ══════════════ -->
   <div class="table-container">
     <table class="workflow-table">
@@ -104,63 +117,108 @@
           <td class="product-cell">{{ workflow.productName }}</td>
           <td class="description-cell" [title]="workflow.description">{{ workflow.description }}</td>
 
+          <!-- ── INITIAL ENQUIRY ──────────────────────────────────── -->
           <td class="stage-cell">
-            <button class="stage-btn" [class.active]="workflow.initialEnquiry"
-              (click)="toggleStage(workflow, 'initialEnquiry', $event)"
-              [disabled]="(isLoading$ | async) === true"
-              [title]="workflow.initialEnquiry ? 'Enabled' : 'Disabled'"></button>
+            <ng-container *ngIf="stageStatus(workflow.initialEnquiry, workflow.initialEnquiryCompleted) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Initial Enquiry', status)"
+                (click)="toggleStage(workflow, 'initialEnquiry', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <!-- disabled: empty ring; pending: ring; completed: check -->
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
           </td>
+
+          <!-- ── CREATE QUOTE ─────────────────────────────────────── -->
           <td class="stage-cell">
-            <button class="stage-btn" [class.active]="workflow.createQuotation"
-              (click)="toggleStage(workflow, 'createQuote', $event)"
-              [disabled]="(isLoading$ | async) === true"
-              [title]="workflow.createQuotation ? 'Enabled' : 'Disabled'"></button>
+            <ng-container *ngIf="stageStatus(workflow.createQuotation, workflow.createQuotationCompleted) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Create Quote', status)"
+                (click)="toggleStage(workflow, 'createQuote', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
           </td>
+
+          <!-- ── INVITE SHOWROOM ──────────────────────────────────── -->
           <td class="stage-cell">
-            <button class="stage-btn" [class.active]="workflow.inviteShowRoomVisit"
-              (click)="toggleStage(workflow, 'inviteShowroom', $event)"
-              [disabled]="(isLoading$ | async) === true"
-              [title]="workflow.inviteShowRoomVisit ? 'Enabled' : 'Disabled'"></button>
+            <ng-container *ngIf="stageStatus(workflow.inviteShowRoomVisit, workflow.inviteShowRoomCompleted) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Invite Showroom', status)"
+                (click)="toggleStage(workflow, 'inviteShowroom', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
           </td>
+
+          <!-- ── SETUP SITE VISIT ─────────────────────────────────── -->
           <td class="stage-cell">
-            <button class="stage-btn" [class.active]="workflow.setupSiteVisit"
-              (click)="toggleStage(workflow, 'setupSiteVisit', $event)"
-              [disabled]="(isLoading$ | async) === true"
-              [title]="workflow.setupSiteVisit ? 'Enabled' : 'Disabled'"></button>
+            <ng-container *ngIf="stageStatus(workflow.setupSiteVisit, workflow.setupSiteVisitCompleted) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Setup Site Visit', status)"
+                (click)="toggleStage(workflow, 'setupSiteVisit', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
           </td>
+
+          <!-- ── INVOICE ──────────────────────────────────────────── -->
           <td class="stage-cell">
-            <button class="stage-btn" [class.active]="workflow.invoiceSent"
-              (click)="toggleStage(workflow, 'invoice', $event)"
-              [disabled]="(isLoading$ | async) === true"
-              [title]="workflow.invoiceSent ? 'Enabled' : 'Disabled'"></button>
+            <ng-container *ngIf="stageStatus(workflow.invoiceSent, workflow.invoiceSentCompleted) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Invoice', status)"
+                (click)="toggleStage(workflow, 'invoice', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
           </td>
 
           <td class="date-cell">{{ workflow.dateAdded | date:'dd MMM yyyy' }}</td>
           <td class="user-cell">{{ workflow.addedBy }}</td>
 
-          <!-- Actions — stopPropagation prevents row-click navigation -->
           <td class="actions-cell" (click)="$event.stopPropagation()">
             <button class="btn-action btn-edit"
               (click)="openEditModal(workflow, $event)"
-              [disabled]="(isDeleting$ | async) === true"
-              title="Edit workflow">
+              [disabled]="(isDeleting$ | async) === true" title="Edit workflow">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-              </svg>
-              Edit
+              </svg>Edit
             </button>
             <button class="btn-action btn-delete"
               (click)="openDeleteConfirm(workflow, $event)"
-              [disabled]="(isDeleting$ | async) === true"
-              title="Delete workflow">
+              [disabled]="(isDeleting$ | async) === true" title="Delete workflow">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
                 <polyline points="2,4 14,4"/>
                 <path d="M6 4V2h4v2"/>
                 <rect x="3" y="4" width="10" height="10" rx="1"/>
                 <line x1="6" y1="7" x2="6" y2="11"/>
                 <line x1="10" y1="7" x2="10" y2="11"/>
-              </svg>
-              Delete
+              </svg>Delete
             </button>
           </td>
         </tr>
@@ -170,12 +228,10 @@
           <tr *ngIf="(isLoading$ | async) === true && workflows.length === 0">
             <td colspan="11" class="loading-cell">
               <div class="loading-spinner-container">
-                <div class="spinner"></div>
-                <p>Loading workflows...</p>
+                <div class="spinner"></div><p>Loading workflows...</p>
               </div>
             </td>
           </tr>
-          <!-- Empty -->
           <tr *ngIf="(isLoading$ | async) === false && workflows.length === 0">
             <td colspan="11" class="empty-cell">
               <div class="empty-state">
@@ -196,25 +252,23 @@
   <!-- Pagination -->
   <ng-container *ngIf="{ w: workflows$ | async, cp: currentPage$ | async, tp: totalPages$ | async, l: isLoading$ | async } as d">
     <div class="pagination" *ngIf="d.l === false && (d.w?.length || 0) > pageSize">
-      <button class="page-btn" (click)="goToPage(1)"       [disabled]="d.cp === 1"    title="First">«</button>
-      <button class="page-btn" (click)="previousPage()"    [disabled]="d.cp === 1"    title="Previous">‹</button>
+      <button class="page-btn" (click)="goToPage(1)"     [disabled]="d.cp === 1"    title="First">«</button>
+      <button class="page-btn" (click)="previousPage()"  [disabled]="d.cp === 1"    title="Previous">‹</button>
       <span class="page-info">Page {{ d.cp }} of {{ d.tp }}</span>
-      <button class="page-btn" (click)="nextPage()"        [disabled]="d.cp === d.tp" title="Next">›</button>
-      <button class="page-btn" (click)="goToLastPage()"    [disabled]="d.cp === d.tp" title="Last">»</button>
+      <button class="page-btn" (click)="nextPage()"      [disabled]="d.cp === d.tp" title="Next">›</button>
+      <button class="page-btn" (click)="goToLastPage()"  [disabled]="d.cp === d.tp" title="Last">»</button>
     </div>
   </ng-container>
 </div>
 
-<!-- ══════════════════════════ EDIT MODAL ══════════════════════════ -->
+<!-- ══════════════ EDIT MODAL ══════════════ -->
 <div class="modal-backdrop" *ngIf="showEditModal" (click)="closeEditModal()">
   <div class="modal-card" (click)="$event.stopPropagation()">
-
     <div class="modal-header">
       <h3 class="modal-title">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
           <path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/>
-        </svg>
-        Edit Workflow
+        </svg>Edit Workflow
       </h3>
       <button class="modal-close" (click)="closeEditModal()">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
@@ -222,38 +276,27 @@
         </svg>
       </button>
     </div>
-
     <div class="modal-body" *ngIf="editingWorkflow">
       <div class="modal-meta-row">
         <span class="modal-meta-label">Product:</span>
         <span class="modal-meta-value">{{ editingWorkflow.productName }}</span>
       </div>
-
       <div class="modal-field">
         <label class="modal-label">Workflow Name <span class="required">*</span></label>
-        <input type="text" class="modal-input"
-          [(ngModel)]="editWorkflowName"
-          placeholder="Enter workflow name"
-          maxlength="150" />
+        <input type="text" class="modal-input" [(ngModel)]="editWorkflowName"
+          placeholder="Enter workflow name" maxlength="150" />
       </div>
-
       <div class="modal-field">
         <label class="modal-label">Description</label>
-        <textarea class="modal-input modal-textarea"
-          [(ngModel)]="editWorkflowDescription"
-          placeholder="Enter description"
-          rows="3"
-          maxlength="300"></textarea>
+        <textarea class="modal-input modal-textarea" [(ngModel)]="editWorkflowDescription"
+          placeholder="Enter description" rows="3" maxlength="300"></textarea>
         <span class="char-count">{{ editWorkflowDescription.length }}/300</span>
       </div>
     </div>
-
     <div class="modal-footer">
-      <button class="btn-modal btn-modal-cancel"
-        (click)="closeEditModal()"
+      <button class="btn-modal btn-modal-cancel" (click)="closeEditModal()"
         [disabled]="(isSavingEdit$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-save"
-        (click)="saveEdit()"
+      <button class="btn-modal btn-modal-save" (click)="saveEdit()"
         [disabled]="!editWorkflowName.trim() || (isSavingEdit$ | async) === true">
         <span *ngIf="(isSavingEdit$ | async) === false">Save Changes</span>
         <span *ngIf="(isSavingEdit$ | async) === true">Saving…</span>
@@ -262,16 +305,14 @@
   </div>
 </div>
 
-<!-- ══════════════════════════ DELETE CONFIRMATION ══════════════════════════ -->
+<!-- ══════════════ DELETE CONFIRMATION ══════════════ -->
 <div class="modal-backdrop" *ngIf="showDeleteConfirm" (click)="cancelDelete()">
   <div class="modal-card modal-card--danger" (click)="$event.stopPropagation()">
-
     <div class="modal-header">
       <h3 class="modal-title modal-title--danger">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="#dc2626">
           <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-        </svg>
-        Delete Workflow
+        </svg>Delete Workflow
       </h3>
       <button class="modal-close" (click)="cancelDelete()">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor">
@@ -279,7 +320,6 @@
         </svg>
       </button>
     </div>
-
     <div class="modal-body" *ngIf="deletingWorkflow">
       <p class="delete-warning-text">Are you sure you want to delete this workflow? This action cannot be undone.</p>
       <div class="delete-preview">
@@ -287,19 +327,15 @@
         <span *ngIf="deletingWorkflow.description" class="delete-preview-desc">{{ deletingWorkflow.description }}</span>
       </div>
     </div>
-
     <div class="modal-footer">
-      <button class="btn-modal btn-modal-cancel"
-        (click)="cancelDelete()"
+      <button class="btn-modal btn-modal-cancel" (click)="cancelDelete()"
         [disabled]="(isDeleting$ | async) === true">Cancel</button>
-      <button class="btn-modal btn-modal-delete"
-        (click)="confirmDelete()"
+      <button class="btn-modal btn-modal-delete" (click)="confirmDelete()"
         [disabled]="(isDeleting$ | async) === true">
         <span *ngIf="(isDeleting$ | async) === false">
           <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:middle;margin-right:3px">
             <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/>
-          </svg>
-          Delete
+          </svg>Delete
         </span>
         <span *ngIf="(isDeleting$ | async) === true">Deleting…</span>
       </button>
