@@ -31,8 +31,8 @@
             <select id="workflow" formControlName="workflow" class="form-control" (change)="onWorkflowSelectionChange()">
               <option value="">Select a workflow</option>
               <!-- ✅ Using async pipe -->
-              <option *ngFor="let workflow of workflows$ | async" [value]="workflow.id">
-                {{ workflow.name }}
+              <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
+                {{ workflow.workflowName }}
               </option>
             </select>
           </div>

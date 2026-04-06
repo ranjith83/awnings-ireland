@@ -9,7 +9,9 @@ import {
   WorkflowDto,
   SupplierDto,
   ProductTypeDto,
-  ProductDto
+  ProductDto,
+  WorkflowDeleteResult,
+  WorkflowDependency
 } from '../../service/workflow.service';
 import {
   WorkflowStateService,
@@ -70,9 +72,11 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   isSavingEdit$ = new BehaviorSubject<boolean>(false);
 
   // Delete confirmation state
-  showDeleteConfirm = false;
+  showDeleteConfirm    = false;
   deletingWorkflow: WorkflowDto | null = null;
-  isDeleting$ = new BehaviorSubject<boolean>(false);
+  isDeleting$          = new BehaviorSubject<boolean>(false);
+  /** Populated when the server blocks deletion — shown in the confirmation modal. */
+  blockingDependencies: WorkflowDependency[] = [];
 
   customerId: number | null = null;
   customerName  = '';
@@ -245,7 +249,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       productId: this.selectedProduct,
       productTypeId: this.selectedProductType,
       companyId: 0,
-      taskId: this.taskId || undefined
+      taskId: this.taskId || undefined,
+      hasDependencies:  false
     };
 
     this.isLoading$.next(true);
@@ -313,29 +318,79 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   openDeleteConfirm(workflow: WorkflowDto, event: Event) {
     event.stopPropagation();
-    this.deletingWorkflow = workflow; this.showDeleteConfirm = true;
+    // If the workflow already has known dependencies (from the list data),
+    // open in "blocked" mode immediately without hitting the API
+    this.deletingWorkflow    = workflow;
+    this.blockingDependencies = [];   // clear any previous state
+    this.showDeleteConfirm   = true;
   }
 
-  cancelDelete() { this.showDeleteConfirm = false; this.deletingWorkflow = null; }
+  /** True when the workflow in the confirmation modal has known dependencies. */
+  get deleteIsBlocked(): boolean {
+    return !!this.deletingWorkflow?.hasDependencies;
+  }
+
+  cancelDelete() {
+    this.showDeleteConfirm    = false;
+    this.deletingWorkflow     = null;
+    this.blockingDependencies = [];
+  }
 
   confirmDelete() {
     if (!this.deletingWorkflow) return;
+
+    // Guard: never submit the request if dependencies are known
+    if (this.deletingWorkflow.hasDependencies) return;
+
     const id   = this.deletingWorkflow.workflowId;
     const name = this.deletingWorkflow.workflowName || this.deletingWorkflow.description;
 
-    this.isDeleting$.next(true); this.showDeleteConfirm = false;
+    this.isDeleting$.next(true);
     this.workflowService.deleteWorkflow(id).pipe(
       takeUntil(this.destroy$),
-      finalize(() => { this.isDeleting$.next(false); this.deletingWorkflow = null; })
+      finalize(() => this.isDeleting$.next(false))
     ).subscribe({
-      next: () => {
-        const current = this.workflowsSubject$.value.filter(w => w.workflowId !== id);
-        this.workflowsSubject$.next(current); this.calculateTotalPages(current.length);
-        this.successMessage$.next(`Workflow "${name}" deleted successfully!`);
-        this.clearMessagesAfterDelay();
+      next: (result: WorkflowDeleteResult) => {
+        if (result.deleted) {
+          // Success — remove from local list
+          const current = this.workflowsSubject$.value.filter(w => w.workflowId !== id);
+          this.workflowsSubject$.next(current);
+          this.calculateTotalPages(current.length);
+          this.showDeleteConfirm = false;
+          this.deletingWorkflow  = null;
+          this.blockingDependencies = [];
+          this.successMessage$.next(`Workflow "${name}" deleted successfully!`);
+          this.clearMessagesAfterDelay();
+        } else {
+          // Blocked — update the workflow in the local list so the icon refreshes,
+          // and show the dependency list inside the still-open modal.
+          this.blockingDependencies = result.blockingDependencies;
+          // Mark hasDependencies = true so the button stays locked on the list
+          const cw = this.workflowsSubject$.value;
+          const idx = cw.findIndex(w => w.workflowId === id);
+          if (idx !== -1) {
+            cw[idx] = { ...cw[idx], hasDependencies: true };
+            this.workflowsSubject$.next([...cw]);
+          }
+        }
       },
-      error: () => { this.errorMessage$.next('Failed to delete workflow. Please try again.'); this.clearMessagesAfterDelay(); }
+      error: () => {
+        this.errorMessage$.next('Failed to delete workflow. Please try again.');
+        this.showDeleteConfirm = false;
+        this.deletingWorkflow  = null;
+        this.clearMessagesAfterDelay();
+      }
     });
+  }
+
+  /** Returns an icon character for each dependency name. */
+  depIcon(name: string): string {
+    if (name.toLowerCase().includes('enquiry'))  return '✉';
+    if (name.toLowerCase().includes('quote'))    return '📄';
+    if (name.toLowerCase().includes('showroom')) return '🏠';
+    if (name.toLowerCase().includes('site'))     return '📍';
+    if (name.toLowerCase().includes('invoice'))  return '💶';
+    return '•';
   }
 
   // ── Stage toggle (enabled flag only — completed is server-computed) ───────

@@ -45,7 +45,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
   bookingForm: FormGroup;
   
   // ✅ Convert to BehaviorSubjects for reactive state management
-  private workflowsSubject$ = new BehaviorSubject<Workflow[]>([]);
+  private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
   private calendarEventsSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
   private eventsForSelectedDateSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
   private popupEventsSubject$ = new BehaviorSubject<CalendarEvent[]>([]);
@@ -55,7 +55,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
   private deletingEventIdSubject$ = new BehaviorSubject<string | null>(null);
   
   // ✅ Public observables for template
-  workflows$: Observable<Workflow[]> = this.workflowsSubject$.asObservable();
+  workflows$: Observable<WorkflowDto[]> = this.workflowsSubject$.asObservable();
   calendarEvents$: Observable<CalendarEvent[]> = this.calendarEventsSubject$.asObservable();
   eventsForSelectedDate$: Observable<CalendarEvent[]> = this.eventsForSelectedDateSubject$.asObservable();
   popupEvents$: Observable<CalendarEvent[]> = this.popupEventsSubject$.asObservable();
@@ -180,12 +180,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         take(1), // ✅ Complete after first emission
         takeUntil(this.destroy$),
         tap(workflows => {
-          const mappedWorkflows = workflows.map(w => ({
-            id: w.workflowId.toString(),
-            name: w.productName || w.description || `Workflow ${w.workflowId}`
-          }));
-          
-          this.workflowsSubject$.next(mappedWorkflows);
+          this.workflowsSubject$.next(workflows);
           
           if (preselectedWorkflowId && workflows.some(w => w.workflowId === preselectedWorkflowId)) {
             this.workflowId = preselectedWorkflowId;
@@ -347,11 +342,11 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
 
     this.workflowId = selectedWorkflowId;
     
-    const selectedWorkflow = this.workflowsSubject$.value.find(w => parseInt(w.id) === selectedWorkflowId);
+    const selectedWorkflow = this.workflowsSubject$.value.find(w => w.workflowId === selectedWorkflowId);
     if (selectedWorkflow) {
       this.bookingForm.patchValue({ 
-        eventName: `${selectedWorkflow.name} - ${this.customerName}`,
-        description: `Showroom visit for ${selectedWorkflow.name}`
+        eventName: `${selectedWorkflow.workflowName} - ${this.customerName}`,
+        description: `Showroom visit for ${selectedWorkflow.workflowName}`
       });
     }
   }

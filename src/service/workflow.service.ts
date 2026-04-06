@@ -18,17 +18,18 @@ export interface WorkflowDto {
   setupSiteVisit: boolean;
   invoiceSent: boolean;
 
-  // ── Stage completed flags (server-computed from real activity records) ────
-  /** True when at least one InitialEnquiry record exists for this workflow. */
+  // ── Stage completed flags (server-computed) ───────────────────────────────
   initialEnquiryCompleted: boolean;
-  /** True when at least one Quote record exists for this workflow. */
   createQuotationCompleted: boolean;
-  /** True when at least one ShowroomInvite record exists for this workflow. */
   inviteShowRoomCompleted: boolean;
-  /** True when at least one SiteVisit record exists for this workflow. */
   setupSiteVisitCompleted: boolean;
-  /** True when at least one Invoice record exists for this workflow. */
   invoiceSentCompleted: boolean;
+
+  /**
+   * True when any dependency record exists (enquiry, quote, showroom, site visit,
+   * or invoice). The delete button is locked in the UI when this is true.
+   */
+  hasDependencies: boolean;
 
   dateAdded: string | Date;
   addedBy: string;
@@ -38,6 +39,19 @@ export interface WorkflowDto {
   productTypeId: number;
   companyId: number;
   taskId?: number;
+}
+
+/** One dependency type returned when a delete is blocked. */
+export interface WorkflowDependency {
+  name: string;
+  count: number;
+}
+
+/** Returned by DELETE /api/workflow/DeleteWorkflow/{id}. */
+export interface WorkflowDeleteResult {
+  deleted: boolean;
+  message: string;
+  blockingDependencies: WorkflowDependency[];
 }
 
 export interface CreateWorkflowDto {
@@ -162,9 +176,12 @@ export class WorkflowService {
       .pipe(catchError(this.handleError));
   }
 
-  /** DELETE /api/workflow/DeleteWorkflow/{workflowId} */
-  deleteWorkflow(workflowId: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/DeleteWorkflow/${workflowId}`)
+  /** DELETE /api/workflow/DeleteWorkflow/{workflowId}
+   *  Returns WorkflowDeleteResult — check result.deleted to know if it succeeded.
+   *  A 200 is returned even when blocked so the error handler is not triggered.
+   */
+  deleteWorkflow(workflowId: number): Observable<WorkflowDeleteResult> {
+    return this.http.delete<WorkflowDeleteResult>(`${this.apiUrl}/DeleteWorkflow/${workflowId}`)
       .pipe(catchError(this.handleError));
   }
 

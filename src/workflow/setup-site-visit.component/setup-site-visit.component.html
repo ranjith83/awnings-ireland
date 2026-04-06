@@ -16,7 +16,7 @@
           <select formControlName="workflow" [(ngModel)]="selectedWorkflowId" class="form-control">
             <option value="">Select Workflow</option>
             <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
-              {{ workflow.description }}
+              {{ workflow.workflowName }}
             </option>
           </select>
         </div>
