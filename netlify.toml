@@ -7,5 +7,8 @@
   to = "/index.html"
   status = 200
 
+[[plugins]]
+  package = "@netlify/angular-runtime"
+
 [build.environment]
   NODE_VERSION = "20.19.0"
