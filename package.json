@@ -4,7 +4,8 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build && ng run awnings-ireland:server",
+    "build": "ng build",
+    "build:client": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "serve:ssr:awnings-ireland": "node dist/awnings-ireland/server/server.mjs"
