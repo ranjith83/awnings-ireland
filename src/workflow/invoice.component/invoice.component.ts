@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of, finalize } from 'rxjs';
@@ -102,8 +102,36 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   notes: string = '';
   terms: string = 'Payment due within 30 days.\nLate payments subject to interest charges.';
   
+  // Brackets dropdown open state
+  bracketDropdownOpen = false;
+
+  toggleBracketDropdown() { this.bracketDropdownOpen = !this.bracketDropdownOpen; }
+
+  closeBracketDropdown() { this.bracketDropdownOpen = false; }
+
+  isBracketSelected(bracketId: Number): boolean {
+    return this.selectedBrackets.includes(bracketId.toString());
+  }
+
+  toggleBracket(bracketId: Number) {
+    const id = bracketId.toString();
+    const idx = this.selectedBrackets.indexOf(id);
+    if (idx === -1) this.selectedBrackets = [...this.selectedBrackets, id];
+    else            this.selectedBrackets = this.selectedBrackets.filter(b => b !== id);
+    this.onBracketChange();
+  }
+
+  getBracketLabel(brackets: any[]): string {
+    if (!this.selectedBrackets.length) return 'Select brackets';
+    if (this.selectedBrackets.length === 1) {
+      const b = brackets.find(br => br.bracketId.toString() === this.selectedBrackets[0]);
+      return b ? b.bracketName : 'Select brackets';
+    }
+    return `${this.selectedBrackets.length} brackets selected`;
+  }
+
   // Addon selections
-  selectedBrackets: string = '';
+  selectedBrackets: string[] = [];
   extrasDescription: string = '';
   extrasPrice: number = 0;
   selectedMotor: string = '';
@@ -113,6 +141,20 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   installationFee: number = 0;
   vatRate: number = 13.5;
   emailToCustomer: boolean = false;
+
+  // RAL surcharge (width-based pricing)
+  includeRalSurcharge: boolean = false;
+  ralSurchargePrices: { [widthCm: number]: number } = {
+    200: 150, 250: 175, 300: 200, 350: 225, 400: 250, 450: 275, 500: 300,
+    550: 325, 600: 350, 650: 375, 700: 400
+  };
+
+  // Shadeplus (width-based pricing)
+  includeShadeplus: boolean = false;
+  shadeplusPrices: { [widthCm: number]: number } = {
+    200: 120, 250: 140, 300: 160, 350: 180, 400: 200, 450: 220, 500: 240,
+    550: 260, 600: 280, 650: 300, 700: 320
+  };
   
   calculatedPrice: number = 0;
   
@@ -127,6 +169,14 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router
   ) {}
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-dropdown')) {
+      this.bracketDropdownOpen = false;
+    }
+  }
 
   ngOnInit() {
     this.initializeObservables();
@@ -338,7 +388,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
             !b.bracketName.toLowerCase().includes('spreader')
           );
           if (defaultBracket) {
-            this.selectedBrackets = defaultBracket.bracketId.toString();
+            this.selectedBrackets = [defaultBracket.bracketId.toString()];
             this.onBracketChange();
           }
         }),
@@ -439,7 +489,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         const desc = item.description.toLowerCase();
         
         const bracket = brackets.find(b => desc.includes(b.bracketName.toLowerCase()));
-        if (bracket) this.selectedBrackets = bracket.bracketId.toString();
+        if (bracket) this.selectedBrackets = [bracket.bracketId.toString()];
         
         const motor = motors.find(m => desc.includes(m.description.toLowerCase()) || desc.includes('motor'));
         if (motor) this.selectedMotor = motor.motorId.toString();
@@ -462,17 +512,21 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   private resetSelections() {
     this.selectedWidthCm = null;
     this.selectedAwning = null;
-    this.selectedBrackets = '';
+    this.selectedBrackets = [];
     this.extrasDescription = '';
     this.extrasPrice = 0;
     this.selectedMotor = '';
     this.selectedHeater = '';
     this.includeElectrician = false;
+    this.includeRalSurcharge = false;
+    this.includeShadeplus = false;
     this.installationFee = 0;
   }
 
   onWidthChange() {
     this.checkAndGenerateFirstLineItem();
+    if (this.includeRalSurcharge) this.onRalSurchargeChange();
+    if (this.includeShadeplus)    this.onShadeplusChange();
   }
 
   onAwningChange() {
@@ -483,18 +537,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) {
       return;
     }
+    const productId = this.selectedModelId;
+    const widthcm   = this.selectedWidthCm;
+    const projcm    = this.selectedAwning;
 
-    this.workflowService.getProjectionPriceForProduct(
-      this.selectedModelId,
-      this.selectedWidthCm,
-      this.selectedAwning
-    )
+    // Fetch price
+    this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
       .pipe(
         takeUntil(this.destroy$),
-        tap(price => {
-          this.calculatedPrice = price;
-          this.generateFirstLineItem();
-        }),
+        tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }),
         catchError(error => {
           console.error('Error getting price:', error);
           this.errorMessage$.next('Failed to get price for selected dimensions');
@@ -502,6 +553,30 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         })
       )
       .subscribe();
+
+    // Re-load brackets filtered to this arm type
+    this.workflowService.getArmTypeForProjection(productId, widthcm, projcm)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(armTypeId => {
+          this.workflowService.getBracketsForProduct(productId, armTypeId)
+            .pipe(
+              takeUntil(this.destroy$),
+              tap(brackets => {
+                this.bracketsSubject$.next(brackets);
+                // Drop any selected brackets that are no longer compatible
+                const validIds = brackets.map(b => b.bracketId.toString());
+                const stillValid = this.selectedBrackets.filter(id => validIds.includes(id));
+                if (stillValid.length !== this.selectedBrackets.length) {
+                  this.selectedBrackets = stillValid;
+                  this.onBracketChange();
+                }
+              }),
+              catchError(() => of([]))
+            ).subscribe();
+        }),
+        catchError(() => of(null))
+      ).subscribe();
   }
 
   private generateFirstLineItem() {
@@ -536,29 +611,77 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   onBracketChange() {
-    if (!this.selectedBrackets) {
-      this.removeAddonLineItem('bracket');
-      return;
-    }
+    this.removeAddonLineItem('bracket');
+
+    if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
 
     const brackets = this.bracketsSubject$.value;
-    const bracket = brackets.find(b => b.bracketId.toString() === this.selectedBrackets);
-    if (bracket) {
-      const totalPrice = this.calculateItemTotal(1, bracket.price, this.vatRate, 0);
-      
+    const selected = brackets.filter(b => this.selectedBrackets.includes(b.bracketId.toString()));
+
+    if (selected.length === 1) {
+      const b = selected[0];
       const lineItem: InvoiceItemDisplay = {
-        description: bracket.bracketName,
-        quantity: 1,
-        unitPrice: bracket.price,
-        taxRate: this.vatRate,
-        discountPercentage: 0,
-        unit: 'pcs',
-        totalPrice: totalPrice,
+        description: b.bracketName, quantity: 1, unitPrice: b.price,
+        taxRate: this.vatRate, discountPercentage: 0, unit: 'pcs',
+        totalPrice: this.calculateItemTotal(1, b.price, this.vatRate, 0),
         id: this.getAddonItemId('bracket')
       };
-
+      this.addOrUpdateAddonLineItem('bracket', lineItem);
+    } else if (selected.length > 1) {
+      const combinedDesc = selected.map(b => b.bracketName).join(' + ');
+      const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
+      const lineItem: InvoiceItemDisplay = {
+        description: combinedDesc, quantity: 1, unitPrice: combinedPrice,
+        taxRate: this.vatRate, discountPercentage: 0, unit: 'pcs',
+        totalPrice: this.calculateItemTotal(1, combinedPrice, this.vatRate, 0),
+        id: this.getAddonItemId('bracket')
+      };
       this.addOrUpdateAddonLineItem('bracket', lineItem);
     }
+  }
+
+  onRalSurchargeChange() {
+    if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
+    const price = this.getRalPrice();
+    const lineItem: InvoiceItemDisplay = {
+      description: 'Surcharge for non-standard RAL colors',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('ral')
+    };
+    this.addOrUpdateAddonLineItem('ral', lineItem);
+  }
+
+  getRalPrice(): number {
+    if (this.selectedWidthCm && this.ralSurchargePrices[this.selectedWidthCm]) {
+      return this.ralSurchargePrices[this.selectedWidthCm];
+    }
+    const widths = Object.keys(this.ralSurchargePrices).map(Number).sort((a, b) => a - b);
+    const nearest = widths.reduce((prev, curr) =>
+      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
+    return this.ralSurchargePrices[nearest] || 0;
+  }
+
+  onShadeplusChange() {
+    if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
+    const price = this.getShadeplusPrice();
+    const lineItem: InvoiceItemDisplay = {
+      description: 'Shadeplus',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('shadeplus')
+    };
+    this.addOrUpdateAddonLineItem('shadeplus', lineItem);
+  }
+
+  getShadeplusPrice(): number {
+    if (this.selectedWidthCm && this.shadeplusPrices[this.selectedWidthCm]) {
+      return this.shadeplusPrices[this.selectedWidthCm];
+    }
+    const widths = Object.keys(this.shadeplusPrices).map(Number).sort((a, b) => a - b);
+    const nearest = widths.reduce((prev, curr) =>
+      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
+    return this.shadeplusPrices[nearest] || 0;
   }
 
   onExtrasChange() {
@@ -717,13 +840,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       'motor': 100003,
       'heater': 100004,
       'electrician': 100005,
-      'installation': 100006
+      'installation': 100006,
+      'ral': 100007,
+      'shadeplus': 100008
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus'];
     const currentTypeIndex = typeOrder.indexOf(type);
     const currentItems = this.invoiceItemsSubject$.value;
     
@@ -762,10 +887,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   removeInvoiceItem(index: number) {
     const currentItems = this.invoiceItemsSubject$.value;
-    if (currentItems.length > 1) {
-      currentItems.splice(index, 1);
-      this.invoiceItemsSubject$.next([...currentItems]);
-    }
+    currentItems.splice(index, 1);
+    this.invoiceItemsSubject$.next([...currentItems]);
   }
 
   onQuantityChange(item: InvoiceItemDisplay) {

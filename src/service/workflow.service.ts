@@ -101,11 +101,10 @@ export interface InitialEnquiryDto {
 // Product addon interfaces
 export interface BracketDto {
   bracketId: number;
-  productId: number;
   bracketName: string;
   price: number;
+  armTypeId: number | null;   // <-- ADD THIS
 }
-
 export interface ArmDto {
   armId: number;
   productId: number;
@@ -250,11 +249,12 @@ export class WorkflowService {
   }
 
   /** GET /api/workflow/GeBracketsForProduct */
-  getBracketsForProduct(productId: number): Observable<BracketDto[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<BracketDto[]>(`${this.apiUrl}/GeBracketsForProduct`, { params })
-      .pipe(catchError(this.handleError));
-  }
+getBracketsForProduct(productId: number, armTypeId?: number | null): Observable<BracketDto[]> {
+  let params: any = { ProductId: productId };
+  if (armTypeId != null) params['armTypeId'] = armTypeId;
+  return this.http.get<BracketDto[]>(`${this.apiUrl}/GeBracketsForProduct`, { params })
+    .pipe(catchError(this.handleError));
+}
 
   /** GET /api/workflow/GeFixingPointsForProduct */
   getFixingPointsForProduct(productId: number): Observable<FixingPointDto[]> {
@@ -262,6 +262,13 @@ export class WorkflowService {
     return this.http.get<FixingPointDto[]>(`${this.apiUrl}/GeFixingPointsForProduct`, { params })
       .pipe(catchError(this.handleError));
   }
+
+getArmTypeForProjection(productId: number, widthcm: number, projectioncm: number): Observable<number | null> {
+  return this.http.get<number | null>(
+    `${this.apiUrl}/GetArmTypeForProjection`,
+    { params: { ProductId: productId, widthcm, projectioncm } }
+  ).pipe(catchError(this.handleError));
+}
 
   // ============================================
   // SUPPLIER ENDPOINTS

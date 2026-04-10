@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -103,14 +103,56 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   discountType  = '';
   discountValue = 0;
 
+  // Brackets dropdown open state
+  bracketDropdownOpen = false;
+
+  toggleBracketDropdown() { this.bracketDropdownOpen = !this.bracketDropdownOpen; }
+
+  closeBracketDropdown() { this.bracketDropdownOpen = false; }
+
+  isBracketSelected(bracketId: Number): boolean {
+    return this.selectedBrackets.includes(bracketId.toString());
+  }
+
+  toggleBracket(bracketId: Number) {
+    const id = bracketId.toString();
+    const idx = this.selectedBrackets.indexOf(id);
+    if (idx === -1) this.selectedBrackets = [...this.selectedBrackets, id];
+    else            this.selectedBrackets = this.selectedBrackets.filter(b => b !== id);
+    this.onBracketChange();
+  }
+
+  getBracketLabel(brackets: any[]): string {
+    if (!this.selectedBrackets.length) return 'Select brackets';
+    if (this.selectedBrackets.length === 1) {
+      const b = brackets.find(br => br.bracketId.toString() === this.selectedBrackets[0]);
+      return b ? b.bracketName : 'Select brackets';
+    }
+    return `${this.selectedBrackets.length} brackets selected`;
+  }
+
   // ── Addon selections ───────────────────────────────────────────────────────
   installationFee     = 0;
   vatRate             = 13.5;
-  selectedBrackets    = '';
+  selectedBrackets    : string[] = [];
   selectedMotor       = '';
   selectedHeater      = '';
   includeElectrician  = false;
   electricianPrice    = 280.00;
+
+  // RAL surcharge (width-based pricing map: width cm → price)
+  includeRalSurcharge  = false;
+  ralSurchargePrices: { [widthCm: number]: number } = {
+    200: 150, 250: 175, 300: 200, 350: 225, 400: 250, 450: 275, 500: 300,
+    550: 325, 600: 350, 650: 375, 700: 400
+  };
+
+  // Shadeplus (width-based pricing map: width cm → price)
+  includeShadeplus  = false;
+  shadeplusPrices: { [widthCm: number]: number } = {
+    200: 120, 250: 140, 300: 160, 350: 180, 400: 200, 450: 220, 500: 240,
+    550: 260, 600: 280, 650: 300, 700: 320
+  };
 
   // Extras (free-text line item)
   extrasDescription = '';
@@ -145,6 +187,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-dropdown')) {
+      this.bracketDropdownOpen = false;
+    }
   }
 
   // ── Observable setup ───────────────────────────────────────────────────────
@@ -325,7 +375,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           !b.bracketName.toLowerCase().includes('spreader')
         );
         if (defaultBracket) {
-          this.selectedBrackets = defaultBracket.bracketId.toString();
+          this.selectedBrackets = [defaultBracket.bracketId.toString()];
           this.onBracketChange();
         }
       }),
@@ -360,14 +410,47 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   // ── Dimension / addon handlers ─────────────────────────────────────────────
 
-  onWidthChange()  { this.checkAndGenerateFirstLineItem(); }
+  onWidthChange()  {
+    this.checkAndGenerateFirstLineItem();
+    if (this.includeRalSurcharge) this.onRalSurchargeChange();
+    if (this.includeShadeplus)    this.onShadeplusChange();
+  }
   onAwningChange() { this.checkAndGenerateFirstLineItem(); }
 
   private checkAndGenerateFirstLineItem() {
     if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) return;
-    this.workflowService.getProjectionPriceForProduct(this.selectedModelId, this.selectedWidthCm, this.selectedAwning)
+    const productId = this.selectedModelId;
+    const widthcm   = this.selectedWidthCm;
+    const projcm    = this.selectedAwning;
+
+    // Fetch price and ArmTypeId in parallel
+    this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
       .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.errorMessage$.next('Failed to get price'); return of(0); }))
       .subscribe();
+
+    // Re-load brackets filtered to this arm type
+    this.workflowService.getArmTypeForProjection(productId, widthcm, projcm)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(armTypeId => {
+          this.workflowService.getBracketsForProduct(productId, armTypeId)
+            .pipe(
+              takeUntil(this.destroy$),
+              tap(brackets => {
+                this.bracketsSubject$.next(brackets);
+                // If currently selected brackets are no longer valid, clear them
+                const validIds = brackets.map(b => b.bracketId.toString());
+                const stillValid = this.selectedBrackets.filter(id => validIds.includes(id));
+                if (stillValid.length !== this.selectedBrackets.length) {
+                  this.selectedBrackets = stillValid;
+                  this.onBracketChange();
+                }
+              }),
+              catchError(() => of([]))
+            ).subscribe();
+        }),
+        catchError(() => of(null))
+      ).subscribe();
   }
 
   private generateFirstLineItem() {
@@ -392,9 +475,34 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onBracketChange() {
-    if (!this.selectedBrackets) { this.removeAddonLineItem('bracket'); return; }
-    const bracket = this.bracketsSubject$.value.find(b => b.bracketId.toString() === this.selectedBrackets);
-    if (bracket) this.addOrUpdateAddonLineItem('bracket', { description: bracket.bracketName, quantity: 1, unitPrice: bracket.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, bracket.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
+    // Remove all existing bracket line items first
+    this.removeAddonLineItem('bracket');
+
+    if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
+
+    const brackets = this.bracketsSubject$.value;
+    const selected = brackets.filter(b => this.selectedBrackets.includes(b.bracketId.toString()));
+
+    if (selected.length === 1) {
+      // Single bracket — use the standard bracket slot
+      const b = selected[0];
+      this.addOrUpdateAddonLineItem('bracket', {
+        description: b.bracketName, quantity: 1, unitPrice: b.price,
+        taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, b.price, this.vatRate, 0),
+        id: this.getAddonItemId('bracket')
+      });
+    } else if (selected.length > 1) {
+      // Multiple brackets — combine into one line item using the bracket slot
+      const combinedDesc = selected.map(b => b.bracketName).join(' + ');
+      const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
+      this.addOrUpdateAddonLineItem('bracket', {
+        description: combinedDesc, quantity: 1, unitPrice: combinedPrice,
+        taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, combinedPrice, this.vatRate, 0),
+        id: this.getAddonItemId('bracket')
+      });
+    }
   }
 
   onExtrasChange() {
@@ -411,6 +519,49 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
       id: this.getAddonItemId('arm')
     });
+  }
+
+  onRalSurchargeChange() {
+    if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
+    const price = this.getRalPrice();
+    this.addOrUpdateAddonLineItem('ral', {
+      description: 'Surcharge for non-standard RAL colors',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      amount: this.calculateAmount(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('ral')
+    });
+  }
+
+  getRalPrice(): number {
+    if (this.selectedWidthCm && this.ralSurchargePrices[this.selectedWidthCm]) {
+      return this.ralSurchargePrices[this.selectedWidthCm];
+    }
+    // Fallback: find nearest width
+    const widths = Object.keys(this.ralSurchargePrices).map(Number).sort((a, b) => a - b);
+    const nearest = widths.reduce((prev, curr) =>
+      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
+    return this.ralSurchargePrices[nearest] || 0;
+  }
+
+  onShadeplusChange() {
+    if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
+    const price = this.getShadeplusPrice();
+    this.addOrUpdateAddonLineItem('shadeplus', {
+      description: 'Shadeplus',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      amount: this.calculateAmount(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('shadeplus')
+    });
+  }
+
+  getShadeplusPrice(): number {
+    if (this.selectedWidthCm && this.shadeplusPrices[this.selectedWidthCm]) {
+      return this.shadeplusPrices[this.selectedWidthCm];
+    }
+    const widths = Object.keys(this.shadeplusPrices).map(Number).sort((a, b) => a - b);
+    const nearest = widths.reduce((prev, curr) =>
+      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
+    return this.shadeplusPrices[nearest] || 0;
   }
 
   onMotorChange() {
@@ -452,7 +603,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   removeQuoteItem(index: number) {
     const items = this.quoteItemsSubject$.value;
-    if (items.length > 1) { items.splice(index, 1); this.quoteItemsSubject$.next([...items]); }
+    items.splice(index, 1);
+    this.quoteItemsSubject$.next([...items]);
   }
 
   onQuantityChange(item: QuoteItemDisplay) {
@@ -680,6 +832,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.notes       = '';
     this.terms         = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
     this.installationFee = 0;
+    this.selectedBrackets = [];
+    this.selectedMotor = '';
+    this.selectedHeater = '';
+    this.includeElectrician = false;
+    this.includeRalSurcharge = false;
+    this.includeShadeplus = false;
+    this.extrasDescription = '';
+    this.extrasPrice = 0;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
     this.quoteItemsSubject$.next(first ? [first] : []);
     this.successMessage$.next('');
@@ -717,12 +877,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   private getAddonItemId(type: string): number {
-    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006 };
+    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008 };
     return ids[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation'];
+    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus'];
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
