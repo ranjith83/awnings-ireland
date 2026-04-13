@@ -91,6 +91,9 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   selectedQuoteId: number | null = null;
   selectedQuote: QuoteDto | null = null;
   selectedModelId: number | null = null;
+  /** The raw value the user typed in the width text box (cm). Used for display in line item. */
+  enteredWidthCm: number | null = null;
+  /** The resolved standard-width ceiling used for pricing lookups. */
   selectedWidthCm: number | null = null;
   selectedAwning: number | null = null;
   selectedProductName: string = '';
@@ -142,19 +145,23 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   vatRate: number = 13.5;
   emailToCustomer: boolean = false;
 
-  // RAL surcharge (width-based pricing)
+  // RAL surcharge — price fetched from API based on productId + ceiling width
   includeRalSurcharge: boolean = false;
-  ralSurchargePrices: { [widthCm: number]: number } = {
-    200: 150, 250: 175, 300: 200, 350: 225, 400: 250, 450: 275, 500: 300,
-    550: 325, 600: 350, 650: 375, 700: 400
-  };
 
-  // Shadeplus (width-based pricing)
+  // Shadeplus — price fetched from API based on productId + ceiling width
   includeShadeplus: boolean = false;
-  shadeplusPrices: { [widthCm: number]: number } = {
-    200: 120, 250: 140, 300: 160, 350: 180, 400: 200, 450: 220, 500: 240,
-    550: 260, 600: 280, 650: 300, 700: 320
-  };
+
+  // Valance Style — price fetched from API based on productId + ceiling width
+  includeValanceStyle: boolean = false;
+
+  // Wall Sealing Profile — price fetched from API based on productId + ceiling width
+  includeWallSealing: boolean = false;
+
+  // ── Addon availability flags (set after workflow/product selected) ──────────
+  hasRalSurcharge  = false;
+  hasShadePlus     = false;
+  hasValanceStyle  = false;
+  hasWallSealing   = false;
   
   calculatedPrice: number = 0;
   
@@ -377,6 +384,17 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   private loadProductAddons() {
     if (!this.selectedModelId) return;
 
+    // Reset availability flags for the newly selected product
+    this.hasRalSurcharge = false;
+    this.hasShadePlus    = false;
+    this.hasValanceStyle = false;
+    this.hasWallSealing  = false;
+
+    this.workflowService.hasNonStandardRALColours(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
+    this.workflowService.hasShadePlus(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasShadePlus = v);
+    this.workflowService.hasValanceStyles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
+    this.workflowService.hasWallSealingProfiles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
+
     this.workflowService.getBracketsForProduct(this.selectedModelId)
       .pipe(
         takeUntil(this.destroy$),
@@ -471,7 +489,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       
       if (widthMatch) {
         const widthM = parseFloat(widthMatch[1]);
-        this.selectedWidthCm = Math.round(widthM * 100);
+        this.enteredWidthCm = Math.round(widthM * 100);
+        this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
       }
       
       if (projectionMatch) {
@@ -510,6 +529,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   private resetSelections() {
+    this.enteredWidthCm = null;
     this.selectedWidthCm = null;
     this.selectedAwning = null;
     this.selectedBrackets = [];
@@ -520,13 +540,30 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.includeElectrician = false;
     this.includeRalSurcharge = false;
     this.includeShadeplus = false;
+    this.includeValanceStyle = false;
+    this.includeWallSealing = false;
+    this.includeValanceStyle = false;
+    this.includeWallSealing = false;
     this.installationFee = 0;
   }
 
-  onWidthChange() {
+  onWidthInput() {
+    this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.checkAndGenerateFirstLineItem();
     if (this.includeRalSurcharge) this.onRalSurchargeChange();
     if (this.includeShadeplus)    this.onShadeplusChange();
+    if (this.includeValanceStyle) this.onValanceStyleChange();
+    if (this.includeWallSealing)  this.onWallSealingChange();
+  }
+
+  /** Returns the smallest standard width >= enteredWidthCm, or null if none available. */
+  private resolveCeilingWidth(entered: number | null): number | null {
+    if (!entered || entered <= 0) return null;
+    const widths = this.widthsSubject$.value;
+    if (!widths.length) return null;
+    const sorted = [...widths].sort((a, b) => a - b);
+    const ceiling = sorted.find(w => w >= entered);
+    return ceiling ?? sorted[sorted.length - 1];
   }
 
   onAwningChange() {
@@ -534,11 +571,11 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   private checkAndGenerateFirstLineItem() {
-    if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) {
+    if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) {
       return;
     }
     const productId = this.selectedModelId;
-    const widthcm   = this.selectedWidthCm;
+    const widthcm   = this.selectedWidthCm; // ceiling width for pricing
     const projcm    = this.selectedAwning;
 
     // Fetch price
@@ -580,13 +617,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   private generateFirstLineItem() {
-    if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedProductName) {
+    if (!this.enteredWidthCm || !this.selectedAwning || !this.selectedProductName) {
       return;
     }
-
-    const widthM = (this.selectedWidthCm / 100).toFixed(1);
-    const projectionM = (this.selectedAwning / 100).toFixed(0);
-    const description = `${this.selectedProductName} closed cassette awning\n${widthM}m wide x ${projectionM}m projection`;
+    // Display uses actual entered value; pricing used the ceiling width via calculatedPrice
+    const widthM = (this.enteredWidthCm / 100).toFixed(2).replace(/\.?0+$/, '') + 'm';
+    const projectionM = (this.selectedAwning / 100).toFixed(0) + 'm';
+    const description = `${this.selectedProductName} closed cassette awning ${widthM} wide x ${projectionM} projection`;
     const unitPrice = this.calculatedPrice;
     const totalPrice = this.calculateItemTotal(1, unitPrice, this.vatRate, 0);
 
@@ -642,46 +679,70 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   onRalSurchargeChange() {
     if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
-    const price = this.getRalPrice();
-    const lineItem: InvoiceItemDisplay = {
-      description: 'Surcharge for non-standard RAL colors',
-      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
-      id: this.getAddonItemId('ral')
-    };
-    this.addOrUpdateAddonLineItem('ral', lineItem);
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        const lineItem: InvoiceItemDisplay = {
+          description: 'Surcharge for non-standard RAL colors',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('ral')
+        };
+        this.addOrUpdateAddonLineItem('ral', lineItem);
+      });
   }
 
-  getRalPrice(): number {
-    if (this.selectedWidthCm && this.ralSurchargePrices[this.selectedWidthCm]) {
-      return this.ralSurchargePrices[this.selectedWidthCm];
-    }
-    const widths = Object.keys(this.ralSurchargePrices).map(Number).sort((a, b) => a - b);
-    const nearest = widths.reduce((prev, curr) =>
-      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
-    return this.ralSurchargePrices[nearest] || 0;
-  }
+  getRalPrice(): number { return 0; } // kept for template compatibility — price now from API
 
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
-    const price = this.getShadeplusPrice();
-    const lineItem: InvoiceItemDisplay = {
-      description: 'Shadeplus',
-      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
-      id: this.getAddonItemId('shadeplus')
-    };
-    this.addOrUpdateAddonLineItem('shadeplus', lineItem);
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getShadePlusPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        const lineItem: InvoiceItemDisplay = {
+          description: 'Shadeplus',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('shadeplus')
+        };
+        this.addOrUpdateAddonLineItem('shadeplus', lineItem);
+      });
   }
 
-  getShadeplusPrice(): number {
-    if (this.selectedWidthCm && this.shadeplusPrices[this.selectedWidthCm]) {
-      return this.shadeplusPrices[this.selectedWidthCm];
-    }
-    const widths = Object.keys(this.shadeplusPrices).map(Number).sort((a, b) => a - b);
-    const nearest = widths.reduce((prev, curr) =>
-      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
-    return this.shadeplusPrices[nearest] || 0;
+  getShadeplusPrice(): number { return 0; } // kept for template compatibility — price now from API
+
+  onValanceStyleChange() {
+    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        const lineItem: InvoiceItemDisplay = {
+          description: 'Valance Style',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('valance')
+        };
+        this.addOrUpdateAddonLineItem('valance', lineItem);
+      });
+  }
+
+  onWallSealingChange() {
+    if (!this.includeWallSealing) { this.removeAddonLineItem('wallsealing'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getWallSealingProfilePrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        const lineItem: InvoiceItemDisplay = {
+          description: 'Wall Sealing Profile',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('wallsealing')
+        };
+        this.addOrUpdateAddonLineItem('wallsealing', lineItem);
+      });
   }
 
   onExtrasChange() {
@@ -835,20 +896,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   private getAddonItemId(type: string): number {
     const typeIds: { [key: string]: number } = {
-      'bracket': 100001,
-      'arm': 100002,
-      'motor': 100003,
-      'heater': 100004,
-      'electrician': 100005,
-      'installation': 100006,
-      'ral': 100007,
-      'shadeplus': 100008
+      'bracket': 100001, 'arm': 100002, 'motor': 100003, 'heater': 100004,
+      'electrician': 100005, 'installation': 100006, 'ral': 100007,
+      'shadeplus': 100008, 'valance': 100009, 'wallsealing': 100010
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing'];
     const currentTypeIndex = typeOrder.indexOf(type);
     const currentItems = this.invoiceItemsSubject$.value;
     

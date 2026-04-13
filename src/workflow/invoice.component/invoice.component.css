@@ -408,6 +408,14 @@
   font-size: 18px;
 }
 
+.width-hint {
+  font-size: 12px;
+  color: #3b82f6;
+  margin-top: 4px;
+  display: block;
+  font-weight: 500;
+}
+
 /* Custom checkbox dropdown for Brackets */
 .custom-dropdown {
   position: relative;
@@ -507,7 +515,7 @@
 
 .addon-bottom-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 15px;
   align-items: end;
 }
@@ -567,4 +575,4 @@
     width: 100%;
     justify-content: center;
   }
-}
+} 

@@ -293,6 +293,53 @@ getArmTypeForProjection(productId: number, widthcm: number, projectioncm: number
       .pipe(catchError(this.handleError));
   }
 
+  
+
+// ── Addon availability checks (drives show/hide of checkboxes) ────────────────
+ 
+hasNonStandardRALColours(productId: number): Observable<boolean> {
+  return this.http.get<boolean>(`${this.apiUrl}/HasNonStandardRALColours`, { params: { ProductId: productId } })
+    .pipe(catchError(this.handleError));
+}
+ 
+hasShadePlus(productId: number): Observable<boolean> {
+  return this.http.get<boolean>(`${this.apiUrl}/HasShadePlus`, { params: { ProductId: productId } })
+    .pipe(catchError(this.handleError));
+}
+ 
+hasValanceStyles(productId: number): Observable<boolean> {
+  return this.http.get<boolean>(`${this.apiUrl}/HasValanceStyles`, { params: { ProductId: productId } })
+    .pipe(catchError(this.handleError));
+}
+ 
+hasWallSealingProfiles(productId: number): Observable<boolean> {
+  return this.http.get<boolean>(`${this.apiUrl}/HasWallSealingProfiles`, { params: { ProductId: productId } })
+    .pipe(catchError(this.handleError));
+}
+ 
+// ── Addon price lookups ───────────────────────────────────────────────────────
+ 
+getNonStandardRALColourPrice(productId: number, widthcm: number): Observable<number> {
+  return this.http.get<number>(`${this.apiUrl}/GeNonStandardRALColourPriceForProduct`, { params: { ProductId: productId, widthcm } })
+    .pipe(catchError(this.handleError));
+}
+ 
+getShadePlusPrice(productId: number, widthcm: number): Observable<number> {
+  return this.http.get<number>(`${this.apiUrl}/GeShadePlusPriceForProduct`, { params: { ProductId: productId, widthcm } })
+    .pipe(catchError(this.handleError));
+}
+ 
+getValanceStylePrice(productId: number, widthcm: number): Observable<number> {
+  return this.http.get<number>(`${this.apiUrl}/GeValanceStylePriceForProduct`, { params: { ProductId: productId, widthcm } })
+    .pipe(catchError(this.handleError));
+}
+ 
+getWallSealingProfilePrice(productId: number, widthcm: number): Observable<number> {
+  return this.http.get<number>(`${this.apiUrl}/GeWallSealingProfilerPriceForProduct`, { params: { ProductId: productId, widthcm } })
+    .pipe(catchError(this.handleError));
+}
+ 
+
   /**
    * @deprecated – no backend endpoint for this. Retained for compatibility.
    */

@@ -88,6 +88,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   selectedWorkflowId: number | null = null;
   selectedSupplierId: number | null = null;
   selectedModelId: number | null    = null;
+  /** The raw value the user typed in the width text box (cm). Used for display in line item. */
+  enteredWidthCm: number | null     = null;
+  /** The resolved standard-width ceiling used for pricing lookups. */
   selectedWidthCm: number | null    = null;
   selectedAwning: number | null     = null;
   selectedProductName               = '';
@@ -140,19 +143,23 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   includeElectrician  = false;
   electricianPrice    = 280.00;
 
-  // RAL surcharge (width-based pricing map: width cm → price)
+  // RAL surcharge — price fetched from API based on productId + ceiling width
   includeRalSurcharge  = false;
-  ralSurchargePrices: { [widthCm: number]: number } = {
-    200: 150, 250: 175, 300: 200, 350: 225, 400: 250, 450: 275, 500: 300,
-    550: 325, 600: 350, 650: 375, 700: 400
-  };
 
-  // Shadeplus (width-based pricing map: width cm → price)
+  // Shadeplus — price fetched from API based on productId + ceiling width
   includeShadeplus  = false;
-  shadeplusPrices: { [widthCm: number]: number } = {
-    200: 120, 250: 140, 300: 160, 350: 180, 400: 200, 450: 220, 500: 240,
-    550: 260, 600: 280, 650: 300, 700: 320
-  };
+
+  // Valance Style — price fetched from API based on productId + ceiling width
+  includeValanceStyle  = false;
+
+  // Wall Sealing Profile — price fetched from API based on productId + ceiling width
+  includeWallSealing  = false;
+
+  // ── Addon availability flags (set after workflow/product selected) ──────────
+  hasRalSurcharge    = false;
+  hasShadePlus       = false;
+  hasValanceStyle    = false;
+  hasWallSealing     = false;
 
   // Extras (free-text line item)
   extrasDescription = '';
@@ -365,6 +372,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   private loadProductAddons() {
     if (!this.selectedModelId) return;
     const id = this.selectedModelId;
+
+    // Reset availability flags so stale checkboxes from a prior product don't linger
+    this.hasRalSurcharge = false;
+    this.hasShadePlus    = false;
+    this.hasValanceStyle = false;
+    this.hasWallSealing  = false;
+
+    // Check which optional addons exist for this product
+    this.workflowService.hasNonStandardRALColours(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
+    this.workflowService.hasShadePlus(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasShadePlus = v);
+    this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
+    this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
     this.workflowService.getBracketsForProduct(id).pipe(
       takeUntil(this.destroy$),
       tap(v => {
@@ -410,17 +429,32 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   // ── Dimension / addon handlers ─────────────────────────────────────────────
 
-  onWidthChange()  {
+  onWidthInput() {
+    // Resolve the entered value to the next standard-width ceiling
+    this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.checkAndGenerateFirstLineItem();
     if (this.includeRalSurcharge) this.onRalSurchargeChange();
     if (this.includeShadeplus)    this.onShadeplusChange();
+    if (this.includeValanceStyle) this.onValanceStyleChange();
+    if (this.includeWallSealing)  this.onWallSealingChange();
   }
+
+  /** Returns the smallest standard width >= enteredWidthCm, or null if none available. */
+  private resolveCeilingWidth(entered: number | null): number | null {
+    if (!entered || entered <= 0) return null;
+    const widths = this.widthsSubject$.value;
+    if (!widths.length) return null;
+    const sorted = [...widths].sort((a, b) => a - b);
+    const ceiling = sorted.find(w => w >= entered);
+    return ceiling ?? sorted[sorted.length - 1]; // fallback to max if entered exceeds all
+  }
+
   onAwningChange() { this.checkAndGenerateFirstLineItem(); }
 
   private checkAndGenerateFirstLineItem() {
-    if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) return;
+    if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) return;
     const productId = this.selectedModelId;
-    const widthcm   = this.selectedWidthCm;
+    const widthcm   = this.selectedWidthCm; // ceiling width for pricing
     const projcm    = this.selectedAwning;
 
     // Fetch price and ArmTypeId in parallel
@@ -454,12 +488,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   private generateFirstLineItem() {
-    if (!this.selectedWidthCm || !this.selectedAwning || !this.selectedProductName) return;
-    const widthM      = (this.selectedWidthCm / 100).toFixed(1);
-    const projectionM = (this.selectedAwning  / 100).toFixed(0);
+    if (!this.enteredWidthCm || !this.selectedAwning || !this.selectedProductName) return;
+    // Display uses the actual entered value; pricing uses the ceiling width
+    const widthM      = (this.enteredWidthCm / 100).toFixed(2).replace(/\.?0+$/, '') + 'm';
+    const projectionM = (this.selectedAwning  / 100).toFixed(0) + 'm';
     const suffix      = (this.installationFee && this.installationFee > 0) ? 'Supply & Fit' : 'Supply Only';
-    const description = `${this.selectedProductName} closed cassette awning ${widthM}m wide x ${projectionM}m projection ${suffix}`;
-    // Fold the installation fee into the unit price of this line item
+    const description = `${this.selectedProductName} closed cassette awning ${widthM} wide x ${projectionM} projection ${suffix}`;
     const unitPrice   = this.calculatedPrice + (this.installationFee || 0);
     const item: QuoteItemDisplay = {
       description, quantity: 1, unitPrice,
@@ -523,45 +557,62 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   onRalSurchargeChange() {
     if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
-    const price = this.getRalPrice();
-    this.addOrUpdateAddonLineItem('ral', {
-      description: 'Surcharge for non-standard RAL colors',
-      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-      amount: this.calculateAmount(1, price, this.vatRate, 0),
-      id: this.getAddonItemId('ral')
-    });
-  }
-
-  getRalPrice(): number {
-    if (this.selectedWidthCm && this.ralSurchargePrices[this.selectedWidthCm]) {
-      return this.ralSurchargePrices[this.selectedWidthCm];
-    }
-    // Fallback: find nearest width
-    const widths = Object.keys(this.ralSurchargePrices).map(Number).sort((a, b) => a - b);
-    const nearest = widths.reduce((prev, curr) =>
-      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
-    return this.ralSurchargePrices[nearest] || 0;
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        this.addOrUpdateAddonLineItem('ral', {
+          description: 'Surcharge for non-standard RAL colors',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          amount: this.calculateAmount(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('ral')
+        });
+      });
   }
 
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
-    const price = this.getShadeplusPrice();
-    this.addOrUpdateAddonLineItem('shadeplus', {
-      description: 'Shadeplus',
-      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-      amount: this.calculateAmount(1, price, this.vatRate, 0),
-      id: this.getAddonItemId('shadeplus')
-    });
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getShadePlusPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        this.addOrUpdateAddonLineItem('shadeplus', {
+          description: 'Shadeplus',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          amount: this.calculateAmount(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('shadeplus')
+        });
+      });
   }
 
-  getShadeplusPrice(): number {
-    if (this.selectedWidthCm && this.shadeplusPrices[this.selectedWidthCm]) {
-      return this.shadeplusPrices[this.selectedWidthCm];
-    }
-    const widths = Object.keys(this.shadeplusPrices).map(Number).sort((a, b) => a - b);
-    const nearest = widths.reduce((prev, curr) =>
-      Math.abs(curr - (this.selectedWidthCm || 0)) < Math.abs(prev - (this.selectedWidthCm || 0)) ? curr : prev, widths[0]);
-    return this.shadeplusPrices[nearest] || 0;
+  onValanceStyleChange() {
+    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        this.addOrUpdateAddonLineItem('valance', {
+          description: 'Valance Style',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          amount: this.calculateAmount(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('valance')
+        });
+      });
+  }
+
+  onWallSealingChange() {
+    if (!this.includeWallSealing) { this.removeAddonLineItem('wallsealing'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getWallSealingProfilePrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        this.addOrUpdateAddonLineItem('wallsealing', {
+          description: 'Wall Sealing Profile',
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          amount: this.calculateAmount(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('wallsealing')
+        });
+      });
   }
 
   onMotorChange() {
@@ -838,8 +889,13 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.includeElectrician = false;
     this.includeRalSurcharge = false;
     this.includeShadeplus = false;
+    this.includeValanceStyle = false;
+    this.includeWallSealing = false;
     this.extrasDescription = '';
     this.extrasPrice = 0;
+    this.enteredWidthCm = null;
+    this.selectedWidthCm = null;
+    this.selectedAwning = null;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
     this.quoteItemsSubject$.next(first ? [first] : []);
     this.successMessage$.next('');
@@ -877,12 +933,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   private getAddonItemId(type: string): number {
-    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008 };
+    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010 };
     return ids[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus'];
+    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing'];
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {

@@ -39,11 +39,18 @@
       <h3 class="section-title">Select Dimensions</h3>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Widths in cm</label>
-          <select class="form-select" [(ngModel)]="selectedWidthCm" (change)="onWidthChange()">
-            <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let width of availableWidths$ | async" [value]="width">{{ width }}</option>
-          </select>
+          <label class="form-label">Width in cm</label>
+          <input
+            type="number"
+            class="form-input"
+            [(ngModel)]="enteredWidthCm"
+            (ngModelChange)="onWidthInput()"
+            placeholder="e.g. 255"
+            min="1"
+            step="1">
+          <span class="width-hint" *ngIf="enteredWidthCm && selectedWidthCm">
+            Priced at standard width: {{ selectedWidthCm }} cm
+          </span>
         </div>
 
         <div class="form-group">
@@ -133,20 +140,36 @@
             <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
           </label>
         </div>
-        <div class="form-group">
+        <div class="form-group" *ngIf="hasRalSurcharge">
           <label class="form-label" style="visibility:hidden;">RAL</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
-            <span>Surcharge for non-standard RAL colors<span *ngIf="selectedWidthCm"> - €{{ getRalPrice() | number:'1.2-2' }}</span></span>
+            <span>Surcharge for non-standard RAL colors</span>
           </label>
         </div>
-        <div class="form-group">
+        <div class="form-group" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-            <span>Shadeplus<span *ngIf="selectedWidthCm"> - €{{ getShadeplusPrice() | number:'1.2-2' }}</span></span>
+            <span>Shadeplus</span>
+          </label>
+        </div>
+        <div class="form-group" *ngIf="hasValanceStyle">
+          <label class="form-label" style="visibility:hidden;">Valance</label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+            <span>Valance Style</span>
+          </label>
+        </div>
+        <div class="form-group" *ngIf="hasWallSealing">
+          <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
+            <span>Wall Sealing Profile</span>
           </label>
         </div>
       </div>
