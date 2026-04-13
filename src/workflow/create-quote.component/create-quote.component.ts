@@ -439,14 +439,19 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (this.includeWallSealing)  this.onWallSealingChange();
   }
 
-  /** Returns the smallest standard width >= enteredWidthCm, or null if none available. */
+  /** Returns the largest standard width <= enteredWidthCm (floor/tier pricing).
+   *  e.g. entered 256 with standards [250,300,350] → 250 tier → price 4639.
+   *  Falls back to the smallest standard width if entered is below all standards. */
   private resolveCeilingWidth(entered: number | null): number | null {
     if (!entered || entered <= 0) return null;
     const widths = this.widthsSubject$.value;
     if (!widths.length) return null;
     const sorted = [...widths].sort((a, b) => a - b);
-    const ceiling = sorted.find(w => w >= entered);
-    return ceiling ?? sorted[sorted.length - 1]; // fallback to max if entered exceeds all
+    // Find largest standard width that is <= entered
+    const floor = [...sorted].reverse().find(w => w <= entered);
+    if (floor != null) return floor;
+    // Entered is below all standard widths — use the smallest
+    return sorted[0];
   }
 
   onAwningChange() { this.checkAndGenerateFirstLineItem(); }

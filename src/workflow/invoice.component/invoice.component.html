@@ -53,7 +53,7 @@
     <!-- Select Dimensions -->
     <div class="form-section">
       <h3 class="section-title">Select Dimensions</h3>
-      <div class="form-row">
+      <div class="dimensions-row">
         <div class="form-group">
           <label class="form-label">Width in cm</label>
           <input
@@ -65,7 +65,7 @@
             min="1"
             step="1">
           <span class="width-hint" *ngIf="enteredWidthCm && selectedWidthCm">
-            Priced at standard width: {{ selectedWidthCm }} cm
+            Priced at standard width tier: {{ selectedWidthCm }} cm
           </span>
         </div>
 
@@ -77,6 +77,18 @@
               {{ projection }}
             </option>
           </select>
+        </div>
+
+        <div class="form-group electrician-inline">
+          <label class="form-label" style="visibility:hidden;">Electrician</label>
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              class="checkbox-input"
+              [(ngModel)]="includeElectrician"
+              (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
         </div>
       </div>
     </div>
@@ -105,10 +117,6 @@
           </ng-container>
         </div>
 
-
-
-       
-
         <div class="form-group">
           <label class="form-label">Motor</label>
           <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
@@ -129,10 +137,11 @@
             </option>
           </select>
         </div>
-
       </div>
-      <div class="form-row addon-bottom-row" style="margin-top:15px;">
-        <div class="form-group extras-group">
+
+      <!-- Extras full-width row -->
+      <div class="extras-full-row" style="margin-top:15px;">
+        <div class="form-group extras-group-full">
           <label class="form-label">Extras</label>
           <div class="extras-row">
             <input
@@ -151,56 +160,37 @@
               step="0.01">
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label" style="visibility:hidden;">Electrician</label>
-          <label class="checkbox-label">
-            <input
-              type="checkbox"
-              class="checkbox-input"
-              [(ngModel)]="includeElectrician"
-              (change)="onElectricianChange()">
-            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
-          </label>
-        </div>
+      </div>
+
+      <!-- Optional addon checkboxes — evenly distributed -->
+      <div class="addon-checks-row" style="margin-top:15px;">
         <div class="form-group" *ngIf="hasRalSurcharge">
-          <label class="form-label" style="visibility:hidden;">RAL</label>
           <label class="checkbox-label">
-            <input
-              type="checkbox"
-              class="checkbox-input"
+            <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeRalSurcharge"
               (change)="onRalSurchargeChange()">
             <span>Surcharge for non-standard RAL colors</span>
           </label>
         </div>
         <div class="form-group" *ngIf="hasShadePlus">
-          <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <label class="checkbox-label">
-            <input
-              type="checkbox"
-              class="checkbox-input"
+            <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeShadeplus"
               (change)="onShadeplusChange()">
             <span>Shadeplus</span>
           </label>
         </div>
         <div class="form-group" *ngIf="hasValanceStyle">
-          <label class="form-label" style="visibility:hidden;">Valance</label>
           <label class="checkbox-label">
-            <input
-              type="checkbox"
-              class="checkbox-input"
+            <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeValanceStyle"
               (change)="onValanceStyleChange()">
             <span>Valance Style</span>
           </label>
         </div>
         <div class="form-group" *ngIf="hasWallSealing">
-          <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
           <label class="checkbox-label">
-            <input
-              type="checkbox"
-              class="checkbox-input"
+            <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeWallSealing"
               (change)="onWallSealingChange()">
             <span>Wall Sealing Profile</span>

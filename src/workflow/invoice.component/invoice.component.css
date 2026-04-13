@@ -416,6 +416,80 @@
   font-weight: 500;
 }
 
+/* Dimensions row — width + projection tight together + electrician on right */
+.dimensions-row {
+  display: grid;
+  grid-template-columns: 200px 1fr 1fr;
+  gap: 15px;
+  align-items: end;
+  margin-top: 5px;
+}
+
+.electrician-inline {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.electrician-inline .checkbox-label {
+  padding-bottom: 10px;
+}
+
+/* Extras full-width row */
+.extras-full-row {
+  display: block;
+}
+
+.extras-group-full {
+  width: 50%;
+}
+
+.extras-group-full .extras-row {
+  display: flex;
+  gap: 10px;
+}
+
+.extras-group-full .extras-description {
+  flex: 1;
+}
+
+.extras-group-full .extras-price {
+  width: 140px;
+  flex-shrink: 0;
+}
+
+/* Optional addon checkboxes — evenly distributed */
+.addon-checks-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  padding: 12px 0 4px;
+}
+
+.addon-checks-row .form-group {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.addon-checks-row .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #374151;
+}
+
+@media (max-width: 768px) {
+  .dimensions-row {
+    grid-template-columns: 1fr;
+  }
+  .addon-checks-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 /* Custom checkbox dropdown for Brackets */
 .custom-dropdown {
   position: relative;
@@ -575,4 +649,4 @@
     width: 100%;
     justify-content: center;
   }
-} 
+}
