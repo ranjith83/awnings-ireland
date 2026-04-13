@@ -416,10 +416,10 @@
   font-weight: 500;
 }
 
-/* Dimensions row — width + projection tight together + electrician on right */
+/* Dimensions row — width + projection only */
 .dimensions-row {
   display: grid;
-  grid-template-columns: 200px 1fr 1fr;
+  grid-template-columns: 200px 1fr;
   gap: 15px;
   align-items: end;
   margin-top: 5px;
@@ -551,6 +551,39 @@
 
 .dropdown-item + .dropdown-item {
   border-top: 1px solid #f3f4f6;
+}
+
+/* Extras + all optional checkboxes on same row */
+.extras-addons-row {
+  display: flex;
+  gap: 20px;
+  align-items: end;
+}
+
+.extras-group-full {
+  flex: 1;
+  min-width: 0;
+}
+
+.extras-addon-check {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.extras-addon-check .checkbox-label {
+  padding-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .extras-addons-row {
+    flex-wrap: wrap;
+  }
+  .extras-group-full {
+    width: 100%;
+  }
 }
 
 /* Extras field */

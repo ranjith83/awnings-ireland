@@ -61,14 +61,7 @@
           </select>
         </div>
 
-        <div class="form-group electrician-inline">
-          <label class="form-label" style="visibility:hidden;">Electrician</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
-            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
-          </label>
-        </div>
+        
       </div>
     </div>
 
@@ -118,8 +111,8 @@
         </div>
       </div>
 
-      <!-- Extras full-width row -->
-      <div class="form-row extras-full-row" style="margin-top:15px;">
+      <!-- Extras + RAL + Shadeplus + Valance + Wall Sealing on same row -->
+      <div class="extras-addons-row" style="margin-top:15px;">
         <div class="form-group extras-group-full">
           <label class="form-label">Extras</label>
           <div class="extras-row">
@@ -139,36 +132,49 @@
               step="0.01">
           </div>
         </div>
-      </div>
 
-      <!-- Optional addon checkboxes — only shown when product has data -->
-      <div class="form-row addon-checks-row" style="margin-top:15px;">
-        <div class="form-group" *ngIf="hasRalSurcharge">
+        <div class="form-group extras-addon-check" *ngIf="hasRalSurcharge">
+          <label class="form-label" style="visibility:hidden;">RAL</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
             <span>Surcharge for non-standard RAL colors</span>
           </label>
         </div>
-        <div class="form-group" *ngIf="hasShadePlus">
+
+        <div class="form-group extras-addon-check" *ngIf="hasShadePlus">
+          <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
             <span>Shadeplus</span>
           </label>
         </div>
-        <div class="form-group" *ngIf="hasValanceStyle">
+
+        <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
+          <label class="form-label" style="visibility:hidden;">Valance</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
             <span>Valance Style</span>
           </label>
         </div>
-        <div class="form-group" *ngIf="hasWallSealing">
+
+        <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
+          <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
             <span>Wall Sealing Profile</span>
+          </label>
+        </div>
+
+        <div class="form-group extras-addon-check">
+          <label class="form-label" style="visibility:hidden;">Electrician</label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
           </label>
         </div>
       </div>

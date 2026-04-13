@@ -279,10 +279,10 @@
   font-weight: 500;
 }
 
-/* Dimensions row — width + projection tight together + electrician on right */
+/* Dimensions row — width + projection only */
 .dimensions-row {
   display: grid;
-  grid-template-columns: 200px 1fr 1fr;
+  grid-template-columns: 200px 1fr;
   gap: 15px;
   align-items: end;
   margin-top: 5px;
@@ -298,13 +298,41 @@
   padding-bottom: 10px;
 }
 
-/* Extras full-width row */
-.extras-full-row {
-  display: block;
+/* Extras + all optional checkboxes on same row */
+.extras-addons-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
 }
 
 .extras-group-full {
-  width: 50%;
+  flex: 0 0 380px; 
+}
+
+.extras-addon-check {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.extras-addon-check .checkbox-label {
+  padding-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .extras-addons-row {
+    flex-wrap: wrap;
+  }
+  .extras-group-full {
+    width: 100%;
+  }
+}
+
+/* Extras full-width row */
+.extras-full-row {
+  display: block;
 }
 
 .extras-group-full .extras-row {
@@ -328,11 +356,12 @@
   gap: 20px;
   align-items: center;
   padding: 12px 0 4px;
+   overflow-x: auto;
 }
 
 .addon-checks-row .form-group {
-  flex: 1 1 200px;
-  min-width: 0;
+   flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .addon-checks-row .checkbox-label {
@@ -684,7 +713,7 @@
 
 .extras-description {
   flex: 1;
-  min-width: 0;
+  max-width: 200px;
 }
 
 .extras-price {
