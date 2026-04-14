@@ -4,6 +4,7 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Workflow } from '../model/workflow.model';
 import { environment } from '../app/environments/environment';
+import { map } from 'rxjs/operators';
 
 export interface WorkflowDto {
   workflowId: number;
@@ -339,6 +340,15 @@ getWallSealingProfilePrice(productId: number, widthcm: number): Observable<numbe
     .pipe(catchError(this.handleError));
 }
  
+getShadePlusOptions(productId: number, widthcm: number): Observable<{ description: string; price: number }[]> {
+  return this.http.get<{ options: { description: string; price: number }[]; hasMultiple: boolean }>(
+    `${this.apiUrl}/GetShadePlusOptionsForProduct`,
+    { params: { ProductId: productId, widthcm } }
+  ).pipe(
+    map(r => r.options ?? []),
+    catchError(this.handleError)
+  );
+}
 
   /**
    * @deprecated – no backend endpoint for this. Retained for compatibility.

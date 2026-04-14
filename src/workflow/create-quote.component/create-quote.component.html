@@ -142,13 +142,32 @@
           </label>
         </div>
 
-        <div class="form-group extras-addon-check" *ngIf="hasShadePlus">
+        <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-            <span>Shadeplus</span>
-          </label>
+          <div class="shadeplus-row">
+            <label class="checkbox-label">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+              <span *ngIf="!shadePlusHasMultiple">Shadeplus</span>
+            </label>
+            <!-- Multiple options: show dropdown then editable text -->
+            <ng-container *ngIf="shadePlusHasMultiple && includeShadeplus">
+              <select class="form-select shadeplus-select"
+                [(ngModel)]="selectedShadePlusDescription"
+                (change)="onShadeplusOptionChange()">
+                <option *ngFor="let opt of shadePlusOptions" [value]="opt.description">
+                  {{ opt.description }} — €{{ opt.price | number:'1.2-2' }}
+                </option>
+              </select>
+              <input type="text" class="form-input shadeplus-text"
+                [(ngModel)]="selectedShadePlusDescription"
+                (ngModelChange)="onShadeplusDescriptionChange()"
+                placeholder="Edit description...">
+            </ng-container>
+            <!-- Single option: just show name next to checkbox -->
+            <span *ngIf="!shadePlusHasMultiple">
+            </span>
+          </div>
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
