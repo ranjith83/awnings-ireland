@@ -146,11 +146,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // RAL surcharge — price fetched from API based on productId + ceiling width
   includeRalSurcharge  = false;
 
-  // Shadeplus — price fetched from API based on productId + ceiling width
+  // Shadeplus — loaded once per product; options list covers all widths
   includeShadeplus  = false;
-  shadePlusOptions: { description: string; price: number }[] = [];
+  shadePlusOptions: { shadePlusId: number; description: string; price: number }[] = [];
   shadePlusHasMultiple  = false;
-  selectedShadePlusDescription = '';   // editable — becomes the line item description
+  /** The shadePlusId of the row the user has chosen in the dropdown. */
+  selectedShadePlusId: number | null = null;
+  /** Editable description — becomes the line item description. */
+  selectedShadePlusDescription = '';
 
   // Valance Style — price fetched from API based on productId + ceiling width
   includeValanceStyle  = false;
@@ -381,13 +384,56 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.hasShadePlus    = false;
     this.hasValanceStyle = false;
     this.hasWallSealing  = false;
+    this.shadePlusOptions = [];
+    this.shadePlusHasMultiple = false;
+    this.selectedShadePlusId = null;
+    this.selectedShadePlusDescription = '';
+    this.includeShadeplus = false;
+    this.removeAddonLineItem('shadeplus');
 
     // Check which optional addons exist for this product
-    this.workflowService.hasNonStandardRALColours(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
-    this.workflowService.hasShadePlus(id).pipe(takeUntil(this.destroy$)).subscribe(v => {
-      this.hasShadePlus = v;
-      if (v && this.selectedWidthCm) this.loadShadePlusOptions();
-    });
+    this.workflowService.hasNonStandardRALColours(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(v => this.hasRalSurcharge = v);
+
+    // ── ShadePlus: ONE call at product level, no width needed ────────────────
+    // getShadePlusOptions is called with widthcm=0 so the backend returns ALL
+    // rows for this product (all widths). We use this to:
+    //   • show or hide the ShadePlus checkbox (hasShadePlus)
+    //   • decide dropdown vs plain checkbox (shadePlusHasMultiple)
+    //   • populate the dropdown options list (shadePlusOptions)
+    // Width is only used later inside onShadeplusChange() to look up the price
+    // for the chosen option at the currently entered width — no extra API call.
+    this.workflowService.getShadePlusOptions(id, 0)
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of({ hasMultiple: false, options: [] }))
+      )
+      .subscribe(result => {
+        const opts = result.options ?? [];
+        this.hasShadePlus         = opts.length > 0;
+        this.shadePlusHasMultiple = result.hasMultiple;
+        // Deduplicate by description so the dropdown shows each surcharge type once
+        const seen = new Set<string>();
+        this.shadePlusOptions = opts
+        /**  .filter(o => {
+            const key = o.description ?? '';
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          })  */
+          .map(o => ({
+            shadePlusId: o.shadePlusId,
+            description: o.description ?? '',
+            price: o.price
+          })); 
+        // Pre-select the first option so the dropdown has a valid initial value
+        if (this.shadePlusOptions.length > 0) {
+          this.selectedShadePlusId = this.shadePlusOptions[0].shadePlusId;
+          this.selectedShadePlusDescription = this.shadePlusOptions[0].description;
+        }
+      });
+
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
     this.workflowService.getBracketsForProduct(id).pipe(
@@ -440,13 +486,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.checkAndGenerateFirstLineItem();
     if (this.includeRalSurcharge) this.onRalSurchargeChange();
-    // loadShadePlusOptions fetches new options for the new width and then
-    // internally calls onShadeplusChange() to refresh the line item price/desc
-    if (this.hasShadePlus && this.selectedWidthCm) {
-      this.loadShadePlusOptions();
-    } else if (this.includeShadeplus) {
-      this.onShadeplusChange();
-    }
+    // ShadePlus: options are already loaded at product level — no re-fetch needed.
+    // If ShadePlus is already checked, refresh the line item price for the new width.
+    if (this.includeShadeplus) this.onShadeplusChange();
     if (this.includeValanceStyle) this.onValanceStyleChange();
     if (this.includeWallSealing)  this.onWallSealingChange();
   }
@@ -587,64 +629,63 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Called whenever width changes (or workflow loads) — fetches options for the new width */
-  private loadShadePlusOptions() {
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getShadePlusOptions(this.selectedModelId, this.selectedWidthCm)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(options => {
-        this.shadePlusOptions     = options;
-        this.shadePlusHasMultiple = options.length > 1;
-        // Pre-select first option if nothing chosen yet, or reset if width changed
-        if (options.length > 0) {
-          const stillValid = options.some(o => o.description === this.selectedShadePlusDescription);
-          if (!stillValid) this.selectedShadePlusDescription = options[0].description;
-        }
-        // Refresh line item if the user already has shadeplus checked
-        if (this.includeShadeplus) this.onShadeplusChange();
-      });
-  }
-
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    if (!this.selectedModelId)  return;
 
-    // Find the price for the currently selected description
-    const selected = this.shadePlusOptions.find(o => o.description === this.selectedShadePlusDescription);
-    if (selected) {
-      this.addOrUpdateAddonLineItem('shadeplus', {
-        description: this.selectedShadePlusDescription || selected.description,
-        quantity: 1, unitPrice: selected.price, taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, selected.price, this.vatRate, 0),
-        id: this.getAddonItemId('shadeplus')
-      });
-    } else if (this.shadePlusOptions.length === 1) {
-      // Single option — use it directly
-      const opt = this.shadePlusOptions[0];
-      this.selectedShadePlusDescription = this.selectedShadePlusDescription || opt.description;
-      this.addOrUpdateAddonLineItem('shadeplus', {
-        description: this.selectedShadePlusDescription,
-        quantity: 1, unitPrice: opt.price, taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, opt.price, this.vatRate, 0),
-        id: this.getAddonItemId('shadeplus')
-      });
-    } else {
-      // Fallback — fetch single price from old endpoint
-      this.workflowService.getShadePlusPrice(this.selectedModelId, this.selectedWidthCm)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(price => {
+    // Options must already be loaded (done at product-load time)
+    if (this.shadePlusOptions.length === 0) return;
+
+    // Resolve which option the user has chosen
+    const chosen = this.shadePlusOptions.find(
+      o => o.shadePlusId === this.selectedShadePlusId
+    ) ?? this.shadePlusOptions[0];
+
+    if (!chosen) return;
+
+    // Keep the description binding in sync
+    if (!this.selectedShadePlusDescription) {
+      this.selectedShadePlusDescription = chosen.description;
+    }
+
+    // Price lookup: if a width is already selected, fetch the price for this specific
+    // option + width from the API (one call, returns a decimal price).
+    // If no width yet, use the option's representative price from the loaded list.
+    if (this.selectedWidthCm) {
+      this.workflowService.getShadePlusOptions(this.selectedModelId, this.selectedWidthCm)
+        .pipe(
+          takeUntil(this.destroy$),
+          catchError(() => of({ hasMultiple: false, options: [] }))
+        )
+        .subscribe(result => {
+          const widthOpt = (result.options ?? []).find(
+            o => (o.description ?? '') === chosen.description
+          );
+          const price = widthOpt?.price ?? chosen.price;
           this.addOrUpdateAddonLineItem('shadeplus', {
-            description: this.selectedShadePlusDescription || 'Shadeplus',
+            description: this.selectedShadePlusDescription || chosen.description,
             quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
             amount: this.calculateAmount(1, price, this.vatRate, 0),
             id: this.getAddonItemId('shadeplus')
           });
         });
+    } else {
+      // No width selected — add line item with the option's base price
+      this.addOrUpdateAddonLineItem('shadeplus', {
+        description: this.selectedShadePlusDescription || chosen.description,
+        quantity: 1, unitPrice: chosen.price, taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, chosen.price, this.vatRate, 0),
+        id: this.getAddonItemId('shadeplus')
+      });
     }
   }
 
   onShadeplusOptionChange() {
-    // User picked a different option from the dropdown — refresh line item
+    // User picked a different option from the dropdown — sync description then refresh line item
+    const chosen = this.shadePlusOptions.find(o => o.shadePlusId === this.selectedShadePlusId);
+    if (chosen) {
+      this.selectedShadePlusDescription = chosen.description;
+    }
     if (this.includeShadeplus) this.onShadeplusChange();
   }
 
@@ -966,6 +1007,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.includeShadeplus = false;
     this.shadePlusOptions = [];
     this.shadePlusHasMultiple = false;
+    this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
     this.includeWallSealing = false;

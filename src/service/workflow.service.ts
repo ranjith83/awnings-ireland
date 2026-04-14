@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { Workflow } from '../model/workflow.model';
 import { environment } from '../app/environments/environment';
@@ -340,13 +340,23 @@ getWallSealingProfilePrice(productId: number, widthcm: number): Observable<numbe
     .pipe(catchError(this.handleError));
 }
  
-getShadePlusOptions(productId: number, widthcm: number): Observable<{ description: string; price: number }[]> {
-  return this.http.get<{ options: { description: string; price: number }[]; hasMultiple: boolean }>(
+getShadePlusOptions(
+  productId: number,
+  widthcm: number
+): Observable<{ options: { shadePlusId: number; description: string; price: number }[]; hasMultiple: boolean }> {
+
+  return this.http.get<{ 
+    options: { shadePlusId: number; description: string; price: number }[]; 
+    hasMultiple: boolean 
+  }>(
     `${this.apiUrl}/GetShadePlusOptionsForProduct`,
     { params: { ProductId: productId, widthcm } }
   ).pipe(
-    map(r => r.options ?? []),
-    catchError(this.handleError)
+    map(r => ({
+      options: r?.options ?? [],
+      hasMultiple: r?.hasMultiple ?? false
+    })),
+    catchError(() => of({ options: [], hasMultiple: false }))
   );
 }
 

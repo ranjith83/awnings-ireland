@@ -145,28 +145,40 @@
         <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <div class="shadeplus-row">
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input"
-                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-              <span *ngIf="!shadePlusHasMultiple">Shadeplus</span>
-            </label>
-            <!-- Multiple options: show dropdown then editable text -->
-            <ng-container *ngIf="shadePlusHasMultiple && includeShadeplus">
-              <select class="form-select shadeplus-select"
-                [(ngModel)]="selectedShadePlusDescription"
-                (change)="onShadeplusOptionChange()">
-                <option *ngFor="let opt of shadePlusOptions" [value]="opt.description">
-                  {{ opt.description }} — €{{ opt.price | number:'1.2-2' }}
-                </option>
-              </select>
-              <input type="text" class="form-input shadeplus-text"
-                [(ngModel)]="selectedShadePlusDescription"
-                (ngModelChange)="onShadeplusDescriptionChange()"
-                placeholder="Edit description...">
+
+            <!-- ── Single option: plain checkbox only ───────────────────── -->
+            <ng-container *ngIf="!shadePlusHasMultiple">
+              <label class="checkbox-label">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                <span>ShadePlus</span>
+              </label>
             </ng-container>
-            <!-- Single option: just show name next to checkbox -->
-            <span *ngIf="!shadePlusHasMultiple">
-            </span>
+
+            <!-- ── Multiple options: checkbox + dropdown + editable text ── -->
+            <ng-container *ngIf="shadePlusHasMultiple">
+              <label class="checkbox-label" style="margin-bottom:6px;">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                <span>ShadePlus</span>
+              </label>
+              <ng-container *ngIf="includeShadeplus">
+                <!-- Dropdown: pick surcharge type — bound to shadePlusId -->
+                <select class="form-select shadeplus-select"
+                  [(ngModel)]="selectedShadePlusId"
+                  (change)="onShadeplusOptionChange()">
+                  <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                    {{ opt.description }}
+                  </option>
+                </select>
+                <!-- Editable description: pre-filled from selection, user can refine -->
+                <input type="text" class="form-input shadeplus-text"
+                  [(ngModel)]="selectedShadePlusDescription"
+                  (ngModelChange)="onShadeplusDescriptionChange()"
+                  placeholder="Edit description...">
+              </ng-container>
+            </ng-container>
+
           </div>
         </div>
 
