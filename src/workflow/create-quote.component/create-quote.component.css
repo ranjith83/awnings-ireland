@@ -395,10 +395,30 @@
   padding-bottom: 10px;
 }
 
+/* Multi: checkbox and dropdown side by side on the same line */
+.shadeplus-multi-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.shadeplus-checkbox {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .shadeplus-select {
   font-size: 13px;
   padding: 6px 10px;
-  max-width: 320px;
+  min-width: 260px;
+  max-width: 380px;
+  flex: 1;
+}
+
+.shadeplus-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .shadeplus-text {

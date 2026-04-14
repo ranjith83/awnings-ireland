@@ -632,73 +632,52 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
     if (!this.selectedModelId)  return;
-
-    // Options must already be loaded (done at product-load time)
     if (this.shadePlusOptions.length === 0) return;
 
-    // Resolve which option the user has chosen
+    // Resolve which option applies
     const chosen = this.shadePlusOptions.find(
       o => o.shadePlusId === this.selectedShadePlusId
     ) ?? this.shadePlusOptions[0];
 
     if (!chosen) return;
 
-    // Keep the description binding in sync
-    if (!this.selectedShadePlusDescription) {
-      this.selectedShadePlusDescription = chosen.description;
-    }
+    // Sync selectedShadePlusId in case we fell back to first option
+    this.selectedShadePlusId = chosen.shadePlusId;
+    this.selectedShadePlusDescription = chosen.description;
 
-    // Price lookup: if a width is already selected, fetch the price for this specific
-    // option + width from the API (one call, returns a decimal price).
-    // If no width yet, use the option's representative price from the loaded list.
+    // Req 4: single option → line item description is always "ShadePlus"
+    // Multiple options → line item description is the chosen option's description
+    const lineDesc = this.shadePlusHasMultiple ? chosen.description : 'ShadePlus';
+
+    const addItem = (price: number) => {
+      this.addOrUpdateAddonLineItem('shadeplus', {
+        description: lineDesc,
+        quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, price, this.vatRate, 0),
+        id: this.getAddonItemId('shadeplus')
+      });
+    };
+
+    // If width is entered, look up the price for this specific description at that width
     if (this.selectedWidthCm) {
       this.workflowService.getShadePlusOptions(this.selectedModelId, this.selectedWidthCm)
-        .pipe(
-          takeUntil(this.destroy$),
-          catchError(() => of({ hasMultiple: false, options: [] }))
-        )
+        .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
         .subscribe(result => {
           const widthOpt = (result.options ?? []).find(
             o => (o.description ?? '') === chosen.description
           );
-          const price = widthOpt?.price ?? chosen.price;
-          this.addOrUpdateAddonLineItem('shadeplus', {
-            description: this.selectedShadePlusDescription || chosen.description,
-            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-            amount: this.calculateAmount(1, price, this.vatRate, 0),
-            id: this.getAddonItemId('shadeplus')
-          });
+          addItem(widthOpt?.price ?? chosen.price);
         });
     } else {
-      // No width selected — add line item with the option's base price
-      this.addOrUpdateAddonLineItem('shadeplus', {
-        description: this.selectedShadePlusDescription || chosen.description,
-        quantity: 1, unitPrice: chosen.price, taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, chosen.price, this.vatRate, 0),
-        id: this.getAddonItemId('shadeplus')
-      });
+      addItem(chosen.price);
     }
   }
 
   onShadeplusOptionChange() {
-    // User picked a different option from the dropdown — sync description then refresh line item
+    // User picked from dropdown — sync description then refresh line item
     const chosen = this.shadePlusOptions.find(o => o.shadePlusId === this.selectedShadePlusId);
-    if (chosen) {
-      this.selectedShadePlusDescription = chosen.description;
-    }
+    if (chosen) this.selectedShadePlusDescription = chosen.description;
     if (this.includeShadeplus) this.onShadeplusChange();
-  }
-
-  onShadeplusDescriptionChange() {
-    // User edited the text — refresh line item description without changing price
-    if (this.includeShadeplus) {
-      const items = this.quoteItemsSubject$.value;
-      const idx = items.findIndex(i => i.id === this.getAddonItemId('shadeplus'));
-      if (idx !== -1) {
-        items[idx] = { ...items[idx], description: this.selectedShadePlusDescription };
-        this.quoteItemsSubject$.next([...items]);
-      }
-    }
   }
 
   onValanceStyleChange() {

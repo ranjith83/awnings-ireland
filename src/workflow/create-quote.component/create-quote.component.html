@@ -146,7 +146,7 @@
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <div class="shadeplus-row">
 
-            <!-- ── Single option: plain checkbox only ───────────────────── -->
+            <!-- ── SINGLE option: plain checkbox → adds "ShadePlus" as line item desc ── -->
             <ng-container *ngIf="!shadePlusHasMultiple">
               <label class="checkbox-label">
                 <input type="checkbox" class="checkbox-input"
@@ -155,28 +155,26 @@
               </label>
             </ng-container>
 
-            <!-- ── Multiple options: checkbox + dropdown + editable text ── -->
+            <!-- ── MULTIPLE options: checkbox first, then dropdown inline ─────────── -->
             <ng-container *ngIf="shadePlusHasMultiple">
-              <label class="checkbox-label" style="margin-bottom:6px;">
-                <input type="checkbox" class="checkbox-input"
-                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-                <span>ShadePlus</span>
-              </label>
-              <ng-container *ngIf="includeShadeplus">
-                <!-- Dropdown: pick surcharge type — bound to shadePlusId -->
+              <div class="shadeplus-multi-row">
+                <!-- Checkbox toggles ShadePlus on/off -->
+                <label class="checkbox-label shadeplus-checkbox">
+                  <input type="checkbox" class="checkbox-input"
+                    [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                  <span>ShadePlus</span>
+                </label>
+                <!-- Dropdown — only enabled when checkbox is ticked -->
                 <select class="form-select shadeplus-select"
+                  [disabled]="!includeShadeplus"
                   [(ngModel)]="selectedShadePlusId"
                   (change)="onShadeplusOptionChange()">
+                  <option value="" disabled selected>Select</option>
                   <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
-                    {{ opt.description }}
+                    {{ opt.description }} — €{{ opt.price | number:'1.2-2' }}
                   </option>
                 </select>
-                <!-- Editable description: pre-filled from selection, user can refine -->
-                <input type="text" class="form-input shadeplus-text"
-                  [(ngModel)]="selectedShadePlusDescription"
-                  (ngModelChange)="onShadeplusDescriptionChange()"
-                  placeholder="Edit description...">
-              </ng-container>
+              </div>
             </ng-container>
 
           </div>
