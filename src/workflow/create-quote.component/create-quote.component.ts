@@ -148,6 +148,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   // Shadeplus — loaded once per product; options list covers all widths
   includeShadeplus  = false;
+  /** All rows returned by the API — one per (description × widthCm) combination.
+   *  Used for price lookup when the user enters a width. */
+  shadePlusAllRows: { shadePlusId: number; description: string; widthCm: number; price: number }[] = [];
+  /** Deduplicated by description — drives the dropdown. */
   shadePlusOptions: { shadePlusId: number; description: string; price: number }[] = [];
   shadePlusHasMultiple  = false;
   /** The shadePlusId of the row the user has chosen in the dropdown. */
@@ -385,6 +389,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.hasValanceStyle = false;
     this.hasWallSealing  = false;
     this.shadePlusOptions = [];
+    this.shadePlusAllRows = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
@@ -396,14 +401,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(v => this.hasRalSurcharge = v);
 
-    // ── ShadePlus: ONE call at product level, no width needed ────────────────
-    // getShadePlusOptions is called with widthcm=0 so the backend returns ALL
-    // rows for this product (all widths). We use this to:
-    //   • show or hide the ShadePlus checkbox (hasShadePlus)
-    //   • decide dropdown vs plain checkbox (shadePlusHasMultiple)
-    //   • populate the dropdown options list (shadePlusOptions)
-    // Width is only used later inside onShadeplusChange() to look up the price
-    // for the chosen option at the currently entered width — no extra API call.
+    // ── ShadePlus: ONE call at product level — returns ALL rows (all widths) ──
+    // shadePlusAllRows holds every row for price lookup by description + widthCm.
+    // shadePlusOptions is deduplicated by description and drives the dropdown.
     this.workflowService.getShadePlusOptions(id, 0)
       .pipe(
         takeUntil(this.destroy$),
@@ -413,20 +413,27 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         const opts = result.options ?? [];
         this.hasShadePlus         = opts.length > 0;
         this.shadePlusHasMultiple = result.hasMultiple;
-        // Deduplicate by description so the dropdown shows each surcharge type once
+        // Keep all rows for width-based price lookup
+        this.shadePlusAllRows = opts.map(o => ({
+          shadePlusId: o.shadePlusId,
+          description: o.description ?? '',
+          widthCm: (o as any).widthCm ?? 0,
+          price: o.price
+        }));
+        // Deduplicate by description for the dropdown
         const seen = new Set<string>();
         this.shadePlusOptions = opts
-        /**  .filter(o => {
+          .filter(o => {
             const key = o.description ?? '';
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-          })  */
+          })
           .map(o => ({
             shadePlusId: o.shadePlusId,
             description: o.description ?? '',
             price: o.price
-          })); 
+          }));
         // Pre-select the first option so the dropdown has a valid initial value
         if (this.shadePlusOptions.length > 0) {
           this.selectedShadePlusId = this.shadePlusOptions[0].shadePlusId;
@@ -658,16 +665,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
     };
 
-    // If width is entered, look up the price for this specific description at that width
+    // Resolve price: find the row matching chosen description + width tier from cached data
     if (this.selectedWidthCm) {
-      this.workflowService.getShadePlusOptions(this.selectedModelId, this.selectedWidthCm)
-        .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
-        .subscribe(result => {
-          const widthOpt = (result.options ?? []).find(
-            o => (o.description ?? '') === chosen.description
-          );
-          addItem(widthOpt?.price ?? chosen.price);
-        });
+      const widthRow = this.shadePlusAllRows.find(
+        r => r.description === chosen.description && r.widthCm === this.selectedWidthCm
+      );
+      addItem(widthRow?.price ?? chosen.price);
     } else {
       addItem(chosen.price);
     }
@@ -984,6 +987,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.includeElectrician = false;
     this.includeRalSurcharge = false;
     this.includeShadeplus = false;
+    this.shadePlusAllRows = [];
     this.shadePlusOptions = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;

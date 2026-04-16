@@ -490,6 +490,47 @@
   }
 }
 
+/* ShadePlus multi-option block */
+.shadeplus-block {
+  flex-shrink: 0;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.shadeplus-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+}
+
+.shadeplus-multi-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.shadeplus-checkbox {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.shadeplus-select {
+  font-size: 13px;
+  padding: 6px 10px;
+  min-width: 220px;
+  max-width: 340px;
+  flex: 1;
+}
+
+.shadeplus-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Custom checkbox dropdown for Brackets */
 .custom-dropdown {
   position: relative;

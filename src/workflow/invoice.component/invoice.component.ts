@@ -148,8 +148,12 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   // RAL surcharge — price fetched from API based on productId + ceiling width
   includeRalSurcharge: boolean = false;
 
-  // Shadeplus — price fetched from API based on productId + ceiling width
+  // Shadeplus — loaded once per product; options cover all widths
   includeShadeplus: boolean = false;
+  shadePlusOptions: { shadePlusId: number; description: string; price: number }[] = [];
+  shadePlusHasMultiple  = false;
+  selectedShadePlusId: number | null = null;
+  selectedShadePlusDescription = '';
 
   // Valance Style — price fetched from API based on productId + ceiling width
   includeValanceStyle: boolean = false;
@@ -389,9 +393,33 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.hasShadePlus    = false;
     this.hasValanceStyle = false;
     this.hasWallSealing  = false;
+    this.shadePlusOptions = [];
+    this.shadePlusHasMultiple = false;
+    this.selectedShadePlusId = null;
+    this.selectedShadePlusDescription = '';
+    this.includeShadeplus = false;
+    this.removeAddonLineItem('shadeplus');
 
     this.workflowService.hasNonStandardRALColours(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
-    this.workflowService.hasShadePlus(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasShadePlus = v);
+
+    // Load all ShadePlus options for this product (all widths) in one call
+    this.workflowService.getShadePlusOptions(this.selectedModelId, 0)
+      .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
+      .subscribe(result => {
+        const opts = result.options ?? [];
+        this.hasShadePlus         = opts.length > 0;
+        this.shadePlusHasMultiple = result.hasMultiple;
+        this.shadePlusOptions     = opts.map((o: any) => ({
+          shadePlusId: o.shadePlusId,
+          description: o.description ?? '',
+          price: o.price
+        }));
+        if (this.shadePlusOptions.length > 0) {
+          this.selectedShadePlusId          = this.shadePlusOptions[0].shadePlusId;
+          this.selectedShadePlusDescription = this.shadePlusOptions[0].description;
+        }
+      });
+
     this.workflowService.hasValanceStyles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
 
@@ -540,8 +568,10 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.includeElectrician = false;
     this.includeRalSurcharge = false;
     this.includeShadeplus = false;
-    this.includeValanceStyle = false;
-    this.includeWallSealing = false;
+    this.shadePlusOptions = [];
+    this.shadePlusHasMultiple = false;
+    this.selectedShadePlusId = null;
+    this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
     this.includeWallSealing = false;
     this.installationFee = 0;
@@ -700,21 +730,52 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getShadePlusPrice(this.selectedModelId, this.selectedWidthCm)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        const lineItem: InvoiceItemDisplay = {
-          description: 'Shadeplus',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('shadeplus')
-        };
-        this.addOrUpdateAddonLineItem('shadeplus', lineItem);
-      });
+    if (!this.selectedModelId)  return;
+    if (this.shadePlusOptions.length === 0) return;
+
+    const chosen = this.shadePlusOptions.find(
+      o => o.shadePlusId === this.selectedShadePlusId
+    ) ?? this.shadePlusOptions[0];
+
+    if (!chosen) return;
+
+    this.selectedShadePlusId          = chosen.shadePlusId;
+    this.selectedShadePlusDescription = chosen.description;
+
+    // Single option → always "ShadePlus"; multiple → use chosen description
+    const lineDesc = this.shadePlusHasMultiple ? chosen.description : 'Shadeplus';
+
+    const addItem = (price: number) => {
+      const lineItem: InvoiceItemDisplay = {
+        description: lineDesc,
+        quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+        unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+        id: this.getAddonItemId('shadeplus')
+      };
+      this.addOrUpdateAddonLineItem('shadeplus', lineItem);
+    };
+
+    if (this.selectedWidthCm) {
+      this.workflowService.getShadePlusOptions(this.selectedModelId, this.selectedWidthCm)
+        .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
+        .subscribe(result => {
+          const widthOpt = (result.options ?? []).find(
+            (o: any) => (o.description ?? '') === chosen.description
+          );
+          addItem(widthOpt?.price ?? chosen.price);
+        });
+    } else {
+      addItem(chosen.price);
+    }
   }
 
-  getShadeplusPrice(): number { return 0; } // kept for template compatibility — price now from API
+  onShadeplusOptionChange() {
+    const chosen = this.shadePlusOptions.find(o => o.shadePlusId === this.selectedShadePlusId);
+    if (chosen) this.selectedShadePlusDescription = chosen.description;
+    if (this.includeShadeplus) this.onShadeplusChange();
+  }
+
+  getShadeplusPrice(): number { return 0; }
 
   onValanceStyleChange() {
     if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }

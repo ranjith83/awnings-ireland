@@ -159,14 +159,41 @@
           </label>
         </div>
 
-        <div class="form-group extras-addon-check" *ngIf="hasShadePlus">
+        <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeShadeplus"
-              (change)="onShadeplusChange()">
-            <span>Shadeplus</span>
-          </label>
+          <div class="shadeplus-row">
+
+            <!-- ── SINGLE option: plain checkbox ────────────────────────────── -->
+            <ng-container *ngIf="!shadePlusHasMultiple">
+              <label class="checkbox-label">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeShadeplus"
+                  (change)="onShadeplusChange()">
+                <span>Shadeplus</span>
+              </label>
+            </ng-container>
+
+            <!-- ── MULTIPLE options: checkbox + inline dropdown ──────────────── -->
+            <ng-container *ngIf="shadePlusHasMultiple">
+              <div class="shadeplus-multi-row">
+                <label class="checkbox-label shadeplus-checkbox">
+                  <input type="checkbox" class="checkbox-input"
+                    [(ngModel)]="includeShadeplus"
+                    (change)="onShadeplusChange()">
+                  <span>Shadeplus</span>
+                </label>
+                <select class="form-select shadeplus-select"
+                  [disabled]="!includeShadeplus"
+                  [(ngModel)]="selectedShadePlusId"
+                  (change)="onShadeplusOptionChange()">
+                  <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                    {{ opt.description }} — €{{ opt.price | number:'1.2-2' }}
+                  </option>
+                </select>
+              </div>
+            </ng-container>
+
+          </div>
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
