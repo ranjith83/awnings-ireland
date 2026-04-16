@@ -683,6 +683,34 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (this.includeShadeplus) this.onShadeplusChange();
   }
 
+  /**
+   * Called when the user edits the ShadePlus description directly in the grid.
+   * Updates only the description on the existing line item — price is unchanged.
+   */
+  onGridShadeplusDescriptionEdit(event: Event, item: QuoteItemDisplay) {
+    const newDesc = (event.target as HTMLInputElement).value;
+    this.selectedShadePlusDescription = newDesc || 'ShadePlus';
+    const items = this.quoteItemsSubject$.value;
+    const idx = items.findIndex(i => i.id === this.getAddonItemId('shadeplus'));
+    if (idx !== -1) {
+      items[idx] = { ...items[idx], description: this.selectedShadePlusDescription };
+      this.quoteItemsSubject$.next([...items]);
+    }
+  }
+
+  /**
+   * Called when the user edits the ShadePlus description text field directly.
+   * Updates only the description on the existing line item — price is unchanged.
+   */
+  onShadeplusDescriptionEdit() {
+    const items = this.quoteItemsSubject$.value;
+    const idx = items.findIndex(i => i.id === this.getAddonItemId('shadeplus'));
+    if (idx !== -1) {
+      items[idx] = { ...items[idx], description: this.selectedShadePlusDescription || 'ShadePlus' };
+      this.quoteItemsSubject$.next([...items]);
+    }
+  }
+
   onValanceStyleChange() {
     if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
     if (!this.selectedModelId || !this.selectedWidthCm) return;

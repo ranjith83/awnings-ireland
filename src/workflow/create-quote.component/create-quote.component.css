@@ -401,17 +401,17 @@
 /* ShadePlus multi-option block */
 .shadeplus-block {
   flex-shrink: 0;
-  min-width: 180px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end; /* align to bottom like other extras-addon-check items */
+  justify-content: flex-end; /* aligns to bottom with sibling extras-addon-check items */
 }
 
+/* Wraps checkbox row — no extra padding, parent handles bottom alignment */
 .shadeplus-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-bottom: 10px;
+  gap: 4px;
 }
 
 /* Multi: checkbox and dropdown side by side on the same line */
@@ -420,6 +420,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+  padding-bottom: 0;
 }
 
 .shadeplus-checkbox {
@@ -430,8 +431,8 @@
 .shadeplus-select {
   font-size: 13px;
   padding: 6px 10px;
-  min-width: 260px;
-  max-width: 380px;
+  min-width: 220px;
+  max-width: 340px;
   flex: 1;
 }
 
@@ -440,11 +441,14 @@
   cursor: not-allowed;
 }
 
+/* Editable description — shown below checkbox/dropdown when ShadePlus is checked */
 .shadeplus-text {
   font-size: 13px;
   padding: 6px 10px;
-  max-width: 320px;
+  width: 100%;
+  max-width: 380px;
   border-color: #3498db;
+  margin-top: 4px;
 }
 
 /* Table Section */
@@ -884,4 +888,22 @@
     display: block;
     overflow-x: auto;
   }
+}
+/* Inline editable description input in the quote items grid (ShadePlus row) */
+.description-input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid #c8e6c9;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: #f9fffe;
+  color: #2e2e2e;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.description-input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
+  background-color: #fff;
 }

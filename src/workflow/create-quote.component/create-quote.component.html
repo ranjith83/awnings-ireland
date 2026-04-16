@@ -97,26 +97,30 @@
           </ng-container>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Motor</label>
-          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
-              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
-            </option>
-          </select>
-        </div>
+        <ng-container *ngIf="(motors$ | async)?.length">
+          <div class="form-group">
+            <label class="form-label">Motor</label>
+            <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
+              <option value="" disabled selected>Select</option>
+              <option value="">None</option>
+              <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
+                {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+              </option>
+            </select>
+          </div>
+        </ng-container>
 
-        <div class="form-group">
-          <label class="form-label">Heater</label>
-          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
-            <option value="" disabled selected>Select</option>
-            <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
-              {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
-            </option>
-          </select>
-        </div>
+        <ng-container *ngIf="(heaters$ | async)?.length">
+          <div class="form-group">
+            <label class="form-label">Heater</label>
+            <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
+              <option value="" disabled selected>Select</option>
+              <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
+                {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
+              </option>
+            </select>
+          </div>
+        </ng-container>
       </div>
 
       <!-- Extras + RAL + Shadeplus + Valance + Wall Sealing on same row -->
@@ -152,40 +156,36 @@
 
         <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-          <div class="shadeplus-row">
 
-            <!-- ── SINGLE option OR only 1 record: plain checkbox only ── -->
-            <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
-              <label class="checkbox-label" style="padding-bottom: 10px;">
+          <!-- ── SINGLE option: checkbox only, then editable text below ── -->
+          <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
+            <label class="checkbox-label" style="padding-bottom: 6px;">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+              <span>ShadePlus</span>
+            </label>
+          </ng-container>
+
+          <!-- ── MULTIPLE options: checkbox + dropdown on one row, editable text below ── -->
+          <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
+            <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
+              <label class="checkbox-label shadeplus-checkbox">
                 <input type="checkbox" class="checkbox-input"
                   [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
                 <span>ShadePlus</span>
               </label>
-            </ng-container>
+              <select class="form-select shadeplus-select"
+                [disabled]="!includeShadeplus"
+                [(ngModel)]="selectedShadePlusId"
+                (change)="onShadeplusOptionChange()">
+                <option value="" disabled selected>Select option</option>
+                <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                  {{ opt.description }}
+                </option>
+              </select>
+            </div>
+          </ng-container>
 
-            <!-- ── MULTIPLE options (>1): checkbox + dropdown inline ─────────── -->
-            <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
-              <div class="shadeplus-multi-row" style="padding-bottom: 10px;">
-                <!-- Checkbox toggles ShadePlus on/off -->
-                <label class="checkbox-label shadeplus-checkbox">
-                  <input type="checkbox" class="checkbox-input"
-                    [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-                  <span>ShadePlus</span>
-                </label>
-                <!-- Dropdown — only enabled when checkbox is ticked -->
-                <select class="form-select shadeplus-select"
-                  [disabled]="!includeShadeplus"
-                  [(ngModel)]="selectedShadePlusId"
-                  (change)="onShadeplusOptionChange()">
-                  <option value="" disabled selected>Select option</option>
-                  <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
-                    {{ opt.description }}
-                  </option>
-                </select>
-              </div>
-            </ng-container>
-
-          </div>
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
@@ -243,7 +243,15 @@
         </thead>
         <tbody>
           <tr *ngFor="let item of quoteItems$ | async; let i = index; let even = even" [class.even-row]="even">
-            <td>{{ item.description }}</td>
+            <td>
+              <ng-container *ngIf="item.id === 100008; else plainDesc">
+                <input type="text" class="description-input"
+                  [value]="item.description"
+                  (input)="onGridShadeplusDescriptionEdit($event, item)"
+                  placeholder="ShadePlus description">
+              </ng-container>
+              <ng-template #plainDesc>{{ item.description }}</ng-template>
+            </td>
             <td>
               <input type="number" class="qty-input"
                 [(ngModel)]="item.quantity" (ngModelChange)="onQuantityChange(item)" min="1">
