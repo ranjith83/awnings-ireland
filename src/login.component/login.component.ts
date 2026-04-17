@@ -2,7 +2,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../service/auth.service';
 
 @Component({
@@ -16,14 +16,15 @@ export class LoginComponent implements OnInit {
   loginForm: FormGroup;
   isLoading = false;
   errorMessage = '';
+  sessionExpiredMessage = '';  // NEW: shown when redirected due to expiry
   showPassword = false;
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute   // NEW: to read query params
   ) {
-    // Redirect if already logged in
     if (this.authService.isAuthenticated) {
       this.router.navigate(['/']);
     }
@@ -35,7 +36,14 @@ export class LoginComponent implements OnInit {
     });
   }
 
-  ngOnInit(): void {}
+  ngOnInit(): void {
+    // NEW: Check if the user was redirected here because their session expired
+    this.route.queryParams.subscribe(params => {
+      if (params['sessionExpired'] === 'true') {
+        this.sessionExpiredMessage = 'Your session has expired. Please sign in again.';
+      }
+    });
+  }
 
   get username() {
     return this.loginForm.get('username');
@@ -59,6 +67,7 @@ export class LoginComponent implements OnInit {
 
     this.isLoading = true;
     this.errorMessage = '';
+    this.sessionExpiredMessage = '';  // Clear expiry banner on new attempt
 
     const credentials = {
       username: this.loginForm.value.username,
@@ -100,4 +109,4 @@ export class LoginComponent implements OnInit {
     };
     return labels[fieldName] || fieldName;
   }
-} 
+}

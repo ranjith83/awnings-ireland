@@ -12,6 +12,15 @@
       <p class="login-subtitle">Sign in to your account to continue</p>
     </div>
 
+    <!-- NEW: Session Expired Banner -->
+    <div *ngIf="sessionExpiredMessage" class="session-alert">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polyline points="12 6 12 12 16 14"></polyline>
+      </svg>
+      <span>{{ sessionExpiredMessage }}</span>
+    </div>
+
     <!-- Error Message -->
     <div *ngIf="errorMessage" class="error-alert">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
