@@ -246,22 +246,66 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(params => {
         this.customerId = params['customerId'] ? +params['customerId'] : null;
-        this.loadWorkflows();
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
+        const paramSiteVisitId = params['siteVisitId'] ? +params['siteVisitId'] : null;
 
         if (!this.customerId) {
           this.errorMessage$.next('No customer selected. Please select a customer first.');
           return;
         }
 
-        if (this.customerId) {
-          const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-          this.customerId = selectedWorkflow?.customerId || null;
-          this.selectedWorkflowId = selectedWorkflow?.id || 0;
+        // Resolve customerId/workflowId from workflow state service if available
+        const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
+        this.customerId = selectedWorkflow?.customerId || this.customerId;
+        this.selectedWorkflowId = selectedWorkflow?.id || paramWorkflowId || 0;
+
+        this.loadWorkflows();
+
+        // If a workflowId came via query params, pre-select the workflow dropdown
+        // and optionally open the matching site visit for editing
+        if (paramWorkflowId) {
+          const wfSub = this.workflowsSubject$.subscribe(wfs => {
+            if (wfs.length > 0) {
+              this.siteVisitForm.get('workflow')?.setValue(paramWorkflowId, { emitEvent: true });
+              this.currentWorkflowId = paramWorkflowId;
+
+              // If a specific siteVisitId was passed, find and populate it for editing
+              if (paramSiteVisitId) {
+                this.loadSiteVisitById(paramWorkflowId, paramSiteVisitId);
+              }
+              wfSub.unsubscribe();
+            }
+          });
         }
       });
     this.loadDropdownValues();
     this.setupFormSubscriptions();
+  }
+
+  /**
+   * Loads site visits for the given workflow, finds the one matching siteVisitId,
+   * and calls editSiteVisit() to pre-populate the form — mirrors the flow used
+   * when the user clicks ✏️ Edit directly on the setup-site-visit page.
+   */
+  private loadSiteVisitById(workflowId: number, siteVisitId: number): void {
+    this.isLoading$.next(true);
+    this.siteVisitService.getSiteVisitsByWorkflowId(workflowId)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isLoading$.next(false))
+      )
+      .subscribe({
+        next: (siteVisits) => {
+          this.siteVisitsSubject$.next(siteVisits);
+          const target = siteVisits.find(sv => sv.siteVisitId === siteVisitId);
+          if (target) {
+            this.editSiteVisit(target);
+          } else {
+            this.showError(`Site visit #${siteVisitId} not found for this workflow.`);
+          }
+        },
+        error: (error) => this.showError('Failed to load site visit: ' + error.message)
+      });
   }
 
   ngOnDestroy(): void {
@@ -599,6 +643,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
     this.siteVisitForm.patchValue({
       model: siteVisit.model,
+      customerId: this.customerId!,
       otherPleaseSpecify: siteVisit.otherPleaseSpecify,
       siteLayout: siteVisit.siteLayout,
       structure: siteVisit.structure,
@@ -686,6 +731,9 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     } else {
       const createDto: CreateSiteVisitDto = {
         workflowId: this.currentWorkflowId,
+        customerId: this.customerId!,
+        customerEmail: '', // This can be populated if needed, currently not part of the form
+        customerName: '',  // This can be populated if needed, currently not part of the form
         productModelType,
         model: formValue.model,
         otherPleaseSpecify: formValue.otherPleaseSpecify,

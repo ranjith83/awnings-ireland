@@ -297,6 +297,13 @@
 
     <div class="sv-panel__footer">
       <button class="sv-panel__cancel-btn" (click)="closeSiteVisitPanel()">Cancel</button>
+      <button
+        class="sv-panel__open-btn"
+        (click)="openSiteVisitPage(selectedSiteVisitTask)"
+        *ngIf="selectedSiteVisitTask?.siteVisitId || selectedSiteVisitTask?.workflowId"
+        title="Open the full Site Visit form">
+        📋 Open Site Visit
+      </button>
     </div>
   </div>
 

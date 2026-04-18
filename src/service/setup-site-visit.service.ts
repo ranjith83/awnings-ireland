@@ -75,6 +75,9 @@ export interface SiteVisitDto {
 
 export interface CreateSiteVisitDto {
   workflowId: number;
+  customerId: number;
+  customerName?: string;
+  customerEmail?: string;
   productModelType: string;
   model?: string;
   otherPleaseSpecify?: string;

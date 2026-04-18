@@ -384,6 +384,20 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.siteVisitAssignee = null;   this.isSiteVisitSaving = false;
     this.cdr.markForCheck();
   }
+
+  openSiteVisitPage(task: EmailTaskExtended | null): void {
+    if (!task) return;
+    const queryParams: Record<string, any> = {
+      customerId:   task.customerId   ?? null,
+      customerName: task.customerName ?? '',
+      workflowId:   task.workflowId   ?? null,
+    };
+    if (task.siteVisitId) {
+      queryParams['siteVisitId'] = task.siteVisitId;
+    }
+    this.closeSiteVisitPanel();
+    this.router.navigate(['/workflow/setup-site-visit'], { queryParams });
+  }
   saveSiteVisitAssignment(): void {
     const task = this.selectedSiteVisitTask;
     if (!task) return;

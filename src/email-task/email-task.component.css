@@ -2039,3 +2039,33 @@
   .sv-panel__save-btn { width: 100%; text-align: center; }
   .sv-panel__meta { gap: 16px; }
 }
+/* ── Open Site Visit button (sv-panel footer) ───────────────────── */
+.sv-panel__open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: #0066cc;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.1s ease;
+}
+.sv-panel__open-btn:hover {
+  background: #0052a3;
+  transform: translateY(-1px);
+}
+.sv-panel__open-btn:active {
+  transform: translateY(0);
+}
+
+/* Make the sv-panel footer flex so Cancel + Open sit side-by-side */
+.sv-panel__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
