@@ -8,10 +8,29 @@ import { environment } from '../app/environments/environment';
 export interface EmailTask {
   // ── Core identity ──────────────────────────────────────────────────────────
   taskId:           number;
-  incomingEmailId:  number;
-  fromName:         string;
-  fromEmail:        string;
-  subject:          string;
+
+  /**
+   * Discriminator added in the Tasks table migration.
+   * 'Email' | 'SiteVisit' | 'Manual'
+   * All existing rows default to 'Email'.
+   */
+  sourceType:       string;
+
+  /**
+   * Human-readable display title computed server-side:
+   *   Title ?? Subject ?? '(No title)'
+   * Email tasks: matches subject.
+   * SiteVisit / Manual tasks: set explicitly on creation.
+   */
+  displayTitle:     string;
+
+  // ── Email-origin fields (null / empty for non-email tasks) ─────────────────
+  incomingEmailId?: number | null;
+  fromName?:        string;
+  fromEmail?:       string;
+  subject?:         string;
+
+  // ── Common fields ──────────────────────────────────────────────────────────
   category:         string;
   status:           string;
   taskType:         string;
@@ -26,11 +45,11 @@ export interface EmailTask {
   completedDate?:   Date;
 
   // ── Assignment ────────────────────────────────────────────────────────────
-  assignedTo?:          string | null;
-  assignedToUserId?:    number | null;
-  assignedToUserName?:  string | null;
-  assignedByUserId?:    number | null;
-  assignedByUserName?:  string | null;
+  assignedTo?:             string | null;   // alias kept for template compat
+  assignedToUserId?:       number | null;
+  assignedToUserName?:     string | null;
+  assignedByUserId?:       number | null;
+  assignedByUserName?:     string | null;
 
   // ── Customer / company ────────────────────────────────────────────────────
   companyNumber?:   string | null;
@@ -41,9 +60,16 @@ export interface EmailTask {
   quoteId?:         number | null;
 
   // ── Content ───────────────────────────────────────────────────────────────
-  emailBody:        string;
+  emailBody?:       string;
   hasAttachments:   boolean;
   selectedAction?:  string | null;
+
+  // ── Site Visit deep-link ──────────────────────────────────────────────────
+  /**
+   * Populated only when sourceType === 'SiteVisit'.
+   * The Angular card / row uses this to navigate to /site-visit/:siteVisitId.
+   */
+  siteVisitId?:     number | null;
 
   // ── Processing / completion ───────────────────────────────────────────────
   processedBy?:     string | null;
@@ -66,42 +92,39 @@ export interface EmailTask {
 }
 
 export interface EmailAttachment {
-  attachmentId: number;
-  fileName: string;
-  fileSize: number;
-  fileType: string;
-  blobUrl: string;
+  attachmentId:  number;
+  fileName:      string;
+  fileSize:      number;
+  fileType:      string;
+  blobUrl:       string;
   extractedText?: string;
 }
 
 export interface User {
-  userId: number;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
+  userId:      number;
+  username:    string;
+  email:       string;
+  firstName:   string;
+  lastName:    string;
+  role:        string;
   department?: string;
 }
 
 export interface TaskStatistics {
-  totalTasks: number;
-  pendingTasks: number;
-  processedTasks: number;
-  junkTasks: number;
-  myTasks: number;
-  overdueTasks: number;
-  dueTodayTasks: number;
+  totalTasks:      number;
+  pendingTasks:    number;
+  processedTasks:  number;
+  junkTasks:       number;
+  myTasks:         number;
+  overdueTasks:    number;
+  dueTodayTasks:   number;
 }
 
 /** A single file attachment carried in an email send request. */
 export interface EmailAttachmentPayload {
-  /** File name shown in the email client, e.g. "Quote-001.pdf" */
-  fileName:     string;
-  /** Base64-encoded file content (no data-URI prefix). */
-  base64Content: string;
-  /** MIME type, e.g. "application/pdf" */
-  contentType:  string;
+  fileName:      string;  // e.g. "Quote-001.pdf"
+  base64Content: string;  // base64, no data-URI prefix
+  contentType:   string;  // e.g. "application/pdf"
 }
 
 export interface SendTaskEmailPayload {
@@ -110,73 +133,86 @@ export interface SendTaskEmailPayload {
   subject:                string;
   body:                   string;
   originalEmailGraphId?:  string | null;
-  /** Optional file attachments — base64-encoded. */
   attachments?:           EmailAttachmentPayload[];
 }
 
-/** Payload for POST /api/EmailTask/send-direct — no task context required. */
 export interface SendDirectEmailPayload {
-  toEmail:  string;
-  toName?:  string;
-  subject:  string;
-  body:     string;
-  /** Optional file attachments — base64-encoded. */
-  attachments?: EmailAttachmentPayload[];
+  toEmail:       string;
+  toName?:       string;
+  subject:       string;
+  body:          string;
+  attachments?:  EmailAttachmentPayload[];
 }
 
 // ==================== PAGINATION INTERFACES ====================
 
 export interface TaskFilterParams {
-  page: number;
-  pageSize: number;
-  sortBy?: string | null;
-  sortDirection?: 'ASC' | 'DESC' | null;
-  status?: string | null;
-  taskType?: string | null;
-  priority?: string | null;
-  assignedToUserId?: number | null;
-  customerId?: number | null;
-  dueDateFrom?: Date | null;
-  dueDateTo?: Date | null;
-  createdDateFrom?: Date | null;
-  createdDateTo?: Date | null;
-  searchTerm?: string | null;
+  page:                number;
+  pageSize:            number;
+  sortBy?:             string | null;
+  sortDirection?:      'ASC' | 'DESC' | null;
+
+  // ── Source type filter (new) ───────────────────────────────────────────────
+  /**
+   * Single source filter.  Pass 'Email' on the Email Tasks tab so that
+   * site-visit and manual tasks are excluded from this screen.
+   * Leave null/undefined to return all sources (used on the All Tasks screen).
+   */
+  sourceType?:         string | null;
+
+  /**
+   * Multi-source filter — overrides sourceType when set.
+   * e.g. ['Email'] keeps only email-originated tasks.
+   */
+  sourceTypes?:        string[] | null;
+
+  // ── Existing filters (unchanged) ──────────────────────────────────────────
+  status?:             string | null;
+  taskType?:           string | null;
+  priority?:           string | null;
+  assignedToUserId?:   number | null;
+  customerId?:         number | null;
+  dueDateFrom?:        Date | null;
+  dueDateTo?:          Date | null;
+  createdDateFrom?:    Date | null;
+  createdDateTo?:      Date | null;
+  searchTerm?:         string | null;
 }
 
 export interface PaginatedResponse<T> {
-  tasks: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+  tasks:       T[];
+  totalCount:  number;
+  page:        number;
+  pageSize:    number;
+  totalPages:  number;
 }
 
 export interface PageInfo {
-  currentPage: number;
-  pageSize: number;
-  totalItems: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
+  currentPage:       number;
+  pageSize:          number;
+  totalItems:        number;
+  totalPages:        number;
+  hasNextPage:       boolean;
+  hasPreviousPage:   boolean;
 }
 
 export interface ExtractedCustomerData {
-  taskId: number;
-  email?: string;
-  fromName?: string;
-  companyNumber?: string;
-  subject?: string;
-  customerName?: string;
-  contactFirstName?: string;
-  contactLastName?: string;
+  taskId:             number;
+  email?:             string;
+  fromName?:          string;
+  companyNumber?:     string;
+  subject?:           string;
+  customerName?:      string;
+  contactFirstName?:  string;
+  contactLastName?:   string;
 }
 
 export interface CustomerExistsResponse {
-  exists: boolean;
-  customerId?: number;
-  customerName?: string;
-  email?: string;
-  companyNumber?: string;
+  exists:          boolean;
+  customerId?:     number;
+  customerName?:   string;
+  email?:          string;
+  companyNumber?:  string;
 }
 
 
@@ -186,6 +222,7 @@ export interface CustomerExistsResponse {
   providedIn: 'root'
 })
 export class EmailTaskService {
+  // ── API URL stays /api/EmailTask — the controller route has not changed ────
   private apiUrl = `${environment.apiUrl}/api/EmailTask`;
 
   constructor(private http: HttpClient) { }
@@ -193,30 +230,44 @@ export class EmailTaskService {
   // ==================== PAGINATION METHODS ====================
 
   /**
-   * Get tasks with pagination and filtering
+   * Get tasks with pagination and filtering.
+   * Passes sourceType so the Email Tasks screen only returns email-originated tasks.
    */
   getTasksPaginated(filters: Partial<TaskFilterParams>): Observable<PaginatedResponse<EmailTask>> {
     const requestBody = {
-      page: filters.page ?? 1,
-      pageSize: filters.pageSize ?? 20,
-      status: filters.status ?? '',
-      taskType: filters.taskType ?? '',
-      priority: filters.priority ?? '',
-      searchTerm: filters.searchTerm ?? '',
-      sortBy: filters.sortBy ?? 'DateAdded',
-      sortDirection: filters.sortDirection ?? 'DESC',
-      assignedToUserId: filters.assignedToUserId ?? null,
-      customerId: filters.customerId ?? null,
-      dueDateFrom: filters.dueDateFrom ? filters.dueDateFrom.toISOString() : null,
-      dueDateTo: filters.dueDateTo ? filters.dueDateTo.toISOString() : null,
-      createdDateFrom: filters.createdDateFrom ? filters.createdDateFrom.toISOString() : null,
-      createdDateTo: filters.createdDateTo ? filters.createdDateTo.toISOString() : null
+      page:              filters.page              ?? 1,
+      pageSize:          filters.pageSize          ?? 20,
+      status:            filters.status            ?? '',
+      taskType:          filters.taskType          ?? '',
+      priority:          filters.priority          ?? '',
+      searchTerm:        filters.searchTerm        ?? '',
+      sortBy:            filters.sortBy            ?? 'DateAdded',
+      sortDirection:     filters.sortDirection      ?? 'DESC',
+      assignedToUserId:  filters.assignedToUserId  ?? null,
+      customerId:        filters.customerId         ?? null,
+      dueDateFrom:       filters.dueDateFrom        ? filters.dueDateFrom.toISOString()    : null,
+      dueDateTo:         filters.dueDateTo          ? filters.dueDateTo.toISOString()      : null,
+      createdDateFrom:   filters.createdDateFrom    ? filters.createdDateFrom.toISOString(): null,
+      createdDateTo:     filters.createdDateTo      ? filters.createdDateTo.toISOString()  : null,
+      // ── New source type fields ───────────────────────────────────────────
+      sourceType:        filters.sourceType        ?? null,
+      sourceTypes:       filters.sourceTypes        ?? null,
     };
 
     return this.http.post<PaginatedResponse<EmailTask>>(
       `${this.apiUrl}/search`,
       requestBody
     );
+  }
+
+  /**
+   * Fetch only Email-originated tasks (sourceType = 'Email').
+   * Used by the Email Tasks screen to exclude SiteVisit / Manual tasks.
+   */
+  getEmailTasksPaginated(
+    filters: Partial<Omit<TaskFilterParams, 'sourceType' | 'sourceTypes'>>
+  ): Observable<PaginatedResponse<EmailTask>> {
+    return this.getTasksPaginated({ ...filters, sourceTypes: ['Email'] });
   }
 
   getTasksByStatusPaginated(
@@ -226,15 +277,32 @@ export class EmailTaskService {
     sortBy = 'DateAdded',
     sortDirection: 'ASC' | 'DESC' = 'DESC'
   ): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({ status, page, pageSize, sortBy, sortDirection });
+    // Scoped to Email source — this screen is the email inbox
+    return this.getTasksPaginated({ status, page, pageSize, sortBy, sortDirection, sourceTypes: ['Email'] });
   }
 
-  getTasksByUserPaginated(userId: number, page = 1, pageSize = 20): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({ assignedToUserId: userId, page, pageSize, sortBy: 'DateAdded', sortDirection: 'DESC' });
+  getTasksByUserPaginated(
+    userId: number,
+    page = 1,
+    pageSize = 20
+  ): Observable<PaginatedResponse<EmailTask>> {
+    return this.getTasksPaginated({
+      assignedToUserId: userId, page, pageSize,
+      sortBy: 'DateAdded', sortDirection: 'DESC',
+      sourceTypes: ['Email']
+    });
   }
 
-  searchTasks(searchTerm: string, page = 1, pageSize = 20): Observable<PaginatedResponse<EmailTask>> {
-    return this.getTasksPaginated({ searchTerm, page, pageSize, sortBy: 'DateAdded', sortDirection: 'DESC' });
+  searchTasks(
+    searchTerm: string,
+    page = 1,
+    pageSize = 20
+  ): Observable<PaginatedResponse<EmailTask>> {
+    return this.getTasksPaginated({
+      searchTerm, page, pageSize,
+      sortBy: 'DateAdded', sortDirection: 'DESC',
+      sourceTypes: ['Email']
+    });
   }
 
   // ==================== ORIGINAL METHODS (Non-Paginated) ====================
@@ -255,19 +323,11 @@ export class EmailTaskService {
     return this.http.get<EmailTask[]>(`${this.apiUrl}/category/${category}`);
   }
 
-  /**
-   * Get all email tasks for a specific customer.
-   * Maps to: GET /api/EmailTask/customer/{customerId}
-   */
   getTasksByCustomer(customerId: number): Observable<EmailTask[]> {
     return this.http.get<EmailTask[]>(`${this.apiUrl}/customer/${customerId}`);
   }
 
-  /**
-   * Convenience wrapper – same as getTasksByCustomer but named
-   * to make the intent clear when used in the Initial Enquiry component.
-   * Returns the raw EmailTask[] which the component maps to CustomerEmailRow[].
-   */
+  /** Convenience alias — named to clarify intent in the Initial Enquiry component. */
   getTasksByCustomer_AsRows(customerId: number): Observable<EmailTask[]> {
     return this.getTasksByCustomer(customerId);
   }
@@ -366,11 +426,11 @@ export class EmailTaskService {
 
   getPageInfo(response: PaginatedResponse<any>): PageInfo {
     return {
-      currentPage: response.page,
-      pageSize: response.pageSize,
-      totalItems: response.totalCount,
-      totalPages: response.totalPages,
-      hasNextPage: response.page < response.totalPages,
+      currentPage:     response.page,
+      pageSize:        response.pageSize,
+      totalItems:      response.totalCount,
+      totalPages:      response.totalPages,
+      hasNextPage:     response.page < response.totalPages,
       hasPreviousPage: response.page > 1
     };
   }
@@ -402,18 +462,12 @@ export class EmailTaskService {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-customer`, { customerId });
   }
 
-  /**
-   * Links a newly created workflow back to an email task.
-   * POST /api/EmailTask/{taskId}/link-workflow
-   */
   linkWorkflowToTask(taskId: number, workflowId: number): Observable<EmailTask> {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-workflow`, { workflowId });
   }
 
-  /**
-   * Send an email from within a task context.
-   * POST /api/EmailTask/{taskId}/send-email
-   */
+  // ==================== EMAIL SENDING ====================
+
   sendTaskEmail(taskId: number, payload: SendTaskEmailPayload): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(
       `${this.apiUrl}/${taskId}/send-email`,
@@ -421,15 +475,29 @@ export class EmailTaskService {
     );
   }
 
-  /**
-   * Send a fresh outbound email with no task context.
-   * Uses POST /api/EmailTask/send-direct — taskId not required.
-   * Always sends as a new email (never threaded).
-   */
   sendDirectEmail(payload: SendDirectEmailPayload): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(
       `${this.apiUrl}/send-direct`,
       payload
     );
+  }
+
+  // ==================== SOURCE TYPE HELPERS ====================
+
+  isSiteVisitTask(task: EmailTask): boolean {
+    return task.sourceType === 'SiteVisit' && !!task.siteVisitId;
+  }
+
+  isEmailTask(task: EmailTask): boolean {
+    return task.sourceType === 'Email';
+  }
+
+  getSourceTypeLabel(task: EmailTask): string {
+    const map: Record<string, string> = {
+      Email:     'Email',
+      SiteVisit: 'Site Visit',
+      Manual:    'Manual',
+    };
+    return map[task.sourceType] ?? task.sourceType;
   }
 }

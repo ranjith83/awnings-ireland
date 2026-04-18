@@ -413,14 +413,14 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (tasks: EmailTask[]) => {
           this.customerEmails = tasks.map(t => ({
-            taskId: t.taskId, subject: t.subject, fromEmail: t.fromEmail,
-            fromName: t.fromName, dateAdded: new Date(t.dateAdded),
+            taskId: t.taskId, subject: t.subject ?? '', fromEmail: t.fromEmail ?? '',
+            fromName: t.fromName ?? '', dateAdded: new Date(t.dateAdded),
             status: t.status, taskType: t.taskType, priority: t.priority,
-            emailBody: t.emailBody, category: t.category
+            emailBody: t.emailBody ?? '', category: t.category
           }));
           if (!this.newEmail && tasks.length) {
             const first = tasks.find(t => t.fromEmail);
-            if (first) { this.newEmail = first.fromEmail; this.customerEmail = first.fromEmail; }
+            if (first) { this.newEmail = first.fromEmail ?? ''; this.customerEmail = first.fromEmail ?? ''; }
           }
         },
         error: () => this.showError('Failed to load customer emails.')
