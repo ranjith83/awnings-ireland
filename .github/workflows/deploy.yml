@@ -37,5 +37,7 @@ jobs:
           action: "upload"
           app_location: "/"
           api_location: "api"
-          output_location: "dist/awnings-ireland/browser"
-          skip_app_build: true # <--- THIS IS KEY: Tells Azure not to build again
+          # app_location is where the source code lives
+          # app_artifact_location is where the build results live
+          app_artifact_location: "dist/awnings-ireland/browser" 
+          skip_app_build: true
