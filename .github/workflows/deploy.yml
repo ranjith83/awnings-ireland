@@ -24,4 +24,4 @@ jobs:
           # Update these paths to match your project
           app_location: "/" 
           api_location: "api" 
-          output_location: "dist/awnings-ireland"
+          output_location: "dist/awnings-ireland/browser"
