@@ -3,17 +3,18 @@ name: Deploy Angular App
 on:
   push:
     branches:
-      - main  # This triggers the action whenever you push to main
+      - main
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
+    name: Build and Deploy Job
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-   with:
+        with:
           submodules: true
-          persist-credentials: false  # Add this line
+          persist-credentials: false
 
       - name: Build and Deploy
         uses: Azure/static-web-apps-deploy@v1
@@ -21,7 +22,6 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          # Update these paths to match your project
-          app_location: "/" 
-          api_location: "api" 
+          app_location: "/"
+          api_location: "api"
           output_location: "dist/awnings-ireland/browser"
