@@ -127,6 +127,20 @@ export interface HeaterDto {
   price: number;
 }
 
+export interface LightingCassetteDto {
+  lightingId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
+export interface ControlDto {
+  controlId: number;
+  productId: number;
+  description: string;
+  price: number;
+}
+
 export interface FixingPointDto {
   fixingPointId: number;
   description: string;
@@ -219,8 +233,9 @@ export class WorkflowService {
   }
 
   /** GET /api/workflow/GeMotorsForProduct */
-  getMotorsForProduct(productId: number): Observable<MotorDto[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
+  getMotorsForProduct(productId: number, armTypeId?: number | null): Observable<MotorDto[]> {
+    let params: any = { ProductId: productId };
+    if (armTypeId != null) params['armTypeId'] = armTypeId;
     return this.http.get<MotorDto[]>(`${this.apiUrl}/GeMotorsForProduct`, { params })
       .pipe(catchError(this.handleError));
   }
@@ -230,6 +245,20 @@ export class WorkflowService {
     const params = new HttpParams().set('ProductId', productId.toString());
     return this.http.get<HeaterDto[]>(`${this.apiUrl}/GeHeatersForProduct`, { params })
       .pipe(catchError(this.handleError));
+  }
+
+  /** GET /api/workflow/GeLightingCassettesForProduct */
+  getLightingCassettesForProduct(productId: number): Observable<LightingCassetteDto[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<LightingCassetteDto[]>(`${this.apiUrl}/GeLightingCassettesForProduct`, { params })
+      .pipe(catchError(() => of([])));
+  }
+
+  /** GET /api/workflow/GeControlsForProduct */
+  getControlsForProduct(productId: number): Observable<ControlDto[]> {
+    const params = new HttpParams().set('ProductId', productId.toString());
+    return this.http.get<ControlDto[]>(`${this.apiUrl}/GeControlsForProduct`, { params })
+      .pipe(catchError(() => of([])));
   }
 
   /** GET /api/workflow/GetProjectionWidthsForProduct */

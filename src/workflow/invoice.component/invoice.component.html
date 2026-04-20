@@ -64,9 +64,6 @@
             placeholder="e.g. 255"
             min="1"
             step="1">
-          <span class="width-hint" *ngIf="enteredWidthCm && selectedWidthCm">
-            Priced at standard width tier: {{ selectedWidthCm }} cm
-          </span>
         </div>
 
         <div class="form-group">
@@ -78,26 +75,36 @@
             </option>
           </select>
         </div>
+
+        <div class="form-group electrician-inline">
+          <label class="form-label" style="visibility:hidden;">Electrician</label>
+          <label class="checkbox-label" style="padding-bottom: 10px;">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
+        </div>
+
       </div>
     </div>
 
     <!-- Additional Addons -->
     <div class="form-section">
       <h3 class="section-title">Additional Addons</h3>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="form-row addons-row">
+        <div class="form-group bracket-group">
           <label class="form-label">Brackets</label>
-          <ng-container *ngIf="brackets$ | async as bracketList">
+          <ng-container *ngIf="uniqueBrackets$ | async as bracketList">
             <div class="custom-dropdown">
               <button type="button" class="dropdown-trigger form-select" (click)="toggleBracketDropdown()">
-                <span>{{ getBracketLabel(bracketList) }}</span>
+                <span>{{ getBracketLabel() }}</span>
                 <span class="dropdown-arrow">{{ bracketDropdownOpen ? '▲' : '▼' }}</span>
               </button>
               <div class="dropdown-panel" *ngIf="bracketDropdownOpen">
                 <label class="dropdown-item" *ngFor="let bracket of bracketList">
                   <input type="checkbox"
-                    [checked]="isBracketSelected(bracket.bracketId)"
-                    (change)="toggleBracket(bracket.bracketId)">
+                    [checked]="isBracketSelected(bracket.bracketName)"
+                    (change)="toggleBracket(bracket.bracketName)">
                   <span>{{ bracket.bracketName }} — €{{ bracket.price | number:'1.2-2' }}</span>
                 </label>
               </div>
@@ -105,7 +112,7 @@
           </ng-container>
         </div>
 
-        <div class="form-group">
+        <div class="form-group motor-group" *ngIf="(motors$ | async)?.length">
           <label class="form-label">Motor</label>
           <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
             <option value="" disabled selected>Select</option>
@@ -116,12 +123,34 @@
           </select>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" *ngIf="(heaters$ | async)?.length">
           <label class="form-label">Heater</label>
           <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
             <option value="" disabled selected>Select</option>
             <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="(lightingCassettes$ | async)?.length">
+          <label class="form-label">Lighting Cassette</label>
+          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
+            <option value="" disabled selected>Select</option>
+            <option value="">None</option>
+            <option *ngFor="let cassette of lightingCassettes$ | async" [value]="cassette.lightingId">
+              {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="(controls$ | async)?.length">
+          <label class="form-label">Controls</label>
+          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
+            <option value="" disabled selected>Select</option>
+            <option value="">None</option>
+            <option *ngFor="let control of controls$ | async" [value]="control.controlId">
+              {{ control.description }} - €{{ control.price | number:'1.2-2' }}
             </option>
           </select>
         </div>
@@ -161,39 +190,36 @@
 
         <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-          <div class="shadeplus-row">
 
-            <!-- ── SINGLE option: plain checkbox ────────────────────────────── -->
-            <ng-container *ngIf="!shadePlusHasMultiple">
-              <label class="checkbox-label">
+          <!-- ── SINGLE option: checkbox only ── -->
+          <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
+            <label class="checkbox-label" style="padding-bottom: 6px;">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+              <span>ShadePlus</span>
+            </label>
+          </ng-container>
+
+          <!-- ── MULTIPLE options: checkbox + dropdown on one row ── -->
+          <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
+            <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
+              <label class="checkbox-label shadeplus-checkbox">
                 <input type="checkbox" class="checkbox-input"
-                  [(ngModel)]="includeShadeplus"
-                  (change)="onShadeplusChange()">
-                <span>Shadeplus</span>
+                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                <span>ShadePlus</span>
               </label>
-            </ng-container>
+              <select class="form-select shadeplus-select"
+                [disabled]="!includeShadeplus"
+                [(ngModel)]="selectedShadePlusId"
+                (change)="onShadeplusOptionChange()">
+                <option value="" disabled selected>Select option</option>
+                <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                  {{ opt.description }}
+                </option>
+              </select>
+            </div>
+          </ng-container>
 
-            <!-- ── MULTIPLE options: checkbox + inline dropdown ──────────────── -->
-            <ng-container *ngIf="shadePlusHasMultiple">
-              <div class="shadeplus-multi-row">
-                <label class="checkbox-label shadeplus-checkbox">
-                  <input type="checkbox" class="checkbox-input"
-                    [(ngModel)]="includeShadeplus"
-                    (change)="onShadeplusChange()">
-                  <span>Shadeplus</span>
-                </label>
-                <select class="form-select shadeplus-select"
-                  [disabled]="!includeShadeplus"
-                  [(ngModel)]="selectedShadePlusId"
-                  (change)="onShadeplusOptionChange()">
-                  <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
-                    {{ opt.description }} — €{{ opt.price | number:'1.2-2' }}
-                  </option>
-                </select>
-              </div>
-            </ng-container>
-
-          </div>
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
@@ -216,15 +242,21 @@
           </label>
         </div>
 
-        <div class="form-group extras-addon-check">
-          <label class="form-label" style="visibility:hidden;">Electrician</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeElectrician"
-              (change)="onElectricianChange()">
-            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
-          </label>
+      </div>
+    </div>
+
+    <!-- Supply and Fit -->
+    <div class="form-section">
+      <h3 class="section-title">Supply and Fit</h3>
+      <div class="form-row installation-row">
+        <div class="form-group small">
+          <label class="form-label">Fee</label>
+          <input type="number" class="form-input"
+            [(ngModel)]="installationFee"
+            (ngModelChange)="onInstallationFeeChange()"
+            placeholder="0.00">
         </div>
+        <div class="vat-text">{{ vatRate }}% VAT</div>
       </div>
     </div>
 
@@ -234,18 +266,12 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Invoice Date</label>
-          <input 
-            type="date" 
-            class="form-input" 
-            [(ngModel)]="invoiceDate">
+          <input type="date" class="form-input" [(ngModel)]="invoiceDate">
         </div>
 
         <div class="form-group">
           <label class="form-label">Due Date</label>
-          <input 
-            type="date" 
-            class="form-input" 
-            [(ngModel)]="dueDate">
+          <input type="date" class="form-input" [(ngModel)]="dueDate">
         </div>
 
         <div class="form-group">
@@ -259,18 +285,6 @@
             <option value="Partially Paid">Partially Paid</option>
           </select>
         </div>
-      </div>
-    </div>
-
-    <!-- Installation Fee -->
-    <div class="form-section">
-      <h3 class="section-title">Installation Fee</h3>
-      <div class="form-row installation-row">
-        <div class="form-group small">
-          <label class="form-label">Fee</label>
-          <input type="number" class="form-input" [(ngModel)]="installationFee" (ngModelChange)="onInstallationFeeChange()" placeholder="0.00">
-        </div>
-        <div class="vat-text">{{ vatRate }}% VAT</div>
       </div>
     </div>
 

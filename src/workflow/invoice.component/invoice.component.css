@@ -112,6 +112,25 @@
   grid-column: 1 / -1;
 }
 
+.form-row.addons-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.form-row.addons-row .form-group {
+  flex: 0 0 250px;
+}
+
+.form-group.bracket-group {
+  flex: 0 0 360px !important;
+}
+
+.form-group.motor-group {
+  flex: 0 0 300px !important;
+}
+
 .form-group.small {
   max-width: 200px;
 }
@@ -416,13 +435,26 @@
   font-weight: 500;
 }
 
-/* Dimensions row — width + projection only */
+/* Dimensions row — width + projection + electrician */
 .dimensions-row {
-  display: grid;
-  grid-template-columns: 200px 1fr;
+  display: flex;
+  flex-wrap: nowrap;
   gap: 15px;
-  align-items: end;
+  align-items: flex-end;
   margin-top: 5px;
+}
+
+.dimensions-row .form-group:first-child {
+  flex: 0 0 200px;
+}
+
+.dimensions-row .form-group:nth-child(2) {
+  flex: 0 0 280px;
+}
+
+.dimensions-row .electrician-inline {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .electrician-inline {
@@ -563,7 +595,7 @@
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
   z-index: 1000;
-  max-height: 220px;
+  height: 160px;
   overflow-y: auto;
 }
 

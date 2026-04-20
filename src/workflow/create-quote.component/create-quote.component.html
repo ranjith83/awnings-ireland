@@ -76,20 +76,20 @@
     <!-- ══════════════════════ ADDONS ══════════════════════════════════ -->
     <div class="form-section">
       <h3 class="section-title">Additional Addons</h3>
-      <div class="form-row">
-        <div class="form-group">
+      <div class="form-row addons-row">
+        <div class="form-group bracket-group">
           <label class="form-label">Brackets</label>
-          <ng-container *ngIf="brackets$ | async as bracketList">
+          <ng-container *ngIf="uniqueBrackets$ | async as bracketList">
             <div class="custom-dropdown">
               <button type="button" class="dropdown-trigger form-select" (click)="toggleBracketDropdown()">
-                <span>{{ getBracketLabel(bracketList) }}</span>
+                <span>{{ getBracketLabel() }}</span>
                 <span class="dropdown-arrow">{{ bracketDropdownOpen ? '▲' : '▼' }}</span>
               </button>
               <div class="dropdown-panel" *ngIf="bracketDropdownOpen">
                 <label class="dropdown-item" *ngFor="let bracket of bracketList">
                   <input type="checkbox"
-                    [checked]="isBracketSelected(bracket.bracketId)"
-                    (change)="toggleBracket(bracket.bracketId)">
+                    [checked]="isBracketSelected(bracket.bracketName)"
+                    (change)="toggleBracket(bracket.bracketName)">
                   <span>{{ bracket.bracketName }} — €{{ bracket.price | number:'1.2-2' }}</span>
                 </label>
               </div>
@@ -97,30 +97,48 @@
           </ng-container>
         </div>
 
-        <ng-container *ngIf="(motors$ | async)?.length">
-          <div class="form-group">
-            <label class="form-label">Motor</label>
-            <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
-              <option value="" disabled selected>Select</option>
-              <option value="">None</option>
-              <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
-                {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
-              </option>
-            </select>
-          </div>
-        </ng-container>
+        <div class="form-group motor-group" *ngIf="(motors$ | async)?.length">
+          <label class="form-label">Motor</label>
+          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
+            <option value="" disabled selected>Select</option>
+            <option value="">None</option>
+            <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
+              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
 
-        <ng-container *ngIf="(heaters$ | async)?.length">
-          <div class="form-group">
-            <label class="form-label">Heater</label>
-            <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
-              <option value="" disabled selected>Select</option>
-              <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
-                {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
-              </option>
-            </select>
-          </div>
-        </ng-container>
+        <div class="form-group" *ngIf="(heaters$ | async)?.length">
+          <label class="form-label">Heater</label>
+          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
+            <option value="" disabled selected>Select</option>
+            <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
+              {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="(lightingCassettes$ | async)?.length">
+          <label class="form-label">Lighting Cassette</label>
+          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
+            <option value="" disabled selected>Select</option>
+            <option value="">None</option>
+            <option *ngFor="let cassette of lightingCassettes$ | async" [value]="cassette.lightingId">
+              {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group" *ngIf="(controls$ | async)?.length">
+          <label class="form-label">Controls</label>
+          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
+            <option value="" disabled selected>Select</option>
+            <option value="">None</option>
+            <option *ngFor="let control of controls$ | async" [value]="control.controlId">
+              {{ control.description }} - €{{ control.price | number:'1.2-2' }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <!-- Extras + RAL + Shadeplus + Valance + Wall Sealing on same row -->

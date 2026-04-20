@@ -20,7 +20,9 @@ import {
   WorkflowDto,
   MotorDto,
   HeaterDto,
-  BracketDto
+  BracketDto,
+  LightingCassetteDto,
+  ControlDto
 } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
@@ -49,8 +51,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   workflows$!: Observable<WorkflowDto[]>;
   suppliers$!: Observable<SupplierDto[]>;
   brackets$!: Observable<BracketDto[]>;
+  uniqueBrackets$!: Observable<BracketDto[]>;
   motors$!: Observable<MotorDto[]>;
   heaters$!: Observable<HeaterDto[]>;
+  lightingCassettes$!: Observable<LightingCassetteDto[]>;
+  controls$!: Observable<ControlDto[]>;
   availableWidths$!: Observable<number[]>;
   availableProjections$!: Observable<number[]>;
   quoteItems$!: Observable<QuoteItemDisplay[]>;
@@ -66,11 +71,13 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   errorMessage$    = new BehaviorSubject<string>('');
   successMessage$  = new BehaviorSubject<string>('');
 
-  private workflowsSubject$   = new BehaviorSubject<WorkflowDto[]>([]);
-  private suppliersSubject$   = new BehaviorSubject<SupplierDto[]>([]);
-  private bracketsSubject$    = new BehaviorSubject<BracketDto[]>([]);
-  private motorsSubject$      = new BehaviorSubject<MotorDto[]>([]);
-  private heatersSubject$     = new BehaviorSubject<HeaterDto[]>([]);
+  private workflowsSubject$          = new BehaviorSubject<WorkflowDto[]>([]);
+  private suppliersSubject$          = new BehaviorSubject<SupplierDto[]>([]);
+  private bracketsSubject$           = new BehaviorSubject<BracketDto[]>([]);
+  private motorsSubject$             = new BehaviorSubject<MotorDto[]>([]);
+  private heatersSubject$            = new BehaviorSubject<HeaterDto[]>([]);
+  private lightingCassettesSubject$  = new BehaviorSubject<LightingCassetteDto[]>([]);
+  private controlsSubject$           = new BehaviorSubject<ControlDto[]>([]);
   private widthsSubject$      = new BehaviorSubject<number[]>([]);
   private projectionsSubject$ = new BehaviorSubject<number[]>([]);
   private quoteItemsSubject$  = new BehaviorSubject<QuoteItemDisplay[]>([]);
@@ -113,24 +120,20 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   closeBracketDropdown() { this.bracketDropdownOpen = false; }
 
-  isBracketSelected(bracketId: Number): boolean {
-    return this.selectedBrackets.includes(bracketId.toString());
+  isBracketSelected(bracketName: string): boolean {
+    return this.selectedBrackets.includes(bracketName);
   }
 
-  toggleBracket(bracketId: Number) {
-    const id = bracketId.toString();
-    const idx = this.selectedBrackets.indexOf(id);
-    if (idx === -1) this.selectedBrackets = [...this.selectedBrackets, id];
-    else            this.selectedBrackets = this.selectedBrackets.filter(b => b !== id);
+  toggleBracket(bracketName: string) {
+    const idx = this.selectedBrackets.indexOf(bracketName);
+    if (idx === -1) this.selectedBrackets = [...this.selectedBrackets, bracketName];
+    else            this.selectedBrackets = this.selectedBrackets.filter(b => b !== bracketName);
     this.onBracketChange();
   }
 
-  getBracketLabel(brackets: any[]): string {
+  getBracketLabel(): string {
     if (!this.selectedBrackets.length) return 'Select brackets';
-    if (this.selectedBrackets.length === 1) {
-      const b = brackets.find(br => br.bracketId.toString() === this.selectedBrackets[0]);
-      return b ? b.bracketName : 'Select brackets';
-    }
+    if (this.selectedBrackets.length === 1) return this.selectedBrackets[0];
     return `${this.selectedBrackets.length} brackets selected`;
   }
 
@@ -138,8 +141,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   installationFee     = 0;
   vatRate             = 13.5;
   selectedBrackets    : string[] = [];
-  selectedMotor       = '';
-  selectedHeater      = '';
+  selectedMotor              = '';
+  selectedHeater             = '';
+  selectedLightingCassette   = '';
+  selectedControl            = '';
   includeElectrician  = false;
   electricianPrice    = 280.00;
 
@@ -217,14 +222,26 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // ── Observable setup ───────────────────────────────────────────────────────
 
   private initializeObservables() {
-    this.workflows$          = this.workflowsSubject$.asObservable();
-    this.suppliers$          = this.suppliersSubject$.asObservable();
-    this.brackets$           = this.bracketsSubject$.asObservable();
-    this.motors$             = this.motorsSubject$.asObservable();
-    this.heaters$            = this.heatersSubject$.asObservable();
-    this.availableWidths$    = this.widthsSubject$.asObservable();
+    this.workflows$           = this.workflowsSubject$.asObservable();
+    this.suppliers$           = this.suppliersSubject$.asObservable();
+    this.brackets$            = this.bracketsSubject$.asObservable();
+    this.uniqueBrackets$      = this.brackets$.pipe(
+      map(brackets => {
+        const seen = new Set<string>();
+        return brackets.filter(b => {
+          if (seen.has(b.bracketName)) return false;
+          seen.add(b.bracketName);
+          return true;
+        });
+      })
+    );
+    this.motors$              = this.motorsSubject$.asObservable();
+    this.heaters$             = this.heatersSubject$.asObservable();
+    this.lightingCassettes$   = this.lightingCassettesSubject$.asObservable();
+    this.controls$            = this.controlsSubject$.asObservable();
+    this.availableWidths$     = this.widthsSubject$.asObservable();
     this.availableProjections$ = this.projectionsSubject$.asObservable();
-    this.quoteItems$         = this.quoteItemsSubject$.asObservable();
+    this.quoteItems$          = this.quoteItemsSubject$.asObservable();
 
     this.subtotal$ = this.quoteItems$.pipe(
       map(items => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))
@@ -443,40 +460,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
-    this.workflowService.getBracketsForProduct(id).pipe(
-      takeUntil(this.destroy$),
-      tap(v => {
-        this.bracketsSubject$.next(v);
-        // Default bracket: "Surcharge for face fixture" (BracketId = 1, price 86.00)
-        const defaultBracket = v.find(b =>
-          b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
-          !b.bracketName.toLowerCase().includes('spreader')
-        );
-        if (defaultBracket) {
-          this.selectedBrackets = [defaultBracket.bracketId.toString()];
-          this.onBracketChange();
-        }
-      }),
-      catchError(() => of([]))
-    ).subscribe();
-    this.workflowService.getMotorsForProduct(id).pipe(
-      takeUntil(this.destroy$),
-      tap(v => {
-        this.motorsSubject$.next(v);
-        // Default motor: "Surcharge for radio-contr. motor io/RTS + 1 ch. transmitter"
-        const defaultMotor = v.find(m =>
-          m.description.toLowerCase().includes('radio') &&
-          m.description.toLowerCase().includes('rts') &&
-          m.description.toLowerCase().includes('1 ch')
-        );
-        if (defaultMotor) {
-          this.selectedMotor = defaultMotor.motorId.toString();
-          this.onMotorChange();
-        }
-      }),
-      catchError(() => of([]))
-    ).subscribe();
+
+    // Brackets + motors both depend on armTypeId — load with default armTypeId 1 initially
+    this.reloadArmTypeDependents();
     this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.heatersSubject$.next(v)), catchError(() => of([]))).subscribe();
+    this.workflowService.getLightingCassettesForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.lightingCassettesSubject$.next(v)), catchError(() => of([]))).subscribe();
+    this.workflowService.getControlsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.controlsSubject$.next(v)), catchError(() => of([]))).subscribe();
   }
 
   private loadProductWidthsAndProjections() {
@@ -486,11 +475,89 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.workflowService.getProjectionWidthsForProduct(id).pipe(takeUntil(this.destroy$), map(p => p.sort((a, b) => a - b)), tap(v => this.projectionsSubject$.next(v)), catchError(() => of([]))).subscribe();
   }
 
+  private reloadArmTypeDependents() {
+    if (!this.selectedModelId) return;
+    const productId = this.selectedModelId;
+
+    if (this.selectedWidthCm && this.selectedAwning) {
+      // Both dimensions known — filter by resolved arm type
+      this.workflowService.getArmTypeForProjection(productId, this.selectedWidthCm, this.selectedAwning)
+        .pipe(
+          takeUntil(this.destroy$),
+          tap(armTypeId => {
+            this.workflowService.getBracketsForProduct(productId, armTypeId)
+              .pipe(
+                takeUntil(this.destroy$),
+                tap(brackets => { this.bracketsSubject$.next(brackets); this.onBracketChange(); }),
+                catchError(() => of([]))
+              ).subscribe();
+
+            this.workflowService.getMotorsForProduct(productId, armTypeId)
+              .pipe(
+                takeUntil(this.destroy$),
+                tap(motors => {
+                  this.motorsSubject$.next(motors);
+                  if (this.selectedMotor && !motors.some(m => m.motorId.toString() === this.selectedMotor)) {
+                    this.selectedMotor = '';
+                    this.onMotorChange();
+                  }
+                }),
+                catchError(() => of([]))
+              ).subscribe();
+          }),
+          catchError(() => of(null))
+        ).subscribe();
+    } else {
+      // No dimensions yet — default to armTypeId 1
+      this.workflowService.getBracketsForProduct(productId, 1)
+        .pipe(
+          takeUntil(this.destroy$),
+          tap(brackets => {
+            this.bracketsSubject$.next(brackets);
+            if (this.selectedBrackets.length === 0) {
+              const defaultBracket = brackets.find(b =>
+                b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
+                !b.bracketName.toLowerCase().includes('spreader')
+              );
+              if (defaultBracket) {
+                this.selectedBrackets = [defaultBracket.bracketName];
+                this.onBracketChange();
+              }
+            } else {
+              this.onBracketChange();
+            }
+          }),
+          catchError(() => of([]))
+        ).subscribe();
+
+      this.workflowService.getMotorsForProduct(productId, 1)
+        .pipe(
+          takeUntil(this.destroy$),
+          tap(motors => {
+            this.motorsSubject$.next(motors);
+            if (!this.selectedMotor) {
+              const defaultMotor = motors.find(m =>
+                m.description.toLowerCase().includes('radio') &&
+                m.description.toLowerCase().includes('rts') &&
+                m.description.toLowerCase().includes('1 ch')
+              );
+              if (defaultMotor) {
+                this.selectedMotor = defaultMotor.motorId.toString();
+                this.onMotorChange();
+              }
+            }
+          }),
+          catchError(() => of([]))
+        ).subscribe();
+    }
+  }
+
   // ── Dimension / addon handlers ─────────────────────────────────────────────
 
   onWidthInput() {
     // Resolve the entered value to the floor standard-width tier
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
+    this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
     if (this.includeRalSurcharge) this.onRalSurchargeChange();
     // ShadePlus: options are already loaded at product level — no re-fetch needed.
@@ -515,42 +582,20 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     return sorted[0];
   }
 
-  onAwningChange() { this.checkAndGenerateFirstLineItem(); }
+  onAwningChange() {
+    this.reloadArmTypeDependents();
+    this.checkAndGenerateFirstLineItem();
+  }
 
   private checkAndGenerateFirstLineItem() {
     if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) return;
     const productId = this.selectedModelId;
-    const widthcm   = this.selectedWidthCm; // ceiling width for pricing
+    const widthcm   = this.selectedWidthCm;
     const projcm    = this.selectedAwning;
 
-    // Fetch price and ArmTypeId in parallel
     this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
       .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.errorMessage$.next('Failed to get price'); return of(0); }))
       .subscribe();
-
-    // Re-load brackets filtered to this arm type
-    this.workflowService.getArmTypeForProjection(productId, widthcm, projcm)
-      .pipe(
-        takeUntil(this.destroy$),
-        tap(armTypeId => {
-          this.workflowService.getBracketsForProduct(productId, armTypeId)
-            .pipe(
-              takeUntil(this.destroy$),
-              tap(brackets => {
-                this.bracketsSubject$.next(brackets);
-                // If currently selected brackets are no longer valid, clear them
-                const validIds = brackets.map(b => b.bracketId.toString());
-                const stillValid = this.selectedBrackets.filter(id => validIds.includes(id));
-                if (stillValid.length !== this.selectedBrackets.length) {
-                  this.selectedBrackets = stillValid;
-                  this.onBracketChange();
-                }
-              }),
-              catchError(() => of([]))
-            ).subscribe();
-        }),
-        catchError(() => of(null))
-      ).subscribe();
   }
 
   private generateFirstLineItem() {
@@ -575,16 +620,22 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onBracketChange() {
-    // Remove all existing bracket line items first
     this.removeAddonLineItem('bracket');
-
     if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
 
-    const brackets = this.bracketsSubject$.value;
-    const selected = brackets.filter(b => this.selectedBrackets.includes(b.bracketId.toString()));
+    // Look up by name in the current (arm-type-filtered) bracket list for correct prices
+    const allBrackets = this.bracketsSubject$.value;
+    const seen = new Set<string>();
+    const selected = allBrackets.filter(b => {
+      if (!this.selectedBrackets.includes(b.bracketName)) return false;
+      if (seen.has(b.bracketName)) return false;
+      seen.add(b.bracketName);
+      return true;
+    });
+
+    if (selected.length === 0) return;
 
     if (selected.length === 1) {
-      // Single bracket — use the standard bracket slot
       const b = selected[0];
       this.addOrUpdateAddonLineItem('bracket', {
         description: b.bracketName, quantity: 1, unitPrice: b.price,
@@ -592,8 +643,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         amount: this.calculateAmount(1, b.price, this.vatRate, 0),
         id: this.getAddonItemId('bracket')
       });
-    } else if (selected.length > 1) {
-      // Multiple brackets — combine into one line item using the bracket slot
+    } else {
       const combinedDesc = selected.map(b => b.bracketName).join(' + ');
       const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
       this.addOrUpdateAddonLineItem('bracket', {
@@ -751,6 +801,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedHeater) { this.removeAddonLineItem('heater'); return; }
     const heater = this.heatersSubject$.value.find(h => h.heaterId.toString() === this.selectedHeater);
     if (heater) this.addOrUpdateAddonLineItem('heater', { description: heater.description, quantity: 1, unitPrice: heater.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, heater.price, this.vatRate, 0), id: this.getAddonItemId('heater') });
+  }
+
+  onLightingCassetteChange() {
+    if (!this.selectedLightingCassette) { this.removeAddonLineItem('lighting'); return; }
+    const cassette = this.lightingCassettesSubject$.value.find(c => c.lightingId.toString() === this.selectedLightingCassette);
+    if (cassette) this.addOrUpdateAddonLineItem('lighting', { description: cassette.description, quantity: 1, unitPrice: cassette.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, cassette.price, this.vatRate, 0), id: this.getAddonItemId('lighting') });
+  }
+
+  onControlChange() {
+    if (!this.selectedControl) { this.removeAddonLineItem('control'); return; }
+    const control = this.controlsSubject$.value.find(c => c.controlId.toString() === this.selectedControl);
+    if (control) this.addOrUpdateAddonLineItem('control', { description: control.description, quantity: 1, unitPrice: control.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, control.price, this.vatRate, 0), id: this.getAddonItemId('control') });
   }
 
   onElectricianChange() {
@@ -1012,6 +1074,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.selectedBrackets = [];
     this.selectedMotor = '';
     this.selectedHeater = '';
+    this.selectedLightingCassette = '';
+    this.selectedControl = '';
     this.includeElectrician = false;
     this.includeRalSurcharge = false;
     this.includeShadeplus = false;
@@ -1064,12 +1128,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   private getAddonItemId(type: string): number {
-    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010 };
+    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012 };
     return ids[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing'];
+    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control'];
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
