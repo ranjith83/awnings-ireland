@@ -15,7 +15,17 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
-      
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install and Build
+        run: |
+          npm install
+          npm run build --configuration=production
+
       - name: Rename CSR to index.html
         run: mv dist/awnings-ireland/browser/index.csr.html dist/awnings-ireland/browser/index.html
 
@@ -28,3 +38,4 @@ jobs:
           app_location: "/"
           api_location: "api"
           output_location: "dist/awnings-ireland/browser"
+          skip_app_build: true # <--- THIS IS KEY: Tells Azure not to build again
