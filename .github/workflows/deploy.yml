@@ -15,6 +15,9 @@ jobs:
         with:
           submodules: true
           persist-credentials: false
+      
+      - name: Rename CSR to index.html
+        run: mv dist/awnings-ireland/browser/index.csr.html dist/awnings-ireland/browser/index.html
 
       - name: Build and Deploy
         uses: Azure/static-web-apps-deploy@v1
