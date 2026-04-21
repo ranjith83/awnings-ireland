@@ -128,6 +128,14 @@ export interface SalespersonDto {
   name: string;
 }
 
+export interface EircodeAddressDto {
+  address1?: string;
+  address2?: string;
+  address3?: string;
+  county?: string;
+  eircode?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -212,6 +220,15 @@ export class CustomerService {
       .pipe(
         catchError(this.handleError)
       );
+  }
+
+  /**
+   * Look up address from EirCode via TomTom Geocoding API
+   */
+  lookupEircode(eircode: string): Observable<EircodeAddressDto> {
+    return this.http.get<EircodeAddressDto>(
+      `${this.apiUrl}/eircode-lookup/${encodeURIComponent(eircode)}`
+    ).pipe(catchError(this.handleError));
   }
 
   /**

@@ -61,14 +61,15 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   selectedSupplier: number | null    = null;
   selectedProductType: number | null = null;
   selectedProduct: number | null     = null;
-  newWorkflowName        = '';
-  newWorkflowDescription = '';
+
+  // Cached current lists for synchronous lookup
+  private currentSuppliers: SupplierDto[]     = [];
+  private currentProductTypes: ProductTypeDto[] = [];
+  private currentProducts: ProductDto[]         = [];
 
   // Edit modal state
   showEditModal         = false;
   editingWorkflow: WorkflowDto | null = null;
-  editWorkflowName      = '';
-  editWorkflowDescription = '';
   isSavingEdit$ = new BehaviorSubject<boolean>(false);
 
   // Delete confirmation state
@@ -125,6 +126,10 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         );
       })
     );
+
+    this.suppliers$.pipe(takeUntil(this.destroy$)).subscribe(s => this.currentSuppliers = s);
+    this.productTypes$.pipe(takeUntil(this.destroy$)).subscribe(pt => this.currentProductTypes = pt);
+    this.products$.pipe(takeUntil(this.destroy$)).subscribe(p => this.currentProducts = p);
 
     this.workflows$ = this.workflowsSubject$.asObservable();
 
@@ -215,31 +220,34 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       this.errorMessage$.next('Please select supplier, product type, and product');
       this.clearMessagesAfterDelay(); return;
     }
-    if (!this.newWorkflowName.trim()) {
-      this.errorMessage$.next('Please enter a workflow name');
+
+    const supplier    = this.currentSuppliers.find(s => s.supplierId === this.selectedSupplier);
+    const productType = this.currentProductTypes.find(pt => pt.productTypeId === this.selectedProductType);
+    const product     = this.currentProducts.find(p => p.productId === this.selectedProduct);
+
+    // Duplicate check — same supplier + productType + product for this customer
+    const existing = this.workflowsSubject$.value;
+    const isDuplicate = existing.some(w =>
+      w.supplierId    === this.selectedSupplier &&
+      w.productTypeId === this.selectedProductType &&
+      w.productId     === this.selectedProduct
+    );
+    if (isDuplicate) {
+      this.errorMessage$.next(
+        `A workflow for "${productType?.description || ''} - ${product?.productName || ''}" already exists for this customer.`
+      );
       this.clearMessagesAfterDelay(); return;
     }
 
-    let suppliers: SupplierDto[] = [];
-    let productTypes: ProductTypeDto[] = [];
-    let products: ProductDto[] = [];
-    this.suppliers$.pipe(takeUntil(this.destroy$)).subscribe(s => suppliers = s);
-    this.productTypes$.pipe(takeUntil(this.destroy$)).subscribe(pt => productTypes = pt);
-    this.products$.pipe(takeUntil(this.destroy$)).subscribe(p => products = p);
-
-    const supplier    = suppliers.find(s => s.supplierId === this.selectedSupplier);
-    const productType = productTypes.find(pt => pt.productTypeId === this.selectedProductType);
-    const product     = products.find(p => p.productId === this.selectedProduct);
+    const autoName = `${productType?.description || ''} - ${product?.productName || ''}`.trim();
 
     const dto: WorkflowDto = {
       workflowId: 0,
-      workflowName: this.newWorkflowName.trim(),
+      workflowName: autoName,
       productName: product?.productName || '',
-      description: this.newWorkflowDescription.trim() ||
-        `${supplier?.supplierName || ''} - ${productType?.description || ''} - ${product?.productName || ''}`,
+      description: `${supplier?.supplierName || ''} - ${productType?.description || ''} - ${product?.productName || ''}`,
       initialEnquiry: false, createQuotation: false,
       inviteShowRoomVisit: false, setupSiteVisit: false, invoiceSent: false,
-      // completed flags are server-computed; send false on create
       initialEnquiryCompleted: false, createQuotationCompleted: false,
       inviteShowRoomCompleted: false, setupSiteVisitCompleted: false, invoiceSentCompleted: false,
       dateAdded: new Date().toISOString(),
@@ -250,7 +258,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       productTypeId: this.selectedProductType,
       companyId: 0,
       taskId: this.taskId || undefined,
-      hasDependencies:  false
+      hasDependencies: false
     };
 
     this.isLoading$.next(true);
@@ -262,7 +270,6 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         this.successMessage$.next('Workflow created successfully!');
         this.loadWorkflows(this.customerId!);
         this.selectedSupplier = null; this.selectedProductType = null; this.selectedProduct = null;
-        this.newWorkflowName = ''; this.newWorkflowDescription = '';
         this.selectedSupplierSubject$.next(null); this.selectedProductTypeSubject$.next(null); this.selectedProductSubject$.next(null);
         this.clearMessagesAfterDelay();
       },
@@ -274,29 +281,18 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   openEditModal(workflow: WorkflowDto, event: Event) {
     event.stopPropagation();
-    this.editingWorkflow        = { ...workflow };
-    this.editWorkflowName       = workflow.workflowName || '';
-    this.editWorkflowDescription = workflow.description || '';
-    this.showEditModal = true;
+    this.editingWorkflow = { ...workflow };
+    this.showEditModal   = true;
     this.errorMessage$.next(''); this.successMessage$.next('');
   }
 
   closeEditModal() {
     this.showEditModal = false; this.editingWorkflow = null;
-    this.editWorkflowName = ''; this.editWorkflowDescription = '';
   }
 
   saveEdit() {
     if (!this.editingWorkflow) return;
-    if (!this.editWorkflowName.trim()) {
-      this.errorMessage$.next('Workflow name is required'); this.clearMessagesAfterDelay(); return;
-    }
-
-    const updated: WorkflowDto = {
-      ...this.editingWorkflow,
-      workflowName: this.editWorkflowName.trim(),
-      description:  this.editWorkflowDescription.trim()
-    };
+    const updated: WorkflowDto = { ...this.editingWorkflow };
 
     this.isSavingEdit$.next(true);
     this.workflowService.updateWorkflow(updated).pipe(

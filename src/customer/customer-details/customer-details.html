@@ -134,257 +134,179 @@
 
       <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
         <div class="modal-body">
-          
-          <!-- Company Information Section -->
-          <div class="form-section">
-            <h3 class="section-title">Company Information</h3>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <label for="name">Company Name <span class="required">*</span></label>
-                <input 
-                  type="text" 
-                  id="name"
-                  formControlName="name"
-                  class="form-control"
-                  [class.error]="customerForm.get('name')?.touched && customerForm.get('name')?.invalid"
-                  placeholder="Enter company name"
-                />
-                <span class="error-message" *ngIf="getError('name')">
-                  {{ getError('name') }}
-                </span>
-              </div>
 
-              <div class="form-group">
-                <label for="companyNumber">Company Number</label>
-                <input 
-                  type="text" 
-                  id="companyNumber"
-                  formControlName="companyNumber"
-                  class="form-control"
-                  placeholder="Enter company number"
-                />
-              </div>
+          <!-- Customer Type -->
+          <div class="cust-type-row">
+            <label class="cust-type-label">
+              <input type="checkbox" formControlName="residential" (change)="onResidentialChange()" />
+              Residential <span class="required">*</span>
+            </label>
+            <label class="cust-type-label">
+              <input type="checkbox" formControlName="commercial" (change)="onCommercialChange()" />
+              Commercial <span class="required">*</span>
+            </label>
+          </div>
+          <span class="error-message" *ngIf="customerForm.errors?.['typeRequired'] && customerForm.touched">
+            Please select Residential or Commercial
+          </span>
+
+          <!-- Name -->
+          <div class="cust-field-row">
+            <label class="cust-label">Contact Name <span class="required">*</span></label>
+            <input type="text" formControlName="name" class="form-control"
+              placeholder="A business or persons name"
+              [class.error]="customerForm.get('name')?.touched && customerForm.get('name')?.invalid" />
+            <span class="error-message" *ngIf="getError('name')">{{ getError('name') }}</span>
+          </div>
+
+          <!-- First / Last Name -->
+          <div class="cust-two-col">
+            <div class="cust-field-row">
+              <label class="cust-label">First Name</label>
+              <input type="text" formControlName="contactFirstName" class="form-control" placeholder="First name" />
             </div>
-
-            <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" formControlName="residential" (change)="onResidentialChange()" />
-                <span>Residential Customer</span>
-              </label>
-            </div>
-
-            <!-- Tax and VAT Numbers - Only show for non-residential -->
-            <div class="form-row" *ngIf="!customerForm.get('residential')?.value">
-              <div class="form-group">
-                <label for="taxNumber">Tax Number</label>
-                <input 
-                  type="text" 
-                  id="taxNumber"
-                  formControlName="taxNumber"
-                  class="form-control"
-                  placeholder="Enter tax number"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="vatNumber">VAT Number</label>
-                <input 
-                  type="text" 
-                  id="vatNumber"
-                  formControlName="vatNumber"
-                  class="form-control"
-                  placeholder="Enter VAT number"
-                />
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="assignedSalespersonId">Assigned Salesperson</label>
-              <select 
-                id="assignedSalespersonId"
-                formControlName="assignedSalespersonId"
-                class="form-control"
-                (change)="onSalespersonChange()"
-              >
-                <option [ngValue]="null">-- Select Salesperson --</option>
-                <option *ngFor="let sp of salespeople" [ngValue]="sp.userId">
-                  {{ sp.name }}
-                </option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="address1">Address Line 1 <span class="required">*</span></label>
-              <input 
-                type="text" 
-                id="address1"
-                formControlName="address1"
-                class="form-control"
-                [class.error]="customerForm.get('address1')?.touched && customerForm.get('address1')?.invalid"
-                placeholder="Enter address line 1"
-              />
-              <span class="error-message" *ngIf="getError('address1')">
-                {{ getError('address1') }}
-              </span>
-            </div>
-
-            <div class="form-group">
-              <label for="address2">Address Line 2</label>
-              <input 
-                type="text" 
-                id="address2"
-                formControlName="address2"
-                class="form-control"
-                placeholder="Enter address line 2"
-              />
-            </div>
-
-            <div class="form-group">
-              <label for="address3">Address Line 3</label>
-              <input 
-                type="text" 
-                id="address3"
-                formControlName="address3"
-                class="form-control"
-                placeholder="Enter address line 3"
-              />
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="county">County</label>
-                <input 
-                  type="text" 
-                  id="county"
-                  formControlName="county"
-                  class="form-control"
-                  placeholder="Enter county"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="eircode">Eircode</label>
-                <input 
-                  type="text" 
-                  id="eircode"
-                  formControlName="eircode"
-                  class="form-control"
-                  placeholder="Enter eircode"
-                />
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="phone">Phone</label>
-                <input 
-                  type="text" 
-                  id="phone"
-                  formControlName="phone"
-                  class="form-control"
-                  placeholder="Enter phone number"
-                />
-              </div>
-
-              <div class="form-group">
-                <label for="mobile">Mobile <span class="required">*</span></label>
-                <input 
-                  type="text" 
-                  id="mobile"
-                  formControlName="mobile"
-                  class="form-control"
-                  [class.error]="customerForm.get('mobile')?.touched && customerForm.get('mobile')?.invalid"
-                  placeholder="Enter mobile number"
-                  maxlength="10"
-                />
-                <span class="error-message" *ngIf="getError('mobile')">
-                  {{ getError('mobile') }}
-                </span>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="email">Email <span class="required">*</span></label>
-              <input 
-                type="email" 
-                id="email"
-                formControlName="email"
-                class="form-control"
-                [class.error]="customerForm.get('email')?.touched && customerForm.get('email')?.invalid"
-                placeholder="Enter email address"
-              />
-              <span class="error-message" *ngIf="getError('email')">
-                {{ getError('email') }}
-              </span>
+            <div class="cust-field-row">
+              <label class="cust-label">Last Name</label>
+              <input type="text" formControlName="contactLastName" class="form-control" placeholder="Last name" />
             </div>
           </div>
 
-          <!-- Contact Person Section -->
-          <div class="form-section">
-            <h3 class="section-title">Contact Person</h3>
-            
-            <div class="form-row">
-              <div class="form-group">
-                <label for="contactFirstName">First Name <span class="required">*</span></label>
-                <input 
-                  type="text" 
-                  id="contactFirstName"
-                  formControlName="contactFirstName"
-                  class="form-control"
-                  [class.error]="customerForm.get('contactFirstName')?.touched && customerForm.get('contactFirstName')?.invalid"
-                  placeholder="Enter first name"
-                />
-                <span class="error-message" *ngIf="getError('contactFirstName')">
-                  {{ getError('contactFirstName') }}
-                </span>
-              </div>
+          <!-- EirCode -->
+          <div class="cust-field-row">
+            <label class="cust-label">EirCode <span class="required">*</span></label>
+            <div class="eircode-row">
+              <input type="text" formControlName="eircode" class="form-control"
+                [class.error]="customerForm.get('eircode')?.touched && customerForm.get('eircode')?.invalid"
+                placeholder="e.g. D01 F5P2" />
+              <button type="button" class="btn-find-address"
+                (click)="findAddress()"
+                [disabled]="eircodeLoading">
+                {{ eircodeLoading ? 'Finding...' : 'Find Address' }}
+              </button>
+            </div>
+            <span class="error-message" *ngIf="getError('eircode')">{{ getError('eircode') }}</span>
+            <span class="eircode-error" *ngIf="eircodeError">{{ eircodeError }}</span>
+          </div>
 
-              <div class="form-group">
-                <label for="contactLastName">Last Name <span class="required">*</span></label>
-                <input 
-                  type="text" 
-                  id="contactLastName"
-                  formControlName="contactLastName"
-                  class="form-control"
+          <!-- Address Lines -->
+          <div class="cust-field-row">
+            <label class="cust-label">Address Line 1 <span class="required">*</span></label>
+            <input type="text" formControlName="address1" class="form-control"
+              [class.error]="customerForm.get('address1')?.touched && customerForm.get('address1')?.invalid"
+              placeholder="Address line 1" />
+            <span class="error-message" *ngIf="getError('address1')">{{ getError('address1') }}</span>
+          </div>
+          <div class="cust-field-row">
+            <label class="cust-label">Address Line 2</label>
+            <input type="text" formControlName="address2" class="form-control" placeholder="Address line 2" />
+          </div>
+          <div class="cust-field-row">
+            <label class="cust-label">Address Line 3</label>
+            <input type="text" formControlName="address3" class="form-control" placeholder="Address line 3" />
+          </div>
+
+          <!-- County / Country -->
+          <div class="cust-two-col">
+            <div class="cust-field-row">
+              <label class="cust-label">County</label>
+              <select formControlName="county" class="form-control">
+                <option *ngFor="let c of irishCounties" [value]="c">{{ c }}</option>
+              </select>
+            </div>
+            <div class="cust-field-row">
+              <label class="cust-label">Country</label>
+              <select formControlName="countryId" class="form-control">
+                <option *ngFor="let c of countries" [ngValue]="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="cust-field-row">
+            <label class="cust-label">Email <span class="required">*</span></label>
+            <input type="email" formControlName="email" class="form-control" placeholder="Email address"
+              [class.error]="customerForm.get('email')?.touched && customerForm.get('email')?.invalid" />
+            <span class="error-message" *ngIf="getError('email')">{{ getError('email') }}</span>
+          </div>
+
+          <!-- Mobile / Phone -->
+          <div class="cust-two-col">
+            <div class="cust-field-row">
+              <label class="cust-label">Mobile <span class="required">*</span></label>
+              <input type="text" formControlName="mobile" class="form-control"
+                [class.error]="customerForm.get('mobile')?.touched && customerForm.get('mobile')?.invalid"
+                placeholder="Mobile" maxlength="10" />
+              <span class="error-message" *ngIf="getError('mobile')">{{ getError('mobile') }}</span>
+            </div>
+            <div class="cust-field-row">
+              <label class="cust-label">Phone</label>
+              <input type="text" formControlName="phone" class="form-control" placeholder="Phone" />
+            </div>
+          </div>
+
+          <!-- Commercial: Tax / VAT -->
+          <div class="cust-two-col" *ngIf="customerForm.get('commercial')?.value">
+            <div class="cust-field-row">
+              <label class="cust-label">Tax Number</label>
+              <input type="text" formControlName="taxNumber" class="form-control" placeholder="Tax number" />
+            </div>
+            <div class="cust-field-row">
+              <label class="cust-label">VAT Number</label>
+              <input type="text" formControlName="vatNumber" class="form-control" placeholder="VAT number" />
+            </div>
+          </div>
+
+          <!-- Sales Person -->
+          <div class="cust-field-row">
+            <label class="cust-label">Sales Person</label>
+            <select formControlName="assignedSalespersonId" class="form-control" (change)="onSalespersonChange()">
+              <option [ngValue]="null">-- Select --</option>
+              <option *ngFor="let sp of salespeople" [ngValue]="sp.userId">{{ sp.name }}</option>
+            </select>
+          </div>
+
+          <!-- Add New Contact toggle -->
+          <div class="add-contact-toggle">
+            <label class="cust-type-label">
+              <input type="checkbox" [(ngModel)]="addNewContact"
+                [ngModelOptions]="{standalone: true}"
+                (change)="onAddNewContactChange()" />
+              Add New Contact
+            </label>
+          </div>
+
+          <!-- Contact fields (required when checkbox is checked) -->
+          <div *ngIf="addNewContact" class="extra-contact-section">
+            <div class="cust-two-col">
+              <div class="cust-field-row">
+                <label class="cust-label">First Name <span class="required">*</span></label>
+                <input type="text" formControlName="contactFirstName" class="form-control"
+                  [class.error]="customerForm.get('contactFirstName')?.touched && customerForm.get('contactFirstName')?.invalid"
+                  placeholder="First name" />
+                <span class="error-message" *ngIf="getError('contactFirstName')">{{ getError('contactFirstName') }}</span>
+              </div>
+              <div class="cust-field-row">
+                <label class="cust-label">Last Name <span class="required">*</span></label>
+                <input type="text" formControlName="contactLastName" class="form-control"
                   [class.error]="customerForm.get('contactLastName')?.touched && customerForm.get('contactLastName')?.invalid"
-                  placeholder="Enter last name"
-                />
-                <span class="error-message" *ngIf="getError('contactLastName')">
-                  {{ getError('contactLastName') }}
-                </span>
+                  placeholder="Last name" />
+                <span class="error-message" *ngIf="getError('contactLastName')">{{ getError('contactLastName') }}</span>
               </div>
             </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="contactPhone">Contact Phone <span class="required">*</span></label>
-                <input 
-                  type="text" 
-                  id="contactPhone"
-                  formControlName="contactPhone"
-                  class="form-control"
+            <div class="cust-two-col">
+              <div class="cust-field-row">
+                <label class="cust-label">Phone <span class="required">*</span></label>
+                <input type="text" formControlName="contactPhone" class="form-control"
                   [class.error]="customerForm.get('contactPhone')?.touched && customerForm.get('contactPhone')?.invalid"
-                  placeholder="Enter contact phone"
-                />
-                <span class="error-message" *ngIf="getError('contactPhone')">
-                  {{ getError('contactPhone') }}
-                </span>
+                  placeholder="Phone" />
+                <span class="error-message" *ngIf="getError('contactPhone')">{{ getError('contactPhone') }}</span>
               </div>
-
-              <div class="form-group">
-                <label for="contactEmail">Contact Email <span class="required">*</span></label>
-                <input 
-                  type="email" 
-                  id="contactEmail"
-                  formControlName="contactEmail"
-                  class="form-control"
+              <div class="cust-field-row">
+                <label class="cust-label">Email <span class="required">*</span></label>
+                <input type="email" formControlName="contactEmail" class="form-control"
                   [class.error]="customerForm.get('contactEmail')?.touched && customerForm.get('contactEmail')?.invalid"
-                  placeholder="Enter contact email"
-                />
-                <span class="error-message" *ngIf="getError('contactEmail')">
-                  {{ getError('contactEmail') }}
-                </span>
+                  placeholder="Email" />
+                <span class="error-message" *ngIf="getError('contactEmail')">{{ getError('contactEmail') }}</span>
               </div>
             </div>
           </div>
@@ -392,11 +314,9 @@
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-cancel" (click)="closeModal()">
-            Cancel
-          </button>
+          <button type="button" class="btn-cancel" (click)="closeModal()">Close</button>
           <button type="submit" class="btn-submit" [disabled]="isLoading$ | async">
-            <span *ngIf="!(isLoading$ | async)">{{ (modalMode$ | async) === 'add' ? 'Add Customer' : 'Update Customer' }}</span>
+            <span *ngIf="!(isLoading$ | async)">{{ (modalMode$ | async) === 'add' ? 'Save' : 'Save' }}</span>
             <span *ngIf="isLoading$ | async">Processing...</span>
           </button>
         </div>

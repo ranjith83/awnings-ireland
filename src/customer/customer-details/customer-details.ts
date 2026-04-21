@@ -1,10 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { CompanyDto, CompanyWithContactDto, Customer, CustomerMainViewDto, CustomerService, SalespersonDto } from '../../service/customer-service';
+import { CompanyDto, CompanyWithContactDto, CustomerMainViewDto, CustomerService, SalespersonDto } from '../../service/customer-service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BehaviorSubject, Observable, combineLatest } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, combineLatest } from 'rxjs';
 import { map, shareReplay, tap } from 'rxjs/operators';
 import { EmailTask, EmailTaskService } from '../../service/email-task.service';
 import { AuditTrailService, AuditAction, AuditEntityType } from '../../service/audit-trail.service';
@@ -16,7 +16,30 @@ import { AuditTrailService, AuditAction, AuditEntityType } from '../../service/a
   templateUrl: './customer-details.html',
   styleUrl: './customer-details.css'
 })
-export class CustomerDetails implements OnInit {
+export class CustomerDetails implements OnInit, OnDestroy {
+
+  private destroy$ = new Subject<void>();
+
+  readonly irishCounties = [
+    'Carlow','Cavan','Clare','Cork','Donegal','Dublin','Galway','Kerry',
+    'Kildare','Kilkenny','Laois','Leitrim','Limerick','Longford','Louth',
+    'Mayo','Meath','Monaghan','Offaly','Roscommon','Sligo','Tipperary',
+    'Waterford','Westmeath','Wexford','Wicklow'
+  ];
+
+  readonly countries = [
+    { id: 1, name: 'Ireland' },
+    { id: 2, name: 'United Kingdom' },
+    { id: 3, name: 'France' },
+    { id: 4, name: 'Germany' },
+    { id: 5, name: 'Spain' },
+    { id: 6, name: 'Italy' },
+    { id: 7, name: 'Other' }
+  ];
+
+  addNewContact = false;
+  eircodeLoading = false;
+  eircodeError = '';
 
   // Observable state management
   private customersSubject = new BehaviorSubject<CustomerMainViewDto[]>([]);
@@ -88,6 +111,7 @@ export class CustomerDetails implements OnInit {
 
   // Store the current customer ID separately (not in the form)
   private currentCustomerId: number | null = null;
+  private currentContactId: number | null = null;
   linkedTaskId: any;
 
   constructor(
@@ -102,22 +126,30 @@ export class CustomerDetails implements OnInit {
       name: ['', [Validators.required, Validators.minLength(2)]],
       companyNumber: [''],
       residential: [false],
+      commercial: [false],
       taxNumber: [''],
       vatNumber: [''],
+      eircode: ['', Validators.required],
       address1: ['', Validators.required],
       address2: [''],
       address3: [''],
-      county: [''],
+      county: ['Dublin'],
+      countryId: [1],
       phone: [''],
-      mobile: ['', [Validators.required, Validators.pattern(/^\d{9,10}$/)]],
+      mobile: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
-      eircode: [''],
       assignedSalespersonId: [null],
       assignedSalespersonName: [''],
-      contactFirstName: ['', Validators.required],
-      contactLastName: ['', Validators.required],
-      contactPhone: ['', Validators.required],
-      contactEmail: ['', [Validators.required, Validators.email]]
+      contactFirstName: [''],
+      contactLastName: [''],
+      contactPhone: [''],
+      contactEmail: ['', Validators.email]
+    }, {
+      validators: (group) => {
+        const res = group.get('residential')?.value;
+        const com = group.get('commercial')?.value;
+        return (res || com) ? null : { typeRequired: true };
+      }
     });
   }
 
@@ -125,11 +157,46 @@ export class CustomerDetails implements OnInit {
     this.loadCustomers();
     this.loadSalespeople();
 
-     this.route.queryParams.subscribe(params => {
-    if (params['taskId']) {
-      this.openAddModalWithPrefilledData(params);
-    }
-  });
+    this.route.queryParams.subscribe(params => {
+      if (params['taskId']) {
+        this.openAddModalWithPrefilledData(params);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  matchCounty(county: string | null | undefined): string {
+    if (!county) return '';
+    const clean = county.replace(/^County\s+/i, '').trim().toLowerCase();
+    return this.irishCounties.find(c => c.toLowerCase() === clean) || '';
+  }
+
+  findAddress(): void {
+    const code = (this.customerForm.value.eircode || '').trim().replace(/\s+/g, '');
+    if (!code) return;
+    this.eircodeLoading = true;
+    this.eircodeError = '';
+    this.customerService.lookupEircode(code).subscribe({
+      next: addr => {
+        this.eircodeLoading = false;
+        if (!addr) { this.eircodeError = 'No address found'; return; }
+        const matchedCounty = this.matchCounty(addr.county);
+        this.customerForm.patchValue({
+          address1: addr.address1 || '',
+          address2: addr.address2 || '',
+          address3: addr.address3 || '',
+          county:   matchedCounty || this.customerForm.value.county
+        });
+      },
+      error: () => {
+        this.eircodeLoading = false;
+        this.eircodeError = 'Could not find address for this EirCode';
+      }
+    });
   }
 
   loadCustomers(): void {
@@ -167,8 +234,12 @@ export class CustomerDetails implements OnInit {
   openAddModal(): void {
     this.modalModeSubject.next('add');
     this.currentCustomerId = null;
+    this.addNewContact = false;
     this.customerForm.reset({
       residential: false,
+      commercial: false,
+      county: 'Dublin',
+      countryId: 1,
       assignedSalespersonId: null,
       assignedSalespersonName: ''
     });
@@ -182,24 +253,25 @@ export class CustomerDetails implements OnInit {
     this.customerService.getCustomerById(customer.customerId).pipe(
       tap(fullCustomer => {
         const contact = fullCustomer.customerContacts?.[0];
-        
-        // Store the customer ID separately
+
         this.currentCustomerId = fullCustomer.customerId;
-        
-        // Reset form first to clear any previous values
+        this.currentContactId = contact?.contactId ?? null;
+        this.addNewContact = !!contact;
+
         this.customerForm.reset();
-        
-        // Patch values with proper defaults for all required fields
+
         this.customerForm.patchValue({
           name: fullCustomer.name || '',
           companyNumber: fullCustomer.companyNumber || '',
-          residential: fullCustomer.residential || false,
+          residential: fullCustomer.residential === true,
+          commercial: fullCustomer.residential === false,
           taxNumber: fullCustomer.taxNumber || '',
           vatNumber: fullCustomer.vatNumber || '',
           address1: fullCustomer.address1 || '',
           address2: fullCustomer.address2 || '',
           address3: fullCustomer.address3 || '',
-          county: fullCustomer.county || '',
+          county: fullCustomer.county || 'Dublin',
+          countryId: fullCustomer.countryId || 1,
           phone: fullCustomer.phone || '',
           mobile: fullCustomer.mobile || '',
           email: fullCustomer.email || '',
@@ -211,7 +283,10 @@ export class CustomerDetails implements OnInit {
           contactPhone: contact?.phone || '',
           contactEmail: contact?.email || ''
         });
-        
+
+        // set validators for contact fields based on whether a contact exists
+        this.onAddNewContactChange();
+
         this.isLoadingSubject.next(false);
         this.showModalSubject.next(true);
       })
@@ -232,6 +307,9 @@ export class CustomerDetails implements OnInit {
   closeModal(): void {
     this.showModalSubject.next(false);
     this.currentCustomerId = null;
+    this.currentContactId = null;
+    this.addNewContact = false;
+    this.eircodeError = '';
     this.customerForm.reset();
     this.errorMessageSubject.next('');
   }
@@ -278,12 +356,37 @@ export class CustomerDetails implements OnInit {
   }
 
   onResidentialChange(): void {
-    const isResidential = this.customerForm.get('residential')?.value;
-    
-    if (isResidential) {
-      this.customerForm.patchValue({
-        taxNumber: '',
-        vatNumber: ''
+    if (this.customerForm.get('residential')?.value) {
+      this.customerForm.patchValue({ commercial: false, taxNumber: '', vatNumber: '' });
+    }
+    this.customerForm.updateValueAndValidity();
+  }
+
+  onCommercialChange(): void {
+    if (this.customerForm.get('commercial')?.value) {
+      this.customerForm.patchValue({ residential: false });
+    }
+    this.customerForm.updateValueAndValidity();
+  }
+
+  onAddNewContactChange(): void {
+    const contactFields = ['contactFirstName', 'contactLastName', 'contactPhone', 'contactEmail'];
+    if (this.addNewContact) {
+      contactFields.forEach(field => {
+        const ctrl = this.customerForm.get(field)!;
+        const validators = field === 'contactEmail'
+          ? [Validators.required, Validators.email]
+          : [Validators.required];
+        ctrl.setValidators(validators);
+        ctrl.updateValueAndValidity();
+      });
+    } else {
+      contactFields.forEach(field => {
+        const ctrl = this.customerForm.get(field)!;
+        const validators = field === 'contactEmail' ? [Validators.email] : [];
+        ctrl.setValidators(validators);
+        ctrl.markAsUntouched();
+        ctrl.updateValueAndValidity();
       });
     }
   }
@@ -305,10 +408,8 @@ export class CustomerDetails implements OnInit {
   }
 
   onSubmit(): void {
+    this.customerForm.markAllAsTouched();
     if (this.customerForm.invalid) {
-      Object.keys(this.customerForm.controls).forEach(key => {
-        this.customerForm.controls[key].markAsTouched();
-      });
       return;
     }
 
@@ -323,30 +424,32 @@ export class CustomerDetails implements OnInit {
   }
 
   private addCustomer(): void {
-    const formValue = this.customerForm.value;
+    const formValue = this.customerForm.getRawValue();
     
+    const isResidential = formValue.residential || false;
     const newCustomer: CompanyWithContactDto = {
       name: formValue.name,
       companyNumber: formValue.companyNumber,
-      residential: formValue.residential,
-      taxNumber: formValue.residential ? null : formValue.taxNumber,
-      vatNumber: formValue.residential ? null : formValue.vatNumber,
+      residential: isResidential,
+      taxNumber: isResidential ? null : formValue.taxNumber,
+      vatNumber: isResidential ? null : formValue.vatNumber,
       address1: formValue.address1,
       address2: formValue.address2,
       address3: formValue.address3,
       county: formValue.county,
+      countryId: formValue.countryId,
       phone: formValue.phone,
       mobile: formValue.mobile,
       email: formValue.email,
       eircode: formValue.eircode,
       assignedSalespersonId: formValue.assignedSalespersonId,
       assignedSalespersonName: formValue.assignedSalespersonName,
-      contacts: [{
+      contacts: this.addNewContact ? [{
         firstName: formValue.contactFirstName,
         lastName: formValue.contactLastName,
         phone: formValue.contactPhone,
         email: formValue.contactEmail
-      }]
+      }] : []
     };
 
      this.customerService.addCompanyWithContact(newCustomer).pipe(
@@ -408,7 +511,7 @@ export class CustomerDetails implements OnInit {
 }
 
   private updateCustomer(): void {
-    const formValue = this.customerForm.value;
+    const formValue = this.customerForm.getRawValue();
 
     // Use the stored customer ID
     if (!this.currentCustomerId) {
@@ -418,17 +521,19 @@ export class CustomerDetails implements OnInit {
       return;
     }
 
+    const isResidential = formValue.residential || false;
     const updateData: CompanyDto = {
       customerId: this.currentCustomerId,
       name: formValue.name,
       companyNumber: formValue.companyNumber,
-      residential: formValue.residential,
-      taxNumber: formValue.residential ? null : formValue.taxNumber,
-      vatNumber: formValue.residential ? null : formValue.vatNumber,
+      residential: isResidential,
+      taxNumber: isResidential ? null : formValue.taxNumber,
+      vatNumber: isResidential ? null : formValue.vatNumber,
       address1: formValue.address1,
       address2: formValue.address2,
       address3: formValue.address3,
       county: formValue.county,
+      countryId: formValue.countryId,
       phone: formValue.phone,
       mobile: formValue.mobile,
       email: formValue.email,
@@ -442,17 +547,29 @@ export class CustomerDetails implements OnInit {
       tap(response => {
         console.log('Customer updated:', response);
 
-        // ── Audit: UPDATE ──────────────────────────────────────────────────
+        if (this.addNewContact) {
+          const contactData = {
+            customerID: this.currentCustomerId!,
+            firstName: formValue.contactFirstName,
+            lastName: formValue.contactLastName,
+            phone: formValue.contactPhone,
+            email: formValue.contactEmail
+          };
+          const contactCall = this.currentContactId
+            ? this.customerService.updateContact(this.currentContactId, contactData)
+            : this.customerService.addContactToCompany(contactData) as any;
+          (contactCall as any).subscribe({ error: (e: any) => console.warn('Contact update failed:', e) });
+        }
+
         this.auditService.createAuditLog({
           entityType:  AuditEntityType.CUSTOMER,
           entityId:    this.currentCustomerId!,
           entityName:  updateData.name,
           action:      AuditAction.UPDATE,
-          changes:     [],   // field-level diff not computed here; server-side diff covers it
+          changes:     [],
           performedBy: 0,
           notes:       `Customer record updated via Customer Details form`
         }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
-        // ──────────────────────────────────────────────────────────────────
 
         alert('Customer updated successfully');
         this.loadCustomers();
@@ -502,15 +619,16 @@ export class CustomerDetails implements OnInit {
 
   getFieldLabel(fieldName: string): string {
     const labels: { [key: string]: string } = {
-      name: 'Company Name',
+      name: 'Contact Name',
       companyNumber: 'Company Number',
+      eircode: 'EirCode',
       address1: 'Address Line 1',
       mobile: 'Mobile',
       email: 'Email',
-      contactFirstName: 'Contact First Name',
-      contactLastName: 'Contact Last Name',
-      contactPhone: 'Contact Phone',
-      contactEmail: 'Contact Email'
+      contactFirstName: 'First Name',
+      contactLastName: 'Last Name',
+      contactPhone: 'Phone',
+      contactEmail: 'Email'
     };
     return labels[fieldName] || fieldName;
   }

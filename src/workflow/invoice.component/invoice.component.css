@@ -120,7 +120,7 @@
 }
 
 .form-row.addons-row .form-group {
-  flex: 0 0 250px;
+  flex: 0 0 280px;
 }
 
 .form-group.bracket-group {
@@ -128,7 +128,7 @@
 }
 
 .form-group.motor-group {
-  flex: 0 0 300px !important;
+  flex: 0 0 280px !important;
 }
 
 .form-group.small {

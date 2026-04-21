@@ -534,6 +534,105 @@ textarea.form-control {
   box-shadow: none;
 }
 
+/* ── Wireframe-style customer form ── */
+.cust-type-row {
+  display: flex;
+  gap: 30px;
+  margin-bottom: 16px;
+}
+
+.cust-type-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+}
+
+.cust-type-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.cust-field-row {
+  margin-bottom: 14px;
+}
+
+.cust-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.cust-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.eircode-row {
+  display: flex;
+  gap: 8px;
+}
+
+.eircode-row .form-control {
+  flex: 1;
+}
+
+.btn-find-address {
+  white-space: nowrap;
+  padding: 10px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-find-address:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.btn-find-address:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.eircode-error {
+  display: block;
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.add-contact-toggle {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.extra-contact-section {
+  margin-top: 14px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 600px) {
+  .cust-two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Icons */
 .icon-plus::before {
   content: '+';

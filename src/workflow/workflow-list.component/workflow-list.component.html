@@ -44,29 +44,11 @@
       </div>
     </div>
 
-    <!-- Row 2 — Name, Description, Add button -->
+    <!-- Row 2 — Add button -->
     <div class="text-fields-row">
-      <div class="text-field-group">
-        <label class="select-label">Workflow Name <span class="required">*</span></label>
-        <input type="text" class="select-input"
-          [(ngModel)]="newWorkflowName"
-          placeholder="e.g. Pergola Installation — Smith"
-          maxlength="150"
-          [disabled]="(isLoading$ | async) === true" />
-      </div>
-
-      <div class="text-field-group text-field-group--wide">
-        <label class="select-label">Description <span class="optional">(optional)</span></label>
-        <input type="text" class="select-input"
-          [(ngModel)]="newWorkflowDescription"
-          placeholder="Defaults to Supplier – Type – Product if blank"
-          maxlength="300"
-          [disabled]="(isLoading$ | async) === true" />
-      </div>
-
       <button class="btn-add-workflow"
         (click)="addNewWorkflow()"
-        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || !newWorkflowName.trim() || (isLoading$ | async) === true">
+        [disabled]="!selectedSupplier || !selectedProductType || !selectedProduct || (isLoading$ | async) === true">
         <svg *ngIf="(isLoading$ | async) === false" width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2">
           <line x1="7" y1="1" x2="7" y2="13"/><line x1="1" y1="7" x2="13" y2="7"/>
         </svg>
@@ -96,7 +78,6 @@
         <tr>
           <th>NAME</th>
           <th>PRODUCT</th>
-          <th>DESCRIPTION</th>
           <th class="stage-header">INITIAL<br>ENQUIRY</th>
           <th class="stage-header">CREATE<br>QUOTE</th>
           <th class="stage-header">INVITE<br>SHOWROOM</th>
@@ -115,7 +96,6 @@
 
           <td class="name-cell">{{ workflow.workflowName || '—' }}</td>
           <td class="product-cell">{{ workflow.productName }}</td>
-          <td class="description-cell" [title]="workflow.description">{{ workflow.description }}</td>
 
           <!-- ── INITIAL ENQUIRY ──────────────────────────────────── -->
           <td class="stage-cell">
@@ -237,14 +217,14 @@
         <!-- Loading -->
         <ng-container *ngIf="workflows$ | async as workflows">
           <tr *ngIf="(isLoading$ | async) === true && workflows.length === 0">
-            <td colspan="11" class="loading-cell">
+            <td colspan="10" class="loading-cell">
               <div class="loading-spinner-container">
                 <div class="spinner"></div><p>Loading workflows...</p>
               </div>
             </td>
           </tr>
           <tr *ngIf="(isLoading$ | async) === false && workflows.length === 0">
-            <td colspan="11" class="empty-cell">
+            <td colspan="10" class="empty-cell">
               <div class="empty-state">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M9 11l3 3L22 4"/>
@@ -289,26 +269,19 @@
     </div>
     <div class="modal-body" *ngIf="editingWorkflow">
       <div class="modal-meta-row">
+        <span class="modal-meta-label">Workflow:</span>
+        <span class="modal-meta-value">{{ editingWorkflow.workflowName }}</span>
+      </div>
+      <div class="modal-meta-row">
         <span class="modal-meta-label">Product:</span>
         <span class="modal-meta-value">{{ editingWorkflow.productName }}</span>
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Workflow Name <span class="required">*</span></label>
-        <input type="text" class="modal-input" [(ngModel)]="editWorkflowName"
-          placeholder="Enter workflow name" maxlength="150" />
-      </div>
-      <div class="modal-field">
-        <label class="modal-label">Description</label>
-        <textarea class="modal-input modal-textarea" [(ngModel)]="editWorkflowDescription"
-          placeholder="Enter description" rows="3" maxlength="300"></textarea>
-        <span class="char-count">{{ editWorkflowDescription.length }}/300</span>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn-modal btn-modal-cancel" (click)="closeEditModal()"
         [disabled]="(isSavingEdit$ | async) === true">Cancel</button>
       <button class="btn-modal btn-modal-save" (click)="saveEdit()"
-        [disabled]="!editWorkflowName.trim() || (isSavingEdit$ | async) === true">
+        [disabled]="(isSavingEdit$ | async) === true">
         <span *ngIf="(isSavingEdit$ | async) === false">Save Changes</span>
         <span *ngIf="(isSavingEdit$ | async) === true">Saving…</span>
       </button>
