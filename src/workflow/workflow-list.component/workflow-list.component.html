@@ -82,6 +82,7 @@
           <th class="stage-header">CREATE<br>QUOTE</th>
           <th class="stage-header">INVITE<br>SHOWROOM</th>
           <th class="stage-header">SETUP SITE<br>VISIT</th>
+          <th class="stage-header">FINAL<br>QUOTE</th>
           <th class="stage-header">INVOICE</th>
           <th>DATE<br>ADDED</th>
           <th>ADDED<br>BY</th>
@@ -162,6 +163,22 @@
             </ng-container>
           </td>
 
+          <!-- ── FINAL QUOTE ─────────────────────────────────────── -->
+          <td class="stage-cell">
+            <ng-container *ngIf="stageStatus(workflow.finalQuote || false, workflow.finalQuoteCompleted || false) as status">
+              <button
+                [class]="stageCssClass(status)"
+                [title]="stageTooltip('Final Quote', status)"
+                (click)="toggleStage(workflow, 'finalQuote', $event)"
+                [disabled]="(isLoading$ | async) === true">
+                <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
+                  <polyline points="2,8 6,12 14,4"/>
+                </svg>
+                <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
+              </button>
+            </ng-container>
+          </td>
+
           <!-- ── INVOICE ──────────────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.invoiceSent, workflow.invoiceSentCompleted) as status">
@@ -217,14 +234,14 @@
         <!-- Loading -->
         <ng-container *ngIf="workflows$ | async as workflows">
           <tr *ngIf="(isLoading$ | async) === true && workflows.length === 0">
-            <td colspan="10" class="loading-cell">
+            <td colspan="11" class="loading-cell">
               <div class="loading-spinner-container">
                 <div class="spinner"></div><p>Loading workflows...</p>
               </div>
             </td>
           </tr>
           <tr *ngIf="(isLoading$ | async) === false && workflows.length === 0">
-            <td colspan="10" class="empty-cell">
+            <td colspan="11" class="empty-cell">
               <div class="empty-state">
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M9 11l3 3L22 4"/>

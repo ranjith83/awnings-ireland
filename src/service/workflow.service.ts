@@ -17,6 +17,7 @@ export interface WorkflowDto {
   createQuotation: boolean;
   inviteShowRoomVisit: boolean;
   setupSiteVisit: boolean;
+  finalQuote?: boolean;
   invoiceSent: boolean;
 
   // ── Stage completed flags (server-computed) ───────────────────────────────
@@ -24,6 +25,7 @@ export interface WorkflowDto {
   createQuotationCompleted: boolean;
   inviteShowRoomCompleted: boolean;
   setupSiteVisitCompleted: boolean;
+  finalQuoteCompleted?: boolean;
   invoiceSentCompleted: boolean;
 
   /**

@@ -3,15 +3,17 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   BehaviorSubject, Observable, Subject, combineLatest,
-  takeUntil, tap, catchError, of, finalize
+  takeUntil, tap, catchError, of, finalize, filter
 } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map } from 'rxjs/operators';
+import { map, take } from 'rxjs/operators';
 
 import {
   CreateQuoteService,
   CreateQuoteDto,
   QuoteDto,
+  UpdateQuoteDto,
+  UpdateQuoteItemDto,
   ProductItemType,
 } from '../../service/create-quote.service';
 import {
@@ -40,13 +42,16 @@ interface QuoteItemDisplay {
 }
 
 @Component({
-  selector: 'app-create-quote.component',
+  selector: 'app-final-quote',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './create-quote.component.html',
-  styleUrl: './create-quote.component.css'
+  templateUrl: './final-quote.component.html',
+  styleUrls: [
+    '../create-quote.component/create-quote.component.css',
+    './final-quote.component.css'
+  ]
 })
-export class CreateQuoteComponent implements OnInit, OnDestroy {
+export class FinalQuoteComponent implements OnInit, OnDestroy {
 
   // ── Observables ────────────────────────────────────────────────────────────
   workflows$!: Observable<WorkflowDto[]>;
@@ -60,6 +65,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   availableWidths$!: Observable<number[]>;
   availableProjections$!: Observable<number[]>;
   quoteItems$!: Observable<QuoteItemDisplay[]>;
+  draftQuotes$!: Observable<QuoteDto[]>;
+  finalQuotes$!: Observable<QuoteDto[]>;
   subtotal$!: Observable<number>;
   quoteDiscount$!: Observable<number>;
   totalTax$!: Observable<number>;
@@ -67,27 +74,47 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   isFormValid$!: Observable<boolean>;
 
   // ── State subjects ─────────────────────────────────────────────────────────
-  isLoading$       = new BehaviorSubject<boolean>(false);
-  isSendingEmail$  = new BehaviorSubject<boolean>(false);
-  errorMessage$    = new BehaviorSubject<string>('');
-  successMessage$  = new BehaviorSubject<string>('');
+  isLoading$         = new BehaviorSubject<boolean>(false);
+  isLoadingQuotes$   = new BehaviorSubject<boolean>(false);
+  isSendingEmail$    = new BehaviorSubject<boolean>(false);
+  errorMessage$      = new BehaviorSubject<string>('');
+  successMessage$    = new BehaviorSubject<string>('');
 
-  private workflowsSubject$          = new BehaviorSubject<WorkflowDto[]>([]);
-  private suppliersSubject$          = new BehaviorSubject<SupplierDto[]>([]);
-  private bracketsSubject$           = new BehaviorSubject<BracketDto[]>([]);
-  private motorsSubject$             = new BehaviorSubject<MotorDto[]>([]);
-  private heatersSubject$            = new BehaviorSubject<HeaterDto[]>([]);
-  private lightingCassettesSubject$  = new BehaviorSubject<LightingCassetteDto[]>([]);
-  private controlsSubject$           = new BehaviorSubject<ControlDto[]>([]);
-  private widthsSubject$      = new BehaviorSubject<number[]>([]);
-  private projectionsSubject$ = new BehaviorSubject<number[]>([]);
-  private quoteItemsSubject$  = new BehaviorSubject<QuoteItemDisplay[]>([]);
+  private workflowsSubject$         = new BehaviorSubject<WorkflowDto[]>([]);
+  private suppliersSubject$         = new BehaviorSubject<SupplierDto[]>([]);
+  private bracketsSubject$          = new BehaviorSubject<BracketDto[]>([]);
+  private motorsSubject$            = new BehaviorSubject<MotorDto[]>([]);
+  private heatersSubject$           = new BehaviorSubject<HeaterDto[]>([]);
+  private lightingCassettesSubject$ = new BehaviorSubject<LightingCassetteDto[]>([]);
+  private controlsSubject$          = new BehaviorSubject<ControlDto[]>([]);
+  private widthsSubject$            = new BehaviorSubject<number[]>([]);
+  private projectionsSubject$       = new BehaviorSubject<number[]>([]);
+  private quoteItemsSubject$        = new BehaviorSubject<QuoteItemDisplay[]>([]);
+  private draftQuotesSubject$       = new BehaviorSubject<QuoteDto[]>([]);
+  private finalQuotesSubject$       = new BehaviorSubject<QuoteDto[]>([]);
+
+  // ── Quote selection / edit state ───────────────────────────────────────────
+  selectedDraftQuote: QuoteDto | null = null;
+  editingFinalQuote: QuoteDto | null  = null;
+
+  get linkedFinalQuotes(): QuoteDto[] {
+    if (!this.selectedDraftQuote) return [];
+    return this.finalQuotesSubject$.value.filter(
+      fq => fq.sourceDraftQuoteId === this.selectedDraftQuote!.quoteId
+    );
+  }
+
+  /** Show the form when: draft selected with no final quote yet, OR actively editing a final quote. */
+  get showForm(): boolean {
+    return (this.selectedDraftQuote !== null && this.linkedFinalQuotes.length === 0)
+      || this.editingFinalQuote !== null;
+  }
 
   // ── Customer / workflow context ────────────────────────────────────────────
   workflowId: number | null = null;
   customerId: number | null = null;
   customerName       = '';
-  customerEmail      = '';   // ← populated from route params
+  customerEmail      = '';
   customerAddress    = '';
   customerCity       = '';
   customerPostalCode = '';
@@ -96,9 +123,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   selectedWorkflowId: number | null = null;
   selectedSupplierId: number | null = null;
   selectedModelId: number | null    = null;
-  /** The raw value the user typed in the width text box (cm). Used for display in line item. */
   enteredWidthCm: number | null     = null;
-  /** The resolved standard-width ceiling used for pricing lookups. */
   selectedWidthCm: number | null    = null;
   selectedAwning: number | null     = null;
   selectedProductName               = '';
@@ -109,17 +134,15 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   notes        = '';
   terms        = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
 
-  // ── Discount (optional) ────────────────────────────────────────────────────
-  /** '' | 'Percentage' | 'Fixed'  — empty means no discount */
+  // ── Discount ───────────────────────────────────────────────────────────────
   discountType  = '';
   discountValue = 0;
 
-  // Brackets dropdown open state
+  // ── Brackets dropdown ──────────────────────────────────────────────────────
   bracketDropdownOpen = false;
 
   toggleBracketDropdown() { this.bracketDropdownOpen = !this.bracketDropdownOpen; }
-
-  closeBracketDropdown() { this.bracketDropdownOpen = false; }
+  closeBracketDropdown()  { this.bracketDropdownOpen = false; }
 
   isBracketSelected(bracketName: string): boolean {
     return this.selectedBrackets.includes(bracketName);
@@ -139,56 +162,37 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   // ── Addon selections ───────────────────────────────────────────────────────
-  installationFee     = 0;
-  vatRate             = 13.5;
-  selectedBrackets    : string[] = [];
+  installationFee            = 0;
+  vatRate                    = 13.5;
+  selectedBrackets           : string[] = [];
   selectedMotor              = '';
   selectedHeater             = '';
   selectedLightingCassette   = '';
   selectedControl            = '';
-  includeElectrician  = false;
-  electricianPrice    = 280.00;
+  includeElectrician         = false;
+  electricianPrice           = 280.00;
 
-  // RAL surcharge — price fetched from API based on productId + ceiling width
   includeRalSurcharge  = false;
-
-  // Shadeplus — loaded once per product; options list covers all widths
-  includeShadeplus  = false;
-  /** All rows returned by the API — one per (description × widthCm) combination.
-   *  Used for price lookup when the user enters a width. */
+  includeShadeplus     = false;
   shadePlusAllRows: { shadePlusId: number; description: string; widthCm: number; price: number }[] = [];
-  /** Deduplicated by description — drives the dropdown. */
   shadePlusOptions: { shadePlusId: number; description: string; price: number }[] = [];
-  shadePlusHasMultiple  = false;
-  /** The shadePlusId of the row the user has chosen in the dropdown. */
+  shadePlusHasMultiple       = false;
   selectedShadePlusId: number | null = null;
-  /** Editable description — becomes the line item description. */
-  selectedShadePlusDescription = '';
+  selectedShadePlusDescription      = '';
 
-  // Valance Style — price fetched from API based on productId + ceiling width
   includeValanceStyle  = false;
+  includeWallSealing   = false;
 
-  // Wall Sealing Profile — price fetched from API based on productId + ceiling width
-  includeWallSealing  = false;
+  hasRalSurcharge  = false;
+  hasShadePlus     = false;
+  hasValanceStyle  = false;
+  hasWallSealing   = false;
 
-  // ── Addon availability flags (set after workflow/product selected) ──────────
-  hasRalSurcharge    = false;
-  hasShadePlus       = false;
-  hasValanceStyle    = false;
-  hasWallSealing     = false;
-
-  // Extras (free-text line item)
   extrasDescription = '';
   extrasPrice       = 0;
 
-  /**
-   * When true the quote PDF is emailed to the customer address via Graph.
-   * The email is sent using the linked task's send-email endpoint.
-   */
   emailToCustomer = false;
-
   calculatedPrice = 0;
-  pageSize        = 10;
 
   private destroy$ = new Subject<void>();
 
@@ -223,10 +227,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // ── Observable setup ───────────────────────────────────────────────────────
 
   private initializeObservables() {
-    this.workflows$           = this.workflowsSubject$.asObservable();
-    this.suppliers$           = this.suppliersSubject$.asObservable();
-    this.brackets$            = this.bracketsSubject$.asObservable();
-    this.uniqueBrackets$      = this.brackets$.pipe(
+    this.workflows$         = this.workflowsSubject$.asObservable();
+    this.suppliers$         = this.suppliersSubject$.asObservable();
+    this.brackets$          = this.bracketsSubject$.asObservable();
+    this.uniqueBrackets$    = this.brackets$.pipe(
       map(brackets => {
         const seen = new Set<string>();
         return brackets.filter(b => {
@@ -243,6 +247,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.availableWidths$     = this.widthsSubject$.asObservable();
     this.availableProjections$ = this.projectionsSubject$.asObservable();
     this.quoteItems$          = this.quoteItemsSubject$.asObservable();
+    this.draftQuotes$         = this.draftQuotesSubject$.asObservable();
+    this.finalQuotes$         = this.finalQuotesSubject$.asObservable();
 
     this.subtotal$ = this.quoteItems$.pipe(
       map(items => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))
@@ -265,11 +271,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           const sub  = item.quantity * item.unitPrice;
           return sum + ((sub - sub * (disc / 100)) * (tax / 100));
         }, 0);
-
         const itemLevelDiscount = items.reduce((sum, i) =>
           sum + (i.quantity * i.unitPrice * (i.discountPercentage / 100)), 0);
         const afterItemDisc = subtotal - itemLevelDiscount;
-
         if (quoteDiscount > 0 && afterItemDisc > 0) {
           return itemLevelTax * (1 - quoteDiscount / afterItemDisc);
         }
@@ -304,11 +308,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.route.queryParams
       .pipe(takeUntil(this.destroy$))
       .subscribe(params => {
-        this.customerId        = params['customerId']        ? +params['customerId']        : null;
-        this.customerName      = params['customerName']      || '';
-        this.customerEmail     = params['customerEmail']     || '';   // ← read email from route
-        this.customerAddress   = params['customerAddress']   || '';
-        this.customerCity      = params['customerCity']      || '';
+        this.customerId         = params['customerId']         ? +params['customerId']         : null;
+        this.customerName       = params['customerName']       || '';
+        this.customerEmail      = params['customerEmail']      || '';
+        this.customerAddress    = params['customerAddress']    || '';
+        this.customerCity       = params['customerCity']       || '';
         this.customerPostalCode = params['customerPostalCode'] || '';
 
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
@@ -320,24 +324,17 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         }
 
         const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-        this.customerId    = selectedWorkflow?.customerId    || this.customerId;
-        this.customerName  = selectedWorkflow?.customerName  || this.customerName;
-        workflowId         = selectedWorkflow?.id            || paramWorkflowId || 0;
+        this.customerId   = selectedWorkflow?.customerId   || this.customerId;
+        this.customerName = selectedWorkflow?.customerName || this.customerName;
+        workflowId        = selectedWorkflow?.id           || paramWorkflowId || 0;
 
         this.loadWorkflowsForCustomer(workflowId);
         this.loadSuppliers();
 
-        // customerEmail is resolved from route params above.
-        // If not present, fall back to fetching from any linked task's fromEmail.
         if (this.customerId && !this.customerEmail) this.resolveCustomerEmail(this.customerId);
       });
   }
 
-  /**
-   * Fallback: if customerEmail wasn't in the route params, fetch it from the
-   * first linked email task for this customer.  sendDirectEmail() doesn't need
-   * a taskId — it uses the email address directly — so we only need the address.
-   */
   private resolveCustomerEmail(customerId: number) {
     this.emailTaskService.getTasksByCustomer(customerId)
       .pipe(takeUntil(this.destroy$), catchError(() => of([])))
@@ -352,10 +349,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   private loadSuppliers() {
     this.workflowService.getAllSuppliers()
-      .pipe(takeUntil(this.destroy$),
+      .pipe(
+        takeUntil(this.destroy$),
         tap(s => this.suppliersSubject$.next(s)),
-        catchError(() => { this.errorMessage$.next('Failed to load suppliers'); return of([]); }))
-      .subscribe();
+        catchError(() => { this.errorMessage$.next('Failed to load suppliers'); return of([]); })
+      ).subscribe();
   }
 
   private loadWorkflowsForCustomer(preselectedWorkflowId: number | null = null) {
@@ -370,16 +368,240 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
             this.selectedWorkflowId = preselectedWorkflowId;
             this.workflowId = preselectedWorkflowId;
             this.onWorkflowChange();
+            this.loadExistingQuotes(preselectedWorkflowId);
           } else if (workflows.length === 1) {
             this.selectedWorkflowId = workflows[0].workflowId;
             this.workflowId = workflows[0].workflowId;
             this.onWorkflowChange();
+            this.loadExistingQuotes(workflows[0].workflowId);
           }
         }),
         catchError(() => { this.errorMessage$.next('Failed to load workflows'); return of([]); }),
         finalize(() => this.isLoading$.next(false))
-      )
+      ).subscribe();
+  }
+
+  loadExistingQuotes(workflowId: number) {
+    this.isLoadingQuotes$.next(true);
+    this.createQuoteService.getQuotesByWorkflowId(workflowId)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(quotes => {
+          this.draftQuotesSubject$.next(quotes.filter(q => !q.isFinalQuote));
+          this.finalQuotesSubject$.next(quotes.filter(q => !!q.isFinalQuote));
+        }),
+        catchError(() => { this.errorMessage$.next('Failed to load existing quotes'); return of([]); }),
+        finalize(() => this.isLoadingQuotes$.next(false))
+      ).subscribe();
+  }
+
+  // ── Draft quote selection ──────────────────────────────────────────────────
+
+  selectDraftQuote(quote: QuoteDto) {
+    this.selectedDraftQuote = quote;
+    this.editingFinalQuote  = null;
+
+    const linked = this.finalQuotesSubject$.value.filter(
+      fq => fq.sourceDraftQuoteId === quote.quoteId
+    );
+
+    if (linked.length === 0) {
+      // No final quote yet — populate form so user can create one
+      this.populateFormFromQuote(quote);
+    } else {
+      // Final quote already exists — clear form, show the final grid
+      this.quoteItemsSubject$.next([]);
+      this.resetAddonCheckboxes();
+    }
+  }
+
+  clearDraftSelection() {
+    this.selectedDraftQuote = null;
+    this.editingFinalQuote  = null;
+    this.quoteItemsSubject$.next([]);
+    this.discountType      = '';
+    this.discountValue     = 0;
+    this.enteredWidthCm    = null;
+    this.selectedWidthCm   = null;
+    this.selectedAwning    = null;
+    this.extrasDescription = '';
+    this.extrasPrice       = 0;
+    this.installationFee   = 0;
+    this.resetAddonCheckboxes();
+  }
+
+  // ── Final quote actions (edit / delete / regenerate) ──────────────────────
+
+  editFinalQuote(fq: QuoteDto) {
+    this.editingFinalQuote = fq;
+    this.populateFormFromQuote(fq);
+  }
+
+  deleteFinalQuote(fq: QuoteDto) {
+    this.createQuoteService.updateQuote(fq.quoteId, { isVoided: true })
+      .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
       .subscribe();
+
+    const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
+    this.finalQuotesSubject$.next(remaining);
+
+    if (this.editingFinalQuote?.quoteId === fq.quoteId) {
+      this.editingFinalQuote = null;
+      this.quoteItemsSubject$.next([]);
+      this.resetAddonCheckboxes();
+    }
+    this.successMessage$.next(`Final Quote FINAL-${fq.quoteNumber} deleted.`);
+    setTimeout(() => this.successMessage$.next(''), 3000);
+  }
+
+  regenerateFinalQuote(fq: QuoteDto) {
+    // Void the current final quote on the backend
+    this.createQuoteService.updateQuote(fq.quoteId, { isVoided: true })
+      .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
+      .subscribe();
+
+    // Remove from the visible list so the form appears again
+    const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
+    this.finalQuotesSubject$.next(remaining);
+
+    // Re-populate form from the selected draft
+    this.editingFinalQuote = null;
+    if (this.selectedDraftQuote) {
+      this.populateFormFromQuote(this.selectedDraftQuote);
+    }
+  }
+
+  // ── Shared form population ─────────────────────────────────────────────────
+
+  private populateFormFromQuote(quote: QuoteDto) {
+    const parseDate = (d: string | Date): string =>
+      typeof d === 'string' ? d.split('T')[0] : d.toISOString().split('T')[0];
+    this.quoteDate    = parseDate(quote.quoteDate);
+    this.followUpDate = parseDate(quote.followUpDate);
+    this.discountType  = quote.discountType  || '';
+    this.discountValue = quote.discountValue || 0;
+
+    // ── Parse width & projection from first line item description ──────────
+    const firstItem = (quote.quoteItems || [])[0];
+    if (firstItem) {
+      const dimMatch = firstItem.description.match(/(\d+\.?\d*)m\s+wide\s+x\s+(\d+\.?\d*)m\s+projection/i);
+      if (dimMatch) {
+        this.enteredWidthCm  = Math.round(parseFloat(dimMatch[1]) * 100);
+        this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
+        this.selectedAwning  = Math.round(parseFloat(dimMatch[2]) * 100);
+        if (this.selectedModelId) {
+          this.reloadArmTypeDependents();
+        }
+      }
+    }
+
+    // ── Populate line items — carry productItemId from server ──────────────
+    const displayItems: QuoteItemDisplay[] = (quote.quoteItems || []).map(qi => ({
+      productItemId:      qi.productItemId,
+      description:        qi.description,
+      quantity:           qi.quantity,
+      unitPrice:          qi.unitPrice,
+      taxRate:            qi.taxRate,
+      discountPercentage: qi.discountPercentage,
+      amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
+    }));
+    this.quoteItemsSubject$.next(displayItems);
+
+    // ── Restore addon UI state using productItemId ─────────────────────────
+    this.resetAddonCheckboxes();
+    for (const qi of quote.quoteItems || []) {
+      switch (qi.productItemId) {
+        case ProductItemType.NonStandardRals:    this.includeRalSurcharge = true; break;
+        case ProductItemType.ShadePlus:          this.includeShadeplus    = true; break;
+        case ProductItemType.Valance:            this.includeValanceStyle = true; break;
+        case ProductItemType.WallSealingProfile: this.includeWallSealing  = true; break;
+      }
+      if (!qi.productItemId && qi.description.toLowerCase().includes('electrician')) {
+        this.includeElectrician = true;
+      }
+    }
+
+    // ── Match brackets by productItemId ───────────────────────────────────
+    const bracketItems = (quote.quoteItems || []).filter(qi => qi.productItemId === ProductItemType.Brackets);
+    if (bracketItems.length) {
+      this.uniqueBrackets$.pipe(
+        filter(brackets => brackets.length > 0), take(1), takeUntil(this.destroy$)
+      ).subscribe(brackets => {
+        const matched = brackets
+          .filter(b => bracketItems.some(qi => qi.description.toLowerCase().includes(b.bracketName.toLowerCase())))
+          .map(b => b.bracketName);
+        if (matched.length) this.selectedBrackets = matched;
+      });
+    }
+
+    // ── Match motor ────────────────────────────────────────────────────────
+    const motorItem = (quote.quoteItems || []).find(qi => qi.productItemId === ProductItemType.Motors);
+    if (motorItem) {
+      this.motors$.pipe(filter(m => m.length > 0), take(1), takeUntil(this.destroy$))
+        .subscribe(motors => {
+          const m = motors.find(m => m.description === motorItem.description);
+          if (m) this.selectedMotor = m.motorId.toString();
+        });
+    }
+
+    // ── Match heater ───────────────────────────────────────────────────────
+    const heaterItem = (quote.quoteItems || []).find(qi => qi.productItemId === ProductItemType.Heaters);
+    if (heaterItem) {
+      this.heaters$.pipe(filter(h => h.length > 0), take(1), takeUntil(this.destroy$))
+        .subscribe(heaters => {
+          const h = heaters.find(h => h.description === heaterItem.description);
+          if (h) this.selectedHeater = h.heaterId.toString();
+        });
+    }
+
+    // ── Match lighting cassette ────────────────────────────────────────────
+    const lightingItem = (quote.quoteItems || []).find(qi => qi.productItemId === ProductItemType.LightingCassettes);
+    if (lightingItem) {
+      this.lightingCassettes$.pipe(filter(l => l.length > 0), take(1), takeUntil(this.destroy$))
+        .subscribe(cassettes => {
+          const c = cassettes.find(c => c.description === lightingItem.description);
+          if (c) this.selectedLightingCassette = c.lightingId.toString();
+        });
+    }
+
+    // ── Match control ──────────────────────────────────────────────────────
+    const controlItem = (quote.quoteItems || []).find(qi => qi.productItemId === ProductItemType.Controls);
+    if (controlItem) {
+      this.controls$.pipe(filter(c => c.length > 0), take(1), takeUntil(this.destroy$))
+        .subscribe(controls => {
+          const c = controls.find(c => c.description === controlItem.description);
+          if (c) this.selectedControl = c.controlId.toString();
+        });
+    }
+
+    // ── Restore extras (free-text line item — no productItemId, not electrician) ──
+    const extrasItem = (quote.quoteItems || []).find((qi, idx) =>
+      idx > 0 && !qi.productItemId && !qi.description.toLowerCase().includes('electrician')
+    );
+    if (extrasItem) {
+      this.extrasDescription = extrasItem.description;
+      this.extrasPrice       = extrasItem.unitPrice;
+    }
+
+    // ── Restore installation fee — fetch base price and subtract ───────────
+    const mainItem = (quote.quoteItems || [])[0];
+    if (
+      mainItem &&
+      mainItem.description.toLowerCase().includes('supply & fit') &&
+      this.selectedModelId && this.selectedWidthCm && this.selectedAwning
+    ) {
+      this.workflowService
+        .getProjectionPriceForProduct(this.selectedModelId, this.selectedWidthCm, this.selectedAwning)
+        .pipe(take(1), takeUntil(this.destroy$))
+        .subscribe(basePrice => {
+          const fee = Math.round((mainItem.unitPrice - basePrice) * 100) / 100;
+          this.installationFee = fee > 0 ? fee : 0;
+        });
+    } else {
+      this.installationFee = 0;
+    }
+
+    this.onDiscountChange();
   }
 
   // ── Workflow / product change handlers ─────────────────────────────────────
@@ -394,6 +616,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       this.selectedProductName = wf.productName;
       this.loadProductWidthsAndProjections();
       this.loadProductAddons();
+      this.loadExistingQuotes(wf.workflowId);
     }
   }
 
@@ -401,7 +624,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId) return;
     const id = this.selectedModelId;
 
-    // Reset availability flags so stale checkboxes from a prior product don't linger
     this.hasRalSurcharge = false;
     this.hasShadePlus    = false;
     this.hasValanceStyle = false;
@@ -414,45 +636,26 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.includeShadeplus = false;
     this.removeAddonLineItem('shadeplus');
 
-    // Check which optional addons exist for this product
     this.workflowService.hasNonStandardRALColours(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe(v => this.hasRalSurcharge = v);
 
-    // ── ShadePlus: ONE call at product level — returns ALL rows (all widths) ──
-    // shadePlusAllRows holds every row for price lookup by description + widthCm.
-    // shadePlusOptions is deduplicated by description and drives the dropdown.
     this.workflowService.getShadePlusOptions(id, 0)
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(() => of({ hasMultiple: false, options: [] }))
-      )
+      .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
       .subscribe(result => {
         const opts = result.options ?? [];
         this.hasShadePlus         = opts.length > 0;
         this.shadePlusHasMultiple = result.hasMultiple;
-        // Keep all rows for width-based price lookup
         this.shadePlusAllRows = opts.map(o => ({
           shadePlusId: o.shadePlusId,
           description: o.description ?? '',
           widthCm: (o as any).widthCm ?? 0,
           price: o.price
         }));
-        // Deduplicate by description for the dropdown
         const seen = new Set<string>();
         this.shadePlusOptions = opts
-          .filter(o => {
-            const key = o.description ?? '';
-            if (seen.has(key)) return false;
-            seen.add(key);
-            return true;
-          })
-          .map(o => ({
-            shadePlusId: o.shadePlusId,
-            description: o.description ?? '',
-            price: o.price
-          }));
-        // Pre-select the first option so the dropdown has a valid initial value
+          .filter(o => { const key = o.description ?? ''; if (seen.has(key)) return false; seen.add(key); return true; })
+          .map(o => ({ shadePlusId: o.shadePlusId, description: o.description ?? '', price: o.price }));
         if (this.shadePlusOptions.length > 0) {
           this.selectedShadePlusId = this.shadePlusOptions[0].shadePlusId;
           this.selectedShadePlusDescription = this.shadePlusOptions[0].description;
@@ -461,8 +664,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
-
-    // Brackets + motors both depend on armTypeId — load with default armTypeId 1 initially
     this.reloadArmTypeDependents();
     this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.heatersSubject$.next(v)), catchError(() => of([]))).subscribe();
     this.workflowService.getLightingCassettesForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.lightingCassettesSubject$.next(v)), catchError(() => of([]))).subscribe();
@@ -481,52 +682,30 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const productId = this.selectedModelId;
 
     if (this.selectedWidthCm && this.selectedAwning) {
-      // Both dimensions known — filter by resolved arm type
       this.workflowService.getArmTypeForProjection(productId, this.selectedWidthCm, this.selectedAwning)
         .pipe(
           takeUntil(this.destroy$),
           tap(armTypeId => {
             this.workflowService.getBracketsForProduct(productId, armTypeId)
-              .pipe(
-                takeUntil(this.destroy$),
-                tap(brackets => { this.bracketsSubject$.next(brackets); this.onBracketChange(); }),
-                catchError(() => of([]))
-              ).subscribe();
-
+              .pipe(takeUntil(this.destroy$), tap(brackets => { this.bracketsSubject$.next(brackets); this.onBracketChange(); }), catchError(() => of([]))).subscribe();
             this.workflowService.getMotorsForProduct(productId, armTypeId)
-              .pipe(
-                takeUntil(this.destroy$),
-                tap(motors => {
-                  this.motorsSubject$.next(motors);
-                  if (this.selectedMotor && !motors.some(m => m.motorId.toString() === this.selectedMotor)) {
-                    this.selectedMotor = '';
-                    this.onMotorChange();
-                  }
-                }),
-                catchError(() => of([]))
-              ).subscribe();
+              .pipe(takeUntil(this.destroy$), tap(motors => {
+                this.motorsSubject$.next(motors);
+                if (this.selectedMotor && !motors.some(m => m.motorId.toString() === this.selectedMotor)) { this.selectedMotor = ''; this.onMotorChange(); }
+              }), catchError(() => of([]))).subscribe();
           }),
           catchError(() => of(null))
         ).subscribe();
     } else {
-      // No dimensions yet — default to armTypeId 1
       this.workflowService.getBracketsForProduct(productId, 1)
         .pipe(
           takeUntil(this.destroy$),
           tap(brackets => {
             this.bracketsSubject$.next(brackets);
             if (this.selectedBrackets.length === 0) {
-              const defaultBracket = brackets.find(b =>
-                b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
-                !b.bracketName.toLowerCase().includes('spreader')
-              );
-              if (defaultBracket) {
-                this.selectedBrackets = [defaultBracket.bracketName];
-                this.onBracketChange();
-              }
-            } else {
-              this.onBracketChange();
-            }
+              const def = brackets.find(b => b.bracketName.toLowerCase().includes('surcharge for face fixture') && !b.bracketName.toLowerCase().includes('spreader'));
+              if (def) { this.selectedBrackets = [def.bracketName]; this.onBracketChange(); }
+            } else { this.onBracketChange(); }
           }),
           catchError(() => of([]))
         ).subscribe();
@@ -537,15 +716,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           tap(motors => {
             this.motorsSubject$.next(motors);
             if (!this.selectedMotor) {
-              const defaultMotor = motors.find(m =>
-                m.description.toLowerCase().includes('radio') &&
-                m.description.toLowerCase().includes('rts') &&
-                m.description.toLowerCase().includes('1 ch')
-              );
-              if (defaultMotor) {
-                this.selectedMotor = defaultMotor.motorId.toString();
-                this.onMotorChange();
-              }
+              const def = motors.find(m => m.description.toLowerCase().includes('radio') && m.description.toLowerCase().includes('rts') && m.description.toLowerCase().includes('1 ch'));
+              if (def) { this.selectedMotor = def.motorId.toString(); this.onMotorChange(); }
             }
           }),
           catchError(() => of([]))
@@ -556,30 +728,22 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // ── Dimension / addon handlers ─────────────────────────────────────────────
 
   onWidthInput() {
-    // Resolve the entered value to the floor standard-width tier
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
-    if (this.includeRalSurcharge) this.onRalSurchargeChange();
-    // ShadePlus: options are already loaded at product level — no re-fetch needed.
-    // If ShadePlus is already checked, refresh the line item price for the new width.
-    if (this.includeShadeplus) this.onShadeplusChange();
-    if (this.includeValanceStyle) this.onValanceStyleChange();
-    if (this.includeWallSealing)  this.onWallSealingChange();
+    if (this.includeRalSurcharge)  this.onRalSurchargeChange();
+    if (this.includeShadeplus)     this.onShadeplusChange();
+    if (this.includeValanceStyle)  this.onValanceStyleChange();
+    if (this.includeWallSealing)   this.onWallSealingChange();
   }
 
-  /** Returns the largest standard width <= enteredWidthCm (floor/tier pricing).
-   *  e.g. entered 256 with standards [250,300,350] → 250 tier → price 4639.
-   *  Falls back to the smallest standard width if entered is below all standards. */
   private resolveCeilingWidth(entered: number | null): number | null {
     if (!entered || entered <= 0) return null;
     const widths = this.widthsSubject$.value;
     if (!widths.length) return null;
     const sorted = [...widths].sort((a, b) => a - b);
-    // Find largest standard width that is <= entered
     const floor = [...sorted].reverse().find(w => w <= entered);
     if (floor != null) return floor;
-    // Entered is below all standard widths — use the smallest
     return sorted[0];
   }
 
@@ -601,7 +765,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   private generateFirstLineItem() {
     if (!this.enteredWidthCm || !this.selectedAwning || !this.selectedProductName) return;
-    // Display uses the actual entered value; pricing uses the ceiling width
     const widthM      = (this.enteredWidthCm / 100).toFixed(2).replace(/\.?0+$/, '') + 'm';
     const projectionM = (this.selectedAwning  / 100).toFixed(0) + 'm';
     const suffix      = (this.installationFee && this.installationFee > 0) ? 'Supply & Fit' : 'Supply Only';
@@ -623,8 +786,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   onBracketChange() {
     this.removeAddonLineItem('bracket');
     if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
-
-    // Look up by name in the current (arm-type-filtered) bracket list for correct prices
     const allBrackets = this.bracketsSubject$.value;
     const seen = new Set<string>();
     const selected = allBrackets.filter(b => {
@@ -633,43 +794,20 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       seen.add(b.bracketName);
       return true;
     });
-
     if (selected.length === 0) return;
-
     if (selected.length === 1) {
       const b = selected[0];
-      this.addOrUpdateAddonLineItem('bracket', {
-        description: b.bracketName, quantity: 1, unitPrice: b.price,
-        taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, b.price, this.vatRate, 0),
-        id: this.getAddonItemId('bracket')
-      });
+      this.addOrUpdateAddonLineItem('bracket', { description: b.bracketName, quantity: 1, unitPrice: b.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, b.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
     } else {
-      const combinedDesc = selected.map(b => b.bracketName).join(' + ');
+      const combinedDesc  = selected.map(b => b.bracketName).join(' + ');
       const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
-      this.addOrUpdateAddonLineItem('bracket', {
-        description: combinedDesc, quantity: 1, unitPrice: combinedPrice,
-        taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, combinedPrice, this.vatRate, 0),
-        id: this.getAddonItemId('bracket')
-      });
+      this.addOrUpdateAddonLineItem('bracket', { description: combinedDesc, quantity: 1, unitPrice: combinedPrice, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, combinedPrice, this.vatRate, 0), id: this.getAddonItemId('bracket') });
     }
   }
 
   onExtrasChange() {
-    if (!this.extrasDescription || this.extrasPrice <= 0) {
-      this.removeAddonLineItem('arm');
-      return;
-    }
-    this.addOrUpdateAddonLineItem('arm', {
-      description: this.extrasDescription,
-      quantity: 1,
-      unitPrice: this.extrasPrice,
-      taxRate: this.vatRate,
-      discountPercentage: 0,
-      amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
-      id: this.getAddonItemId('arm')
-    });
+    if (!this.extrasDescription || this.extrasPrice <= 0) { this.removeAddonLineItem('arm'); return; }
+    this.addOrUpdateAddonLineItem('arm', { description: this.extrasDescription, quantity: 1, unitPrice: this.extrasPrice, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0), id: this.getAddonItemId('arm') });
   }
 
   onRalSurchargeChange() {
@@ -677,89 +815,44 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        this.addOrUpdateAddonLineItem('ral', {
-          description: 'Surcharge for non-standard RAL colors',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          amount: this.calculateAmount(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('ral')
-        });
-      });
+      .subscribe(price => { this.addOrUpdateAddonLineItem('ral', { description: 'Surcharge for non-standard RAL colors', quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('ral') }); });
   }
 
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
-    if (!this.selectedModelId)  return;
-    if (this.shadePlusOptions.length === 0) return;
-
-    // Resolve which option applies
-    const chosen = this.shadePlusOptions.find(
-      o => o.shadePlusId === this.selectedShadePlusId
-    ) ?? this.shadePlusOptions[0];
-
+    if (!this.selectedModelId || this.shadePlusOptions.length === 0) return;
+    const chosen = this.shadePlusOptions.find(o => o.shadePlusId === this.selectedShadePlusId) ?? this.shadePlusOptions[0];
     if (!chosen) return;
-
-    // Sync selectedShadePlusId in case we fell back to first option
     this.selectedShadePlusId = chosen.shadePlusId;
     this.selectedShadePlusDescription = chosen.description;
-
-    // Req 4: single option → line item description is always "ShadePlus"
-    // Multiple options → line item description is the chosen option's description
     const lineDesc = this.shadePlusHasMultiple ? chosen.description : 'ShadePlus';
-
     const addItem = (price: number) => {
-      this.addOrUpdateAddonLineItem('shadeplus', {
-        description: lineDesc,
-        quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, price, this.vatRate, 0),
-        id: this.getAddonItemId('shadeplus')
-      });
+      this.addOrUpdateAddonLineItem('shadeplus', { description: lineDesc, quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('shadeplus') });
     };
-
-    // Resolve price: find the row matching chosen description + width tier from cached data
     if (this.selectedWidthCm) {
-      const widthRow = this.shadePlusAllRows.find(
-        r => r.description === chosen.description && r.widthCm === this.selectedWidthCm
-      );
+      const widthRow = this.shadePlusAllRows.find(r => r.description === chosen.description && r.widthCm === this.selectedWidthCm);
       addItem(widthRow?.price ?? chosen.price);
-    } else {
-      addItem(chosen.price);
-    }
+    } else { addItem(chosen.price); }
   }
 
   onShadeplusOptionChange() {
-    // User picked from dropdown — sync description then refresh line item
     const chosen = this.shadePlusOptions.find(o => o.shadePlusId === this.selectedShadePlusId);
     if (chosen) this.selectedShadePlusDescription = chosen.description;
     if (this.includeShadeplus) this.onShadeplusChange();
   }
 
-  /**
-   * Called when the user edits the ShadePlus description directly in the grid.
-   * Updates only the description on the existing line item — price is unchanged.
-   */
   onGridShadeplusDescriptionEdit(event: Event, _item: QuoteItemDisplay) {
     const newDesc = (event.target as HTMLInputElement).value;
     this.selectedShadePlusDescription = newDesc || 'ShadePlus';
     const items = this.quoteItemsSubject$.value;
     const idx = items.findIndex(i => i.id === this.getAddonItemId('shadeplus'));
-    if (idx !== -1) {
-      items[idx] = { ...items[idx], description: this.selectedShadePlusDescription };
-      this.quoteItemsSubject$.next([...items]);
-    }
+    if (idx !== -1) { items[idx] = { ...items[idx], description: this.selectedShadePlusDescription }; this.quoteItemsSubject$.next([...items]); }
   }
 
-  /**
-   * Called when the user edits the ShadePlus description text field directly.
-   * Updates only the description on the existing line item — price is unchanged.
-   */
   onShadeplusDescriptionEdit() {
     const items = this.quoteItemsSubject$.value;
     const idx = items.findIndex(i => i.id === this.getAddonItemId('shadeplus'));
-    if (idx !== -1) {
-      items[idx] = { ...items[idx], description: this.selectedShadePlusDescription || 'ShadePlus' };
-      this.quoteItemsSubject$.next([...items]);
-    }
+    if (idx !== -1) { items[idx] = { ...items[idx], description: this.selectedShadePlusDescription || 'ShadePlus' }; this.quoteItemsSubject$.next([...items]); }
   }
 
   onValanceStyleChange() {
@@ -767,14 +860,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        this.addOrUpdateAddonLineItem('valance', {
-          description: 'Valance Style',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          amount: this.calculateAmount(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('valance')
-        });
-      });
+      .subscribe(price => { this.addOrUpdateAddonLineItem('valance', { description: 'Valance Style', quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('valance') }); });
   }
 
   onWallSealingChange() {
@@ -782,14 +868,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getWallSealingProfilePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        this.addOrUpdateAddonLineItem('wallsealing', {
-          description: 'Wall Sealing Profile',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          amount: this.calculateAmount(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('wallsealing')
-        });
-      });
+      .subscribe(price => { this.addOrUpdateAddonLineItem('wallsealing', { description: 'Wall Sealing Profile', quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('wallsealing') }); });
   }
 
   onMotorChange() {
@@ -822,13 +901,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onInstallationFeeChange() {
-    // No separate installation line item — fee is folded into the first line item's
-    // unit price, and the description suffix switches between Supply & Fit / Supply Only.
-    this.removeAddonLineItem('installation'); // clean up any legacy item
+    this.removeAddonLineItem('installation');
     this.generateFirstLineItem();
   }
 
-  /** Discount is optional — just triggers recalculation */
   onDiscountChange() {
     this.quoteItemsSubject$.next([...this.quoteItemsSubject$.value]);
   }
@@ -857,29 +933,71 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.quoteItemsSubject$.next([...this.quoteItemsSubject$.value]);
   }
 
-  calculateItemAmount(item: QuoteItemDisplay): number {
-    return this.calculateAmount(item.quantity, item.unitPrice, item.taxRate || 0, item.discountPercentage || 0);
+  // ── Grid calculation helpers (compute from quoteItems, not stored values) ──
+
+  calcSubTotal(q: QuoteDto): number {
+    return (q.quoteItems || []).reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
   }
 
-  // ── Generate quote ─────────────────────────────────────────────────────────
+  calcQuoteDiscount(q: QuoteDto): number {
+    if (!q.discountType || !q.discountValue || q.discountValue <= 0) return 0;
+    const sub = this.calcSubTotal(q);
+    if (q.discountType === 'Percentage') return sub * (q.discountValue / 100);
+    return q.discountValue;
+  }
 
-  generateQuote() {
+  calcTax(q: QuoteDto): number {
+    const items = q.quoteItems || [];
+    const sub = this.calcSubTotal(q);
+    const itemLevelDiscount = items.reduce((s, i) =>
+      s + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    const itemLevelTax = items.reduce((s, i) => {
+      const lineTotal = i.quantity * i.unitPrice;
+      const disc = lineTotal * ((i.discountPercentage || 0) / 100);
+      return s + ((lineTotal - disc) * ((i.taxRate || 0) / 100));
+    }, 0);
+    const afterItemDisc = sub - itemLevelDiscount;
+    const quoteDisc = this.calcQuoteDiscount(q);
+    if (quoteDisc > 0 && afterItemDisc > 0) {
+      return itemLevelTax * (1 - quoteDisc / afterItemDisc);
+    }
+    return itemLevelTax;
+  }
+
+  calcTotal(q: QuoteDto): number {
+    const itemLevelDiscount = (q.quoteItems || []).reduce((s, i) =>
+      s + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    return this.calcSubTotal(q) - itemLevelDiscount - this.calcQuoteDiscount(q) + this.calcTax(q);
+  }
+
+  // ── Submit (create or update) final quote ──────────────────────────────────
+
+  submitFinalQuote() {
     const items = this.quoteItemsSubject$.value;
     if (!this.workflowId || !this.customerId || items.length === 0) {
-      this.errorMessage$.next('Please fill in all required fields and ensure at least one quote item exists');
+      this.errorMessage$.next('Please select a draft quote and ensure at least one line item exists.');
       return;
     }
 
+    if (this.editingFinalQuote) {
+      this.updateExistingFinalQuote(items);
+    } else {
+      this.createNewFinalQuote(items);
+    }
+  }
+
+  private createNewFinalQuote(items: QuoteItemDisplay[]) {
     const createDto: CreateQuoteDto = {
-      workflowId:    this.workflowId!,
-      customerId:    this.customerId!,
-      quoteDate:     this.quoteDate,
-      followUpDate:  this.followUpDate,
-      notes:         this.notes,
-      terms:         this.terms,
-      // discount is optional — only include if the user has selected a type & value
-      discountType:  this.discountType  || undefined,
-      discountValue: this.discountValue || undefined,
+      workflowId:         this.workflowId!,
+      customerId:         this.customerId!,
+      quoteDate:          this.quoteDate,
+      followUpDate:       this.followUpDate,
+      notes:              this.notes,
+      terms:              this.terms,
+      discountType:       this.discountType  || undefined,
+      discountValue:      this.discountValue || undefined,
+      isFinalQuote:       true,
+      sourceDraftQuoteId: this.selectedDraftQuote?.quoteId,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,
@@ -897,204 +1015,213 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.createQuoteService.createQuote(createDto)
       .pipe(
         takeUntil(this.destroy$),
-        tap(async (createdQuote) => {
-          this.successMessage$.next(`Draft Quote DRAFT-${createdQuote.quoteNumber} created successfully!`);
+        tap(async (newQuote) => {
+          // Add to the final quotes observable
+          this.finalQuotesSubject$.next([...this.finalQuotesSubject$.value, newQuote]);
 
-          // FIXED: await the async PDF method so the download fires after layout is drawn
-          const pdfBase64 = await this.generatePdf(createdQuote);
-
-          if (this.emailToCustomer) {
-            this.sendQuoteEmail(createdQuote, pdfBase64);
+          // Void the source draft on the backend
+          if (this.selectedDraftQuote) {
+            this.createQuoteService.updateQuote(this.selectedDraftQuote.quoteId, { isVoided: true })
+              .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
+              .subscribe();
           }
 
-          setTimeout(() => this.resetFormPartial(), 2000);
-        }),        
+          this.successMessage$.next(`Final Quote FINAL-${newQuote.quoteNumber} created successfully!`);
+
+          const pdfBase64 = await this.generatePdf(newQuote);
+          if (this.emailToCustomer) {
+            this.sendQuoteEmail(newQuote, pdfBase64);
+          }
+
+          // Clear the form — the final grid will now show
+          this.quoteItemsSubject$.next([]);
+          this.resetAddonCheckboxes();
+          this.discountType  = '';
+          this.discountValue = 0;
+        }),
         catchError(error => {
-          this.errorMessage$.next(error.message || 'Error generating quote. Please try again.');
+          this.errorMessage$.next(error.message || 'Error generating final quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
-      )
-      .subscribe();
+      ).subscribe();
   }
 
-  /**
-   * Send the generated quote as an email to the customer with the PDF attached.
-   *
-   * Uses POST /api/EmailTask/send-direct — no taskId required.
-   * This always works regardless of whether an email task exists for this customer.
-   *
-   * @param quote      The just-created quote (for quoteNumber and totals).
-   * @param pdfBase64  Base64-encoded PDF returned by generatePdf().
-   *                   When null/empty the email is sent without an attachment.
-   */
-  private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
-    const toEmail = this.customerEmail;
-    if (!toEmail) {
-      this.errorMessage$.next('Cannot send email: no customer email address found.');
-      return;
-    }
-
-    const body = this.buildQuoteEmailBody(quote);
-
-    // Build attachment list — only include when we actually have PDF bytes
-    const attachments: EmailAttachmentPayload[] = [];
-    if (pdfBase64) {
-      attachments.push({
-        fileName:     `DraftQuote-${quote.quoteNumber}.pdf`,
-        base64Content: pdfBase64,
-        contentType:  'application/pdf'
-      });
-    }
-
-    const payload: SendDirectEmailPayload = {
-      toEmail,
-      toName:   this.customerName,
-      subject:  `Your Draft Quote DRAFT-${quote.quoteNumber} from Awnings Ireland`,
-      body,
-      attachments: attachments.length > 0 ? attachments : undefined
+  private updateExistingFinalQuote(items: QuoteItemDisplay[]) {
+    const fq = this.editingFinalQuote!;
+    const updateDto: UpdateQuoteDto = {
+      quoteDate:     this.quoteDate,
+      followUpDate:  this.followUpDate,
+      notes:         this.notes,
+      terms:         this.terms,
+      discountType:  this.discountType  || undefined,
+      discountValue: this.discountValue || undefined,
+      quoteItems: items.map(item => ({
+        description:        item.description,
+        quantity:           item.quantity,
+        unitPrice:          item.unitPrice,
+        taxRate:            item.taxRate || this.vatRate,
+        discountPercentage: item.discountPercentage || 0,
+        productItemId:      item.productItemId
+      })) as UpdateQuoteItemDto[]
     };
 
-    this.isSendingEmail$.next(true);
-    this.emailTaskService.sendDirectEmail(payload)
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
+
+    this.createQuoteService.updateQuote(fq.quoteId, updateDto)
       .pipe(
         takeUntil(this.destroy$),
-        finalize(() => this.isSendingEmail$.next(false))
-      )
+        tap(async (updatedQuote) => {
+          // Reflect updated quote in the final quotes list
+          const updated = this.finalQuotesSubject$.value.map(q =>
+            q.quoteId === updatedQuote.quoteId ? updatedQuote : q
+          );
+          this.finalQuotesSubject$.next(updated);
+          this.editingFinalQuote = null;
+
+          this.successMessage$.next(`Final Quote FINAL-${updatedQuote.quoteNumber} updated successfully!`);
+
+          const pdfBase64 = await this.generatePdf(updatedQuote);
+          if (this.emailToCustomer) {
+            this.sendQuoteEmail(updatedQuote, pdfBase64);
+          }
+
+          // Clear the form — return to final grid view
+          this.quoteItemsSubject$.next([]);
+          this.resetAddonCheckboxes();
+          this.discountType  = '';
+          this.discountValue = 0;
+        }),
+        catchError(error => {
+          this.errorMessage$.next(error.message || 'Error updating final quote. Please try again.');
+          return of(null);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      ).subscribe();
+  }
+
+  // ── Email ──────────────────────────────────────────────────────────────────
+
+  private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
+    const toEmail = this.customerEmail;
+    if (!toEmail) { this.errorMessage$.next('Cannot send email: no customer email address found.'); return; }
+    const body = this.buildQuoteEmailBody(quote);
+    const attachments: EmailAttachmentPayload[] = [];
+    if (pdfBase64) {
+      attachments.push({ fileName: `FinalQuote-FINAL-${quote.quoteNumber}.pdf`, base64Content: pdfBase64, contentType: 'application/pdf' });
+    }
+    const payload: SendDirectEmailPayload = {
+      toEmail, toName: this.customerName,
+      subject: `Your Final Quote FINAL-${quote.quoteNumber} from Awnings Ireland`,
+      body, attachments: attachments.length > 0 ? attachments : undefined
+    };
+    this.isSendingEmail$.next(true);
+    this.emailTaskService.sendDirectEmail(payload)
+      .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({
-        next: () => this.successMessage$.next(
-          `Draft Quote DRAFT-${quote.quoteNumber} emailed to ${toEmail}` +
-          (attachments.length > 0 ? ' with PDF attached' : '')
-        ),
+        next: () => this.successMessage$.next(`Final Quote FINAL-${quote.quoteNumber} emailed to ${toEmail}` + (attachments.length > 0 ? ' with PDF attached' : '')),
         error: () => this.errorMessage$.next('Quote saved but email could not be sent.')
       });
   }
 
   private buildQuoteEmailBody(quote: QuoteDto): string {
-    const items = this.quoteItemsSubject$.value;
-    const lines = items.map(i =>
-      `  - ${i.description} (Qty: ${i.quantity}) — €${(i.quantity * i.unitPrice).toFixed(2)}`
-    ).join('\n');
-
+    const items = quote.quoteItems || [];
+    const lines = items.map(i => `  - ${i.description} (Qty: ${i.quantity}) — €${(i.quantity * i.unitPrice).toFixed(2)}`).join('\n');
+    const subTotal = this.calcSubTotal(quote);
+    const tax      = this.calcTax(quote);
+    const total    = this.calcTotal(quote);
     return [
       `Dear ${this.customerName},`,
       '',
-      `Please find below your draft quote reference DRAFT-${quote.quoteNumber}.`,
+      `Please find your final quote reference FINAL-${quote.quoteNumber}.`,
       '',
-      'Items:',
-      lines,
-      '',
-      `Sub-Total : €${quote.subTotal?.toFixed(2) ?? '0.00'}`,
-      `VAT       : €${quote.taxAmount?.toFixed(2)  ?? '0.00'}`,
-      `Total     : €${quote.totalAmount?.toFixed(2) ?? '0.00'}`,
-      '',
-      this.terms,
-      '',
-      'Kind regards,',
-      'Awnings Ireland'
+      'Items:', lines, '',
+      `Sub-Total : €${subTotal.toFixed(2)}`,
+      `VAT       : €${tax.toFixed(2)}`,
+      `Total     : €${total.toFixed(2)}`,
+      '', this.terms, '',
+      'Kind regards,', 'Awnings Ireland'
     ].join('\n');
   }
 
   // ── PDF ────────────────────────────────────────────────────────────────────
 
-  /**
-   * Generates the quote PDF.
-   * - Triggers a browser download (existing behaviour).
-   * - Returns the raw base64 string so sendQuoteEmail() can attach it.
-   *   Returns null if the PDF service doesn't support blob generation.
-   */
   private async generatePdf(quote: QuoteDto): Promise<string | null> {
-  const items = this.quoteItemsSubject$.value;
-  const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
-  const itemLevelDiscount = items.reduce(
-    (sum, i) => sum + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0
-  );
+    const items = this.quoteItemsSubject$.value;
+    const subtotal = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice), 0);
+    const itemLevelDiscount = items.reduce((sum, i) => sum + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    let quoteLevelDiscount = 0;
+    if (this.discountType && this.discountValue > 0) {
+      quoteLevelDiscount = this.discountType === 'Percentage' ? subtotal * (this.discountValue / 100) : this.discountValue;
+    }
+    const totalDiscount = itemLevelDiscount + quoteLevelDiscount;
+    const totalTax = items.reduce((sum, i) => {
+      const sub = i.quantity * i.unitPrice;
+      const disc = sub * ((i.discountPercentage || 0) / 100);
+      return sum + ((sub - disc) * ((i.taxRate || 0) / 100));
+    }, 0);
+    const adjustedTax = quoteLevelDiscount > 0 && (subtotal - itemLevelDiscount) > 0
+      ? totalTax * (1 - quoteLevelDiscount / (subtotal - itemLevelDiscount)) : totalTax;
 
-  let quoteLevelDiscount = 0;
-  if (this.discountType && this.discountValue > 0) {
-    quoteLevelDiscount = this.discountType === 'Percentage'
-      ? subtotal * (this.discountValue / 100)
-      : this.discountValue;
+    const pdfData: QuotePdfData = {
+      quoteNumber:        `FINAL-${quote.quoteNumber}`,
+      quoteDate:          typeof quote.quoteDate === 'string' ? quote.quoteDate : (quote.quoteDate as Date).toISOString(),
+      expiryDate:         this.followUpDate,
+      customerName:       this.customerName,
+      customerAddress:    this.customerAddress    || '',
+      customerCity:       this.customerCity       || '',
+      customerPostalCode: this.customerPostalCode || '',
+      reference:          this.selectedProductName || 'Final Awning Quote',
+      items: items.map(i => ({ description: i.description, quantity: i.quantity, unitPrice: i.unitPrice, tax: i.taxRate || this.vatRate, amount: i.amount })),
+      subtotal:  subtotal,
+      discount:  totalDiscount > 0 ? totalDiscount : undefined,
+      totalTax:  adjustedTax,
+      taxRate:   this.vatRate,
+      total:     subtotal - totalDiscount + adjustedTax,
+      terms:     this.terms
+    };
+
+    if (typeof this.pdfService.generateQuotePdfAsBase64 === 'function') {
+      return await this.pdfService.generateQuotePdfAsBase64(pdfData);
+    }
+    await this.pdfService.generateQuotePdf(pdfData);
+    return null;
   }
-
-  const totalDiscount = itemLevelDiscount + quoteLevelDiscount;
-  const totalTax = items.reduce((sum, i) => {
-    const sub  = i.quantity * i.unitPrice;
-    const disc = sub * ((i.discountPercentage || 0) / 100);
-    return sum + ((sub - disc) * ((i.taxRate || 0) / 100));
-  }, 0);
-
-  const adjustedTax = quoteLevelDiscount > 0 && (subtotal - itemLevelDiscount) > 0
-    ? totalTax * (1 - quoteLevelDiscount / (subtotal - itemLevelDiscount))
-    : totalTax;
-
-  const pdfData: QuotePdfData = {
-    quoteNumber:        `DRAFT-${quote.quoteNumber}`,
-    quoteDate:          typeof quote.quoteDate === 'string'
-                          ? quote.quoteDate
-                          : (quote.quoteDate as Date).toISOString(),
-    expiryDate:         this.followUpDate,
-    customerName:       this.customerName,
-    customerAddress:    this.customerAddress    || '',
-    customerCity:       this.customerCity       || '',
-    customerPostalCode: this.customerPostalCode || '',
-    reference:          this.selectedProductName || 'Awning Quote',
-    items: items.map(i => ({
-      description: i.description,
-      quantity:    i.quantity,
-      unitPrice:   i.unitPrice,
-      tax:         i.taxRate || this.vatRate,
-      amount:      i.amount
-    })),
-    subtotal:     subtotal,
-    discount:     totalDiscount > 0 ? totalDiscount : undefined,
-    totalTax:     adjustedTax,
-    taxRate:      this.vatRate,
-    total:        subtotal - totalDiscount + adjustedTax,
-    terms:        this.terms
-  };
-
-  // FIXED: await the async service methods — without await the Promise
-  // returned by generateQuotePdf() was ignored and doc.save() never fired.
-  if (typeof this.pdfService.generateQuotePdfAsBase64 === 'function') {
-    // Single call: builds PDF, triggers download, and returns base64
-    return await this.pdfService.generateQuotePdfAsBase64(pdfData);
-  }
-
-  await this.pdfService.generateQuotePdf(pdfData);
-  return null;
-}
 
   // ── Form helpers ───────────────────────────────────────────────────────────
 
   resetFormPartial() {
-    this.quoteDate   = new Date().toISOString().split('T')[0];
+    this.quoteDate    = new Date().toISOString().split('T')[0];
     this.followUpDate = this.getDefaultFollowUpDate();
-    this.notes       = '';
-    this.terms         = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
+    this.notes        = '';
+    this.terms        = 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.';
     this.installationFee = 0;
     this.selectedBrackets = [];
     this.selectedMotor = '';
     this.selectedHeater = '';
     this.selectedLightingCassette = '';
     this.selectedControl = '';
-    this.includeElectrician = false;
+    this.includeElectrician  = false;
     this.includeRalSurcharge = false;
-    this.includeShadeplus = false;
-    this.shadePlusAllRows = [];
-    this.shadePlusOptions = [];
+    this.includeShadeplus    = false;
+    this.shadePlusAllRows    = [];
+    this.shadePlusOptions    = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
-    this.includeWallSealing = false;
-    this.extrasDescription = '';
-    this.extrasPrice = 0;
-    this.enteredWidthCm = null;
-    this.selectedWidthCm = null;
-    this.selectedAwning = null;
-    const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
-    this.quoteItemsSubject$.next(first ? [first] : []);
+    this.includeWallSealing  = false;
+    this.extrasDescription   = '';
+    this.extrasPrice         = 0;
+    this.enteredWidthCm      = null;
+    this.selectedWidthCm     = null;
+    this.selectedAwning      = null;
+    this.discountType        = '';
+    this.discountValue       = 0;
+    this.editingFinalQuote   = null;
+    this.quoteItemsSubject$.next([]);
     this.successMessage$.next('');
   }
 
@@ -1135,7 +1262,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     return ids[type] || 0;
   }
 
-  /** Maps the addon slot name to the backend ProductItems.Id (ProductItemType enum). */
   private getAddonProductItemId(type: string): number | undefined {
     const map: { [k: string]: ProductItemType } = {
       bracket:     ProductItemType.Brackets,
@@ -1159,5 +1285,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       if (items.some(item => item.id === this.getAddonItemId(order[i]))) idx++;
     }
     return idx;
+  }
+
+  private resetAddonCheckboxes() {
+    this.selectedBrackets         = [];
+    this.selectedMotor            = '';
+    this.selectedHeater           = '';
+    this.selectedLightingCassette = '';
+    this.selectedControl          = '';
+    this.includeElectrician       = false;
+    this.includeRalSurcharge      = false;
+    this.includeShadeplus         = false;
+    this.includeValanceStyle      = false;
+    this.includeWallSealing       = false;
   }
 }

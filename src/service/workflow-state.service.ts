@@ -6,6 +6,7 @@ export interface WorkflowStages {
   createQuote: boolean;
   inviteShowroom: boolean;
   setupSiteVisit: boolean;
+  finalQuote: boolean;
   invoice: boolean;
 }
 
@@ -56,6 +57,7 @@ export class WorkflowStateService {
     if (workflow.stages.createQuote) stages.push('create-quote');
     if (workflow.stages.inviteShowroom) stages.push('invite-showroom');
     if (workflow.stages.setupSiteVisit) stages.push('setup-site-visit');
+    if (workflow.stages.finalQuote) stages.push('final-quote');
     if (workflow.stages.invoice) stages.push('invoice');
     
     return stages;

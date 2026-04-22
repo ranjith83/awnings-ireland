@@ -18,6 +18,7 @@ import { RegisterComponent } from '../register.component/register.component';
 import { UserManagementComponent } from '../user-management.component/user-management.component';
 import { AuditHistoryComponent } from '../audit-history.component/audit-history.component';
 import { PaymentComponent } from '../payment/payment.component';
+import { FinalQuoteComponent } from '../workflow/final-quote.component/final-quote.component';
 import { QuickCalculatorComponent } from './quick-calculator.component/quick-calculator.component';
 import { EmailTaskComponent } from '../email-task/email-task.component';
 import { FollowUpListComponent } from './follow-up-list.component/follow-up-list.component';
@@ -52,6 +53,7 @@ export const routes: Routes = [
           { path: 'create-quote', component: CreateQuoteComponent },
           { path: 'invite-showroom', component: InviteShowroomComponent },
           { path: 'setup-site-visit', component: SetupSiteVisitComponent },
+          { path: 'final-quote', component: FinalQuoteComponent },
           { path: 'invoice', component: InvoiceComponent },
           { path: 'payment', component: PaymentComponent }
         ]

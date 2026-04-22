@@ -4,6 +4,19 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../app/environments/environment';
 
+/** Mirrors the ProductItems seed data in the backend database. */
+export enum ProductItemType {
+  Brackets           = 1,
+  Motors             = 2,
+  Valance            = 3,
+  NonStandardRals    = 4,
+  ShadePlus          = 5,
+  LightingCassettes  = 6,
+  WallSealingProfile = 7,
+  Controls           = 8,
+  Heaters            = 9
+}
+
 // DTOs matching C# backend
 export interface QuoteDto {
   quoteId: number;
@@ -14,7 +27,7 @@ export interface QuoteDto {
   subTotal: number;
   taxAmount: number;
   discountAmount: number;
-  discountType?: string; // 'Percentage' or 'Fixed'
+  discountType?: string;
   discountValue?: number;
   totalAmount: number;
   createdAt: string | Date;
@@ -23,6 +36,8 @@ export interface QuoteDto {
   updatedBy?: string;
   customerId: number;
   quoteItems: QuoteItemDto[];
+  isFinalQuote?: boolean;
+  sourceDraftQuoteId?: number;
 }
 
 export interface QuoteItemDto {
@@ -35,6 +50,7 @@ export interface QuoteItemDto {
   discountPercentage: number;
   totalPrice: number;
   sortOrder?: number;
+  productItemId?: number;
 }
 
 export interface CreateQuoteDto {
@@ -47,6 +63,8 @@ export interface CreateQuoteDto {
   discountType?: string;
   discountValue?: number;
   quoteItems: CreateQuoteItemDto[];
+  isFinalQuote?: boolean;
+  sourceDraftQuoteId?: number;
 }
 
 export interface CreateQuoteItemDto {
@@ -55,6 +73,7 @@ export interface CreateQuoteItemDto {
   unitPrice: number;
   taxRate?: number;
   discountPercentage?: number;
+  productItemId?: number;
 }
 
 export interface UpdateQuoteDto {
@@ -65,6 +84,7 @@ export interface UpdateQuoteDto {
   discountType?: string;
   discountValue?: number;
   quoteItems?: UpdateQuoteItemDto[];
+  isVoided?: boolean;
 }
 
 export interface UpdateQuoteItemDto {
@@ -73,6 +93,7 @@ export interface UpdateQuoteItemDto {
   unitPrice: number;
   taxRate: number;
   discountPercentage: number;
+  productItemId?: number;
 }
 
 @Injectable({

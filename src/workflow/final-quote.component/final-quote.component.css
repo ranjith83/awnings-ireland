@@ -1,0 +1,258 @@
+/* ── Existing quotes grid ─────────────────────────────────────────────────── */
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.section-header-row .section-title {
+  margin-bottom: 0;
+}
+
+.selected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e8f5e9;
+  border: 1px solid #4caf50;
+  color: #2e7d32;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 13px;
+}
+
+.btn-clear-selection {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #2e7d32;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.btn-clear-selection:hover { color: #c62828; }
+
+.quotes-loading {
+  color: #666;
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.existing-quotes-grid {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.existing-quotes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.existing-quotes-table thead th {
+  background: #f5f7fa;
+  color: #555;
+  font-weight: 600;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.existing-quotes-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+
+.existing-quotes-table tbody tr:hover { background: #fafafa; }
+
+.existing-quotes-table tbody tr.row-selected {
+  background: #e3f2fd;
+  border-left: 3px solid #1976d2;
+}
+
+.existing-quotes-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.quote-number-cell {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.total-cell {
+  font-weight: 600;
+}
+
+.btn-select-quote {
+  padding: 5px 14px;
+  border-radius: 4px;
+  border: 1px solid #1976d2;
+  background: white;
+  color: #1976d2;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-select-quote:hover { background: #1976d2; color: white; }
+
+.btn-select-quote.btn-selected {
+  background: #1976d2;
+  color: white;
+}
+
+.no-quotes-msg {
+  color: #777;
+  font-size: 14px;
+  padding: 16px 0;
+}
+
+/* ── Select prompt ──────────────────────────────────────────────────────────── */
+
+.select-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 16px 20px;
+  background: #fff8e1;
+  border: 1px dashed #ffc107;
+  border-radius: 6px;
+  color: #795548;
+  font-size: 14px;
+}
+
+.select-prompt-icon {
+  font-size: 22px;
+  color: #ffc107;
+}
+
+/* ── Amend notice in summary ──────────────────────────────────────────────── */
+
+.amend-notice {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #e65100;
+}
+
+/* ── Description input editable in grid ──────────────────────────────────── */
+
+.description-input {
+  width: 100%;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  background: #fafafa;
+}
+
+.description-input:focus {
+  outline: none;
+  border-color: #1976d2;
+  background: white;
+}
+
+/* ── Notes / Terms textarea ──────────────────────────────────────────────── */
+
+.form-textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #1976d2;
+}
+
+.full-width { width: 100%; }
+
+/* ── Final quotes section ────────────────────────────────────────────────── */
+
+.final-quotes-section {
+  border-left: 4px solid #2e7d32;
+}
+
+.final-quotes-section .section-title .draft-ref {
+  color: #1976d2;
+  font-weight: 700;
+}
+
+.final-quote-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-action {
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-edit {
+  border-color: #1976d2;
+  background: white;
+  color: #1976d2;
+}
+
+.btn-edit:hover,
+.btn-edit.btn-selected {
+  background: #1976d2;
+  color: white;
+}
+
+.btn-regenerate {
+  border-color: #f57c00;
+  background: white;
+  color: #f57c00;
+}
+
+.btn-regenerate:hover {
+  background: #f57c00;
+  color: white;
+}
+
+.btn-delete {
+  border-color: #c62828;
+  background: white;
+  color: #c62828;
+}
+
+.btn-delete:hover {
+  background: #c62828;
+  color: white;
+}
+
+/* ── Context banners above the form ─────────────────────────────────────── */
+
+.amend-notice {
+  margin: 0 0 12px;
+  padding: 8px 14px;
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #e65100;
+}

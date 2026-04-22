@@ -399,6 +399,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       'createQuote':     'createQuotation',
       'inviteShowroom':  'inviteShowRoomVisit',
       'setupSiteVisit':  'setupSiteVisit',
+      'finalQuote':      'finalQuote',
       'invoice':         'invoiceSent'
     };
     const dtoProperty = stageMapping[stage];
@@ -426,6 +427,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         createQuote:     workflow.createQuotation,
         inviteShowroom:  workflow.inviteShowRoomVisit,
         setupSiteVisit:  workflow.setupSiteVisit,
+        finalQuote:      workflow.finalQuote || false,
         invoice:         workflow.invoiceSent
       },
       customerId: this.customerId || undefined,
