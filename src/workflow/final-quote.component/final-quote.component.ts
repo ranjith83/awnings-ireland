@@ -456,17 +456,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   regenerateFinalQuote(fq: QuoteDto) {
-    this.createQuoteService.deleteQuote(fq.quoteId)
-      .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
-      .subscribe(() => {
-        const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
-        this.finalQuotesSubject$.next(remaining);
-
-        this.editingFinalQuote = null;
-        if (this.selectedDraftQuote) {
-          this.populateFormFromQuote(this.selectedDraftQuote);
-        }
-      });
+    this.downloadQuotePdf(fq);
   }
 
   // ── Shared form population ─────────────────────────────────────────────────
@@ -1191,6 +1181,44 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     }
     await this.pdfService.generateQuotePdf(pdfData);
     return null;
+  }
+
+  private async downloadQuotePdf(fq: QuoteDto) {
+    const items  = fq.quoteItems || [];
+    const subtotal        = this.calcSubTotal(fq);
+    const itemDiscount    = items.reduce((s, i) => s + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    const quoteDiscount   = this.calcQuoteDiscount(fq);
+    const totalDiscount   = itemDiscount + quoteDiscount;
+    const totalTax        = this.calcTax(fq);
+    const followUp        = typeof fq.followUpDate === 'string'
+      ? fq.followUpDate.split('T')[0]
+      : (fq.followUpDate as Date).toISOString().split('T')[0];
+
+    const pdfData: QuotePdfData = {
+      quoteNumber:        fq.quoteNumber,
+      quoteDate:          typeof fq.quoteDate === 'string' ? fq.quoteDate : (fq.quoteDate as Date).toISOString(),
+      expiryDate:         followUp,
+      customerName:       this.customerName,
+      customerAddress:    this.customerAddress    || '',
+      customerCity:       this.customerCity       || '',
+      customerPostalCode: this.customerPostalCode || '',
+      reference:          this.selectedProductName || 'Final Awning Quote',
+      items: items.map(i => ({
+        description: i.description,
+        quantity:    i.quantity,
+        unitPrice:   i.unitPrice,
+        tax:         i.taxRate || this.vatRate,
+        amount:      i.quantity * i.unitPrice * (1 - (i.discountPercentage || 0) / 100)
+      })),
+      subtotal:  subtotal,
+      discount:  totalDiscount > 0 ? totalDiscount : undefined,
+      totalTax:  totalTax,
+      taxRate:   this.vatRate,
+      total:     this.calcTotal(fq),
+      terms:     this.terms
+    };
+
+    await this.pdfService.generateQuotePdf(pdfData);
   }
 
   // ── Form helpers ───────────────────────────────────────────────────────────
