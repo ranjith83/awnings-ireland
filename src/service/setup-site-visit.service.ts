@@ -71,6 +71,9 @@ export interface SiteVisitDto {
   createdBy?: string;
   dateUpdated?: string;
   updatedBy?: string;
+
+  // Images
+  imageUrls?: string[];
 }
 
 export interface CreateSiteVisitDto {
@@ -125,74 +128,6 @@ export interface CreateSiteVisitDto {
   remoteControl?: string;
   controllerBox?: string;
   heaterAnyOtherDetails?: string;
-}
-
-export interface SiteVisitDto {
-  siteVisitId?: number;
-  workflowId: number;
-  productModelType: string;
-  model?: string;
-  otherPleaseSpecify?: string;
-  
-  // Product Model Section
-  siteLayout?: string;
-  structure?: string;
-  passageHeight?: string;
-  width?: string;
-  projection?: string;
-  heightAvailable?: string;
-  wallType?: string;
-  externalInsulation?: string;
-  wallFinish?: string;
-  wallThickness?: string;
-  specialBrackets?: string;
-  sideInfills?: string;
-  flashingRequired?: string;
-  flashingDimensions?: string;
-  standOfBrackets?: string;
-  standOfBracketDimension?: string;
-  electrician?: string;
-  electricalConnection?: string;
-  location?: string;
-  otherSiteSurveyNotes?: string;
-  
-  // Model Details Section
-  fixtureType?: string;
-  operation?: string;
-  crankLength?: string;
-  operationSide?: string;
-  fabric?: string;
-  ral?: string;
-  valanceChoice?: string;
-  valance?: string;
-  windSensor?: string;
-  
-  // ShadePlus Section
-  shadePlusRequired?: string;
-  shadeType?: string;
-  shadeplusFabric?: string;
-  shadePlusAnyOtherDetail?: string;
-  
-  // Lights Section
-  lights?: string;
-  lightsType?: string;
-  lightsAnyOtherDetails?: string;
-  
-  // Heater Section
-  heater?: string;
-  heaterManufacturer?: string;
-  numberRequired?: string;
-  heaterOutput?: string;
-  heaterColour?: string;
-  remoteControl?: string;
-  controllerBox?: string;
-  heaterAnyOtherDetails?: string;
-  
-  // Metadata
-  dateCreated?: string;
-  createdBy?: string;
-  dateUpdated?: string;
-  updatedBy?: string;
 }
 
 export interface SiteVisitDropdownValues {
@@ -270,6 +205,26 @@ export class SetupSiteVisitService {
       .pipe(catchError(this.handleError));
   }
 
+
+  /**
+   * Upload images for a site visit.
+   * POST /api/SiteVisit/{siteVisitId}/images  (multipart/form-data)
+   * Backend expected: receives files[] and returns list of saved image URLs.
+   */
+  uploadSiteVisitImages(siteVisitId: number, formData: FormData): Observable<{ imageUrls: string[] }> {
+    return this.http.post<{ imageUrls: string[] }>(`${this.apiUrl}/${siteVisitId}/images`, formData)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Delete specific images from a site visit.
+   * DELETE /api/SiteVisit/{siteVisitId}/images  (body: { imageUrls: string[] })
+   */
+  deleteSiteVisitImages(siteVisitId: number, imageUrls: string[]): Observable<void> {
+    return this.http.request<void>('DELETE', `${this.apiUrl}/${siteVisitId}/images`, {
+      body: { imageUrls }
+    }).pipe(catchError(this.handleError));
+  }
 
   /**
    * Handle HTTP errors

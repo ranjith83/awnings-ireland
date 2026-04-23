@@ -47,14 +47,13 @@ export class CustomerDetails implements OnInit, OnDestroy {
   
   private searchFiltersSubject = new BehaviorSubject({
     companyName: '',
-    contact: '',
     mobile: '',
     email: '',
     siteAddress: '',
     salesperson: ''
   });
   searchFilters$ = this.searchFiltersSubject.asObservable();
-  
+
   // Computed filtered customers
   filteredCustomers$: Observable<CustomerMainViewDto[]> = combineLatest([
     this.customers$,
@@ -64,7 +63,6 @@ export class CustomerDetails implements OnInit, OnDestroy {
       return customers.filter(customer => {
         return (
           customer.companyName.toLowerCase().includes(filters.companyName.toLowerCase()) &&
-          customer.contactName.toLowerCase().includes(filters.contact.toLowerCase()) &&
           (customer.mobilePhone || '').includes(filters.mobile) &&
           customer.contactEmail.toLowerCase().includes(filters.email.toLowerCase()) &&
           customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase()) &&
@@ -102,7 +100,6 @@ export class CustomerDetails implements OnInit, OnDestroy {
   // Keep these for template two-way binding with ngModel
   searchFilters = {
     companyName: '',
-    contact: '',
     mobile: '',
     email: '',
     siteAddress: '',
@@ -129,7 +126,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
       commercial: [false],
       taxNumber: [''],
       vatNumber: [''],
-      eircode: ['', Validators.required],
+      eircode: [''],
       address1: ['', Validators.required],
       address2: [''],
       address3: [''],

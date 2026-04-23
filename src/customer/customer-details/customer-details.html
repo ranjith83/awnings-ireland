@@ -10,23 +10,16 @@
   <div class="search-section">
     <h3 class="search-title">Search</h3>
     <div class="search-filters">
-      <input 
-        type="text" 
-        placeholder="Company Name" 
+      <input
+        type="text"
+        placeholder="First Name"
         [(ngModel)]="searchFilters.companyName"
         (ngModelChange)="onSearchChange()"
         class="search-input"
       />
-      <input 
-        type="text" 
-        placeholder="Contact" 
-        [(ngModel)]="searchFilters.contact"
-        (ngModelChange)="onSearchChange()"
-        class="search-input"
-      />
-      <input 
-        type="text" 
-        placeholder="Mobile" 
+      <input
+        type="text"
+        placeholder="Mobile"
         [(ngModel)]="searchFilters.mobile"
         (ngModelChange)="onSearchChange()"
         class="search-input"
@@ -71,8 +64,7 @@
     <table class="customer-table">
       <thead>
         <tr>
-          <th>COMPANY NAME</th>
-          <th>CONTACT</th>
+          <th>FIRST NAME</th>
           <th>MOBILE</th>
           <th>EMAIL</th>
           <th>SITE ADDRESS</th>
@@ -83,7 +75,6 @@
       <tbody>
         <tr *ngFor="let customer of filteredCustomers$ | async" class="clickable-row" (click)="navigateToWorkflow(customer)">
           <td>{{ customer.companyName }}</td>
-          <td>{{ customer.contactName }}</td>
           <td>{{ customer.mobilePhone }}</td>
           <td>{{ customer.contactEmail }}</td>
           <td>{{ customer.siteAddress }}</td>
@@ -116,7 +107,7 @@
           </td>
         </tr>
         <tr *ngIf="(filteredCustomers$ | async)?.length === 0">
-          <td colspan="7" class="no-data">No customers found</td>
+          <td colspan="6" class="no-data">No customers found</td>
         </tr>
       </tbody>
     </table>
@@ -173,7 +164,7 @@
 
           <!-- EirCode -->
           <div class="cust-field-row">
-            <label class="cust-label">EirCode <span class="required">*</span></label>
+            <label class="cust-label">EirCode</label>
             <div class="eircode-row">
               <input type="text" formControlName="eircode" class="form-control"
                 [class.error]="customerForm.get('eircode')?.touched && customerForm.get('eircode')?.invalid"

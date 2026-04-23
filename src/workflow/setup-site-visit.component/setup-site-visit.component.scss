@@ -816,6 +816,323 @@ textarea.form-control {
   line-height: 1.4;
 }
 
+// ── Image upload (browse-only) ────────────────────────────────────────────────
+
+.image-upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.btn-browse-files {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 36px;
+  background: $primary;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+
+  &:hover { background: #2563eb; }
+}
+
+.image-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  background: #eff6ff;
+  color: $primary;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.upload-notice {
+  font-size: 12px;
+  color: $muted;
+  font-style: italic;
+}
+
+.images-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: $muted;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin: 10px 0 6px;
+}
+
+.existing-images-list .image-file-row {
+  border-left: 3px solid $success;
+}
+
+.file-link {
+  color: $primary;
+  text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.image-file-list {
+  border: 1px solid $border;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.image-file-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid $border;
+  font-size: 13px;
+
+  &:last-child { border-bottom: none; }
+  &:hover { background: $bg-light; }
+}
+
+.file-name {
+  flex: 1;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  color: $muted;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.btn-remove-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 1px solid #fca5a5;
+  border-radius: 50%;
+  color: $danger;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s;
+
+  &:hover { background: #fee2e2; }
+}
+
+// ── Calendar event creation modal ─────────────────────────────────────────────
+
+.cal-event-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: cal-fade-in 0.15s ease;
+}
+
+@keyframes cal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cal-event-modal {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.18);
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  animation: cal-slide-in 0.18s ease;
+}
+
+.cal-event-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid $border;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: $text;
+  }
+
+  .cal-modal-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid $border;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: $muted;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { background: #fee2e2; color: $danger; border-color: #fca5a5; }
+  }
+}
+
+.cal-event-modal-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cal-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $muted;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+}
+
+.cal-modal-readonly {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid $border;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $muted;
+  background: $bg-light;
+  display: flex;
+  align-items: center;
+}
+
+.cal-modal-textarea {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 72px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+}
+
+.cal-modal-time-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.cal-modal-time-input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text;
+  transition: border-color 0.15s, box-shadow 0.15s;
+
+  &:focus {
+    outline: none;
+    border-color: $primary;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+}
+
+.cal-modal-error {
+  padding: 7px 10px;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #991b1b;
+}
+
+.cal-modal-success {
+  padding: 7px 10px;
+  background: #d1fae5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #065f46;
+}
+
+// Time slot select
+.cal-slot-select {
+  appearance: auto;
+  cursor: pointer;
+
+  option.slot-free { color: #065f46; }
+  option.slot-busy { color: #991b1b; }
+  option:disabled  { color: #9ca3af; }
+}
+
+.cal-event-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid $border;
+  background: $bg-light;
+  border-radius: 0 0 10px 10px;
+
+  .btn-modal-cancel {
+    padding: 0 16px;
+    height: 34px;
+    background: #e5e7eb;
+    color: $text;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #d1d5db; }
+  }
+
+  .btn-modal-create {
+    padding: 0 16px;
+    height: 34px;
+    background: $primary;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: #2563eb; }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+}
+
 // ── Responsive ────────────────────────────────────────────────────────────────
 
 @media (max-width: 1200px) {

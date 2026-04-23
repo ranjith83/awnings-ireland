@@ -1,18 +1,18 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { BehaviorSubject, Observable, Subject } from 'rxjs';
-import { takeUntil, tap, catchError, finalize } from 'rxjs/operators';
-import { 
-  SetupSiteVisitService, 
-  CreateSiteVisitDto, 
+import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
+import { takeUntil, tap, catchError, finalize, switchMap } from 'rxjs/operators';
+import {
+  SetupSiteVisitService,
+  CreateSiteVisitDto,
   SiteVisitDto,
   SiteVisitDropdownValues
 } from '../../service/setup-site-visit.service';
 import { WorkflowService, WorkflowDto } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
-import { OutlookCalendarService } from '../../service/outlook-calendar.service';
+import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
 
 interface ProductModel {
   id: string;
@@ -52,7 +52,7 @@ export interface CalendarEvent {
 @Component({
   selector: 'app-setup-site-visit',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './setup-site-visit.component.html',
   styleUrl: './setup-site-visit.component.scss'
 })
@@ -80,6 +80,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   
   currentWorkflowId: number | null = null;
   customerId: number | null = null;
+  customerEmail: string | null = null;
+  customerName: string | null = null;
   editMode = false;
   editingSiteVisitId: number | null = null;
   showForm = false;
@@ -96,12 +98,34 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   calendarWeeks$ = new BehaviorSubject<CalendarDay[][]>([]);
   selectedDate: Date | null = null;
   selectedDateEvents$ = new BehaviorSubject<CalendarEvent[]>([]);
-
+ 
   /** Accumulated raw events; grows as each response page is processed */
   private calendarEvents$ = new BehaviorSubject<any[]>([]);
 
   /** Cancels any in-flight calendar request when navigating months or closing */
   private cancelCalendar$ = new Subject<void>();
+
+  // ── Calendar event creation modal ──────────────────────────────────────────
+  showAddEventModal = false;
+  newEventForm = { subject: '', date: '', startTime: '', endTime: '' };
+  isCreatingEvent$ = new BehaviorSubject<boolean>(false);
+  createEventError$ = new BehaviorSubject<string>('');
+  createEventSuccess$ = new BehaviorSubject<string>('');
+
+  readonly modalTimeSlots: string[] = [
+    '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
+    '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '01:00 PM', '01:30 PM',
+    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+    '05:00 PM', '05:30 PM', '06:00 PM', '06:30 PM', '07:00 PM', '07:30 PM', '08:00 PM'
+  ];
+
+  modalStartSlots: { slot: string; isBusy: boolean }[] = [];
+  modalEndSlots: { slot: string; isBusy: boolean }[] = [];
+
+  // ── Image upload (Images tab) ──────────────────────────────────────────────
+  selectedImages: File[] = [];        // new files pending upload
+  existingImageUrls: string[] = [];   // URLs already saved on the server
+  deletedImageUrls: string[] = [];    // URLs the user has removed (to send to backend)
 
   readonly WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   readonly MONTHS = [
@@ -121,7 +145,6 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   ];
 
   productModelFields: FieldConfig[] = [
-    { name: 'siteLayout', label: 'Site Survey layout', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'structure', label: 'Structure', type: 'dropdown', category: 'Structure', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'passageHeight', label: 'Passage Height (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'width', label: 'Width (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
@@ -248,6 +271,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         this.customerId = params['customerId'] ? +params['customerId'] : null;
         const paramWorkflowId = params['workflowId'] ? +params['workflowId'] : null;
         const paramSiteVisitId = params['siteVisitId'] ? +params['siteVisitId'] : null;
+        this.customerEmail = params['customerEmail'] || 'customer@example.com';
+        this.customerName = params['customerName'] || 'Customer';
 
         if (!this.customerId) {
           this.errorMessage$.next('No customer selected. Please select a customer first.');
@@ -446,8 +471,9 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
     const year = viewDate.getFullYear();
     const month = viewDate.getMonth();
-    const startStr = new Date(year, month, 1).toISOString().split('T')[0];
-    const endStr   = new Date(year, month + 1, 0).toISOString().split('T')[0];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const startStr = `${year}-${pad(month + 1)}-01`;
+    const endStr   = `${year}-${pad(month + 1)}-${pad(new Date(year, month + 1, 0).getDate())}`;
 
     this.outlookCalendarService.getCalendarEvents(startStr, endStr)
       .pipe(
@@ -568,10 +594,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   selectDay(day: CalendarDay): void {
-    if (day.isPast && !day.isToday) return;
     this.selectedDate = day.date;
     this.selectedDateEvents$.next(day.events);
-    // Rebuild to refresh isSelected flags
     this.buildCalendarGrid(this.calendarViewDate, this.calendarEvents$.getValue());
   }
 
@@ -633,6 +657,9 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.editMode = true;
     this.editingSiteVisitId = siteVisit.siteVisitId!;
     this.showForm = true;
+    this.existingImageUrls = [...(siteVisit.imageUrls || [])];
+    this.selectedImages = [];
+    this.deletedImageUrls = [];
 
     const model = this.productModels.find(m => m.name === siteVisit.productModelType);
     if (model) {
@@ -720,10 +747,17 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         siteVisitId: this.editingSiteVisitId,
         workflowId: this.currentWorkflowId,
         productModelType,
-        ...formValue
+        ...formValue,
+        imageUrls: this.existingImageUrls
       };
-      this.siteVisitService.updateSiteVisit(this.editingSiteVisitId, updateDto)
-        .pipe(takeUntil(this.destroy$), finalize(() => this.isSaving$.next(false)))
+      const editId = this.editingSiteVisitId;
+      this.siteVisitService.updateSiteVisit(editId, updateDto)
+        .pipe(
+          switchMap(() => this.deletedImageUrls.length > 0 ? this.deleteRemovedImages(editId) : of(null)),
+          switchMap(() => this.selectedImages.length > 0 ? this.uploadImages(editId) : of(null)),
+          takeUntil(this.destroy$),
+          finalize(() => this.isSaving$.next(false))
+        )
         .subscribe({
           next: () => { this.showSuccess('Site visit updated successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
           error: (error) => this.showError('Failed to update site visit: ' + error.message)
@@ -732,8 +766,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       const createDto: CreateSiteVisitDto = {
         workflowId: this.currentWorkflowId,
         customerId: this.customerId!,
-        customerEmail: '', // This can be populated if needed, currently not part of the form
-        customerName: '',  // This can be populated if needed, currently not part of the form
+        customerEmail: '',
+        customerName: '',
         productModelType,
         model: formValue.model,
         otherPleaseSpecify: formValue.otherPleaseSpecify,
@@ -783,9 +817,17 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         heaterAnyOtherDetails: formValue.heaterAnyOtherDetails
       };
       this.siteVisitService.createSiteVisit(createDto)
-        .pipe(takeUntil(this.destroy$), finalize(() => this.isSaving$.next(false)))
+        .pipe(
+          switchMap((created: SiteVisitDto) =>
+            this.selectedImages.length > 0 && created.siteVisitId
+              ? this.uploadImages(created.siteVisitId)
+              : of(null)
+          ),
+          takeUntil(this.destroy$),
+          finalize(() => this.isSaving$.next(false))
+        )
         .subscribe({
-          next: () => { this.showSuccess('Site visit created successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
+          next: () => { this.showSuccess('Site visit saved successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
           error: (error) => this.showError('Failed to create site visit: ' + error.message)
         });
     }
@@ -801,6 +843,9 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';
+    this.selectedImages = [];
+    this.existingImageUrls = [];
+    this.deletedImageUrls = [];
   }
 
   addNewSiteVisit(): void {
@@ -826,6 +871,171 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';
+  }
+
+  // ── Calendar event creation ────────────────────────────────────────────────
+
+  openAddEventModal(day: CalendarDay): void {
+    if (day.isPast && !day.isToday) return;
+    this.selectDay(day);
+    const dateKey = this.toDateKey(day.date);
+    this.newEventForm = { subject: '', date: dateKey, startTime: '', endTime: '' };
+    this.createEventError$.next('');
+    this.createEventSuccess$.next('');
+    this.buildModalTimeSlots(dateKey);
+    this.showAddEventModal = true;
+  }
+
+  closeAddEventModal(): void {
+    this.showAddEventModal = false;
+  }
+
+  submitNewEvent(): void {
+    if (!this.newEventForm.subject.trim()) {
+      this.createEventError$.next('Please enter a description.');
+      return;
+    }
+    if (!this.newEventForm.startTime || !this.newEventForm.endTime) {
+      this.createEventError$.next('Please select start and end times.');
+      return;
+    }
+
+    const { date, startTime, endTime, subject } = this.newEventForm;
+    const baseDate = this.parseDateKey(date);
+    const startDateTime = this.parseTimeSlot(baseDate, startTime);
+    const endDateTime   = this.parseTimeSlot(baseDate, endTime);
+
+    const invite: ShowroomInvite = {
+      workflowId:    this.currentWorkflowId || 0,
+      customerId:    this.customerId || 0,
+      customerEmail: this.customerEmail || '',
+      customerName:  this.customerName || '',
+      eventName:     subject,
+      description:   subject,
+      eventDate:     startDateTime,
+      endDate:       endDateTime,
+      timeSlot:      startTime,
+      emailClient:   false
+    };
+
+    this.isCreatingEvent$.next(true);
+    this.createEventError$.next('');
+
+    this.outlookCalendarService.createShowroomInvite(invite)
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.isCreatingEvent$.next(false))
+      )
+      .subscribe({
+        next: () => {
+          this.createEventSuccess$.next('Event created successfully!');
+          // Delay so Graph API has time to index the new event before re-fetching
+          setTimeout(() => this.loadCalendarMonth(this.calendarViewDate), 800);
+          setTimeout(() => {
+            this.showAddEventModal = false;
+            this.createEventSuccess$.next('');
+          }, 2000);
+        },
+        error: () => {
+          this.createEventError$.next('Failed to create event. Please try again.');
+        }
+      });
+  }
+
+  buildModalTimeSlots(dateStr: string): void {
+    const baseDate = this.parseDateKey(dateStr);
+    const events = this.selectedDateEvents$.getValue();
+
+    this.modalStartSlots = this.modalTimeSlots.map(slot => {
+      const slotTime = this.parseTimeSlot(baseDate, slot);
+      const isBusy = events.some(ev => {
+        const start = new Date(ev.start);
+        const end   = new Date(ev.end);
+        return slotTime >= start && slotTime < end;
+      });
+      return { slot, isBusy };
+    });
+    this.modalEndSlots = [];
+  }
+
+  onModalStartTimeChange(): void {
+    const startSlot = this.newEventForm.startTime;
+    this.newEventForm.endTime = '';
+    if (!startSlot) { this.modalEndSlots = []; return; }
+
+    const baseDate = this.parseDateKey(this.newEventForm.date);
+    const events   = this.selectedDateEvents$.getValue();
+    const startTime = this.parseTimeSlot(baseDate, startSlot);
+
+    let nextEventStart: Date | null = null;
+    events.forEach(ev => {
+      const evStart = new Date(ev.start);
+      if (evStart > startTime && (!nextEventStart || evStart < nextEventStart)) {
+        nextEventStart = evStart;
+      }
+    });
+
+    const startIndex = this.modalTimeSlots.indexOf(startSlot);
+    this.modalEndSlots = this.modalTimeSlots.slice(startIndex + 1).map(slot => {
+      const slotTime = this.parseTimeSlot(baseDate, slot);
+      const isBusy = nextEventStart !== null && slotTime > nextEventStart;
+      return { slot, isBusy };
+    });
+  }
+
+  private parseDateKey(dateStr: string): Date {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  private parseTimeSlot(eventDate: Date, timeSlot: string): Date {
+    const [timePart, meridiem] = timeSlot.split(' ');
+    const [hourStr, minStr] = timePart.split(':');
+    let hour = parseInt(hourStr, 10);
+    const min = parseInt(minStr, 10);
+    if (meridiem.toUpperCase() === 'PM' && hour !== 12) hour += 12;
+    if (meridiem.toUpperCase() === 'AM' && hour === 12) hour = 0;
+    const local = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), hour, min, 0);
+    // Compensate for timezone offset: shifts the UTC value so the ISO string
+    // reflects the local clock time (e.g. 09:00 BST → "...T09:00:00.000Z")
+    return new Date(local.getTime() - local.getTimezoneOffset() * 60 * 1000);
+  }
+
+  // ── Image upload ───────────────────────────────────────────────────────────
+
+  onImageSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files) {
+      for (const file of Array.from(input.files)) {
+        if (file.type.startsWith('image/')) this.selectedImages.push(file);
+      }
+      input.value = '';
+    }
+  }
+
+  removeImage(index: number): void {
+    this.selectedImages.splice(index, 1);
+  }
+
+  removeExistingImage(url: string): void {
+    this.existingImageUrls = this.existingImageUrls.filter(u => u !== url);
+    this.deletedImageUrls = [...this.deletedImageUrls, url];
+  }
+
+  getImageFilename(url: string): string {
+    return url.split('/').pop() || url;
+  }
+
+  private uploadImages(siteVisitId: number): Observable<any> {
+    const formData = new FormData();
+    this.selectedImages.forEach(file => formData.append('files', file));
+    return this.siteVisitService.uploadSiteVisitImages(siteVisitId, formData)
+      .pipe(catchError(() => of(null)));
+  }
+
+  private deleteRemovedImages(siteVisitId: number): Observable<any> {
+    return this.siteVisitService.deleteSiteVisitImages(siteVisitId, this.deletedImageUrls)
+      .pipe(catchError(() => of(null)));
   }
 
   private showSuccess(message: string): void {

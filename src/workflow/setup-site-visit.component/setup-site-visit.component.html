@@ -132,6 +132,7 @@
                 [class.selected]="day.isSelected"
                 [class.clickable]="!day.isPast || day.isToday"
                 (click)="selectDay(day)"
+                (dblclick)="openAddEventModal(day)"
                 [title]="day.isBusy ? day.events.length + ' event(s)' : (day.isFree && day.isCurrentMonth ? 'Free' : '')">
                 <span class="cal-day-num">{{ day.dayNumber }}</span>
                 <span class="cal-event-dot" *ngIf="day.isBusy && day.isCurrentMonth"></span>
@@ -356,8 +357,57 @@
 
         <!-- Images Tab -->
         <div class="tab-content" *ngIf="activeTab === 'images'">
-          <h3 class="subsection-title">Images</h3>
-          <p class="placeholder-text">Image upload will appear here</p>
+          <h3 class="subsection-title">Site Survey Images</h3>
+
+          <!-- Existing saved images (edit mode) -->
+          <ng-container *ngIf="existingImageUrls.length > 0">
+            <p class="images-section-label">Saved Images ({{ existingImageUrls.length }})</p>
+            <div class="image-file-list existing-images-list">
+              <div class="image-file-row" *ngFor="let url of existingImageUrls">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21 15 16 10 5 21"/>
+                </svg>
+                <a [href]="url" target="_blank" class="file-name file-link" title="Open image">{{ getImageFilename(url) }}</a>
+                <button type="button" class="btn-remove-file" (click)="removeExistingImage(url)" title="Remove from save">✕</button>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- New images to upload -->
+          <p class="images-section-label" *ngIf="existingImageUrls.length > 0">Add New Images</p>
+
+          <div class="image-upload-bar">
+            <label class="btn-browse-files">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Browse Images
+              <input type="file" multiple accept="image/*" (change)="onImageSelect($event)" style="display:none">
+            </label>
+            <span class="image-count-badge" *ngIf="selectedImages.length > 0">
+              {{ selectedImages.length }} file(s) selected
+            </span>
+          </div>
+
+          <!-- File list -->
+          <div class="image-file-list" *ngIf="selectedImages.length > 0">
+            <div class="image-file-row" *ngFor="let file of selectedImages; let i = index">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <span class="file-name">{{ file.name }}</span>
+              <span class="file-size">{{ (file.size / 1024).toFixed(0) }} KB</span>
+              <button type="button" class="btn-remove-file" (click)="removeImage(i)" title="Remove">✕</button>
+            </div>
+          </div>
+
+          <p class="upload-notice" *ngIf="selectedImages.length === 0">
+            No images selected. Click "Browse Images" to attach site survey photos.
+          </p>
         </div>
       </div>
 
@@ -377,4 +427,82 @@
       </div>
     </div>
   </form>
+</div>
+
+<!-- ══════════ Add Calendar Event Modal ══════════ -->
+<div class="cal-event-modal-overlay" *ngIf="showAddEventModal" (click)="closeAddEventModal()">
+  <div class="cal-event-modal" (click)="$event.stopPropagation()">
+
+    <div class="cal-event-modal-header">
+      <h3>Add Calendar Event</h3>
+      <button type="button" class="cal-modal-close-btn" (click)="closeAddEventModal()">✕</button>
+    </div>
+
+    <div class="cal-event-modal-body">
+
+      <!-- Date (read-only, pre-filled from double-clicked day) -->
+      <div class="cal-modal-field">
+        <label>Date</label>
+        <input type="text" [value]="newEventForm.date" readonly class="form-control cal-modal-readonly">
+      </div>
+
+      <!-- Description / Title -->
+      <div class="cal-modal-field">
+        <label>Description <span class="required">*</span></label>
+        <textarea
+          [(ngModel)]="newEventForm.subject"
+          class="form-control cal-modal-textarea"
+          placeholder="e.g. Site visit for awning installation"
+          rows="3"></textarea>
+      </div>
+
+      <!-- Start & End Time -->
+      <div class="cal-modal-time-row">
+        <div class="cal-modal-field">
+          <label>Start Time</label>
+          <select class="form-control cal-slot-select"
+            [(ngModel)]="newEventForm.startTime"
+            (ngModelChange)="onModalStartTimeChange()">
+            <option value="" disabled>Select start time</option>
+            <option *ngFor="let s of modalStartSlots"
+              [value]="s.slot"
+              [disabled]="s.isBusy"
+              [class.slot-busy]="s.isBusy"
+              [class.slot-free]="!s.isBusy">
+              {{ s.isBusy ? '⛔ ' : '✓ ' }}{{ s.slot }}
+            </option>
+          </select>
+        </div>
+        <div class="cal-modal-field">
+          <label>End Time</label>
+          <select class="form-control cal-slot-select"
+            [(ngModel)]="newEventForm.endTime"
+            [disabled]="!newEventForm.startTime">
+            <option value="" disabled>Select end time</option>
+            <option *ngFor="let s of modalEndSlots"
+              [value]="s.slot"
+              [disabled]="s.isBusy"
+              [class.slot-busy]="s.isBusy"
+              [class.slot-free]="!s.isBusy">
+              {{ s.isBusy ? '⛔ ' : '✓ ' }}{{ s.slot }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <div *ngIf="createEventError$ | async as err" class="cal-modal-error">{{ err }}</div>
+      <div *ngIf="createEventSuccess$ | async as msg" class="cal-modal-success">{{ msg }}</div>
+
+    </div>
+
+    <div class="cal-event-modal-footer">
+      <button type="button" class="btn-secondary" (click)="closeAddEventModal()">Cancel</button>
+      <button type="button" class="btn-primary" (click)="submitNewEvent()"
+        [disabled]="isCreatingEvent$ | async">
+        <span *ngIf="!(isCreatingEvent$ | async)">Create Event</span>
+        <span *ngIf="isCreatingEvent$ | async">Creating…</span>
+      </button>
+    </div>
+
+  </div>
 </div>

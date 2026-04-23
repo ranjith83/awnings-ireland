@@ -60,6 +60,10 @@ export class OutlookCalendarService {
     });
   }
 
+  createCalendarEvent(event: OutlookEvent): Observable<any> {
+    return this.http.post(`${this.apiUrl}/events`, event);
+  }
+
   updateCalendarEvent(eventId: string, event: OutlookEvent): Observable<any> {
     return this.http.put(`${this.apiUrl}/events/${eventId}`, event);
   }

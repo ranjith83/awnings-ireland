@@ -16,7 +16,7 @@
       <div class="section-header-row">
         <h3 class="section-title">Draft Quotes</h3>
         <span class="selected-badge" *ngIf="selectedDraftQuote">
-          Selected: <strong>DRAFT-{{ selectedDraftQuote.quoteNumber }}</strong>
+          Selected: <strong>{{ selectedDraftQuote.quoteNumber }}</strong>
           <button class="btn-clear-selection" (click)="clearDraftSelection()" title="Clear selection">✕</button>
         </span>
       </div>
@@ -42,7 +42,7 @@
             <tbody>
               <tr *ngFor="let q of draftQuotes$ | async"
                   [class.row-selected]="selectedDraftQuote?.quoteId === q.quoteId">
-                <td class="quote-number-cell">DRAFT-{{ q.quoteNumber }}</td>
+                <td class="quote-number-cell">{{ q.quoteNumber }}</td>
                 <td>{{ q.quoteDate | date:'dd/MM/yyyy' }}</td>
                 <td>{{ q.followUpDate | date:'dd/MM/yyyy' }}</td>
                 <td>€{{ calcSubTotal(q) | number:'1.2-2' }}</td>
@@ -73,7 +73,7 @@
     <ng-container *ngIf="selectedDraftQuote && linkedFinalQuotes.length > 0">
       <div class="form-section final-quotes-section">
         <h3 class="section-title">
-          Final Quotes for <span class="draft-ref">DRAFT-{{ selectedDraftQuote.quoteNumber }}</span>
+          Final Quotes for <span class="draft-ref">{{ selectedDraftQuote.quoteNumber }}</span>
         </h3>
         <table class="existing-quotes-table">
           <thead>
@@ -92,7 +92,7 @@
           <tbody>
             <tr *ngFor="let fq of linkedFinalQuotes"
                 [class.row-selected]="editingFinalQuote?.quoteId === fq.quoteId">
-              <td class="quote-number-cell">FINAL-{{ fq.quoteNumber }}</td>
+              <td class="quote-number-cell">{{ fq.quoteNumber }}</td>
               <td>{{ fq.quoteDate | date:'dd/MM/yyyy' }}</td>
               <td>{{ fq.followUpDate | date:'dd/MM/yyyy' }}</td>
               <td>€{{ calcSubTotal(fq) | number:'1.2-2' }}</td>
@@ -136,11 +136,11 @@
 
       <!-- Editing indicator -->
       <div class="amend-notice" *ngIf="editingFinalQuote">
-        Editing Final Quote <strong>FINAL-{{ editingFinalQuote.quoteNumber }}</strong>.
+        Editing Final Quote <strong>{{ editingFinalQuote.quoteNumber }}</strong>.
         Submitting will update this quote.
       </div>
       <div class="amend-notice" *ngIf="!editingFinalQuote && selectedDraftQuote">
-        Creating final quote from <strong>DRAFT-{{ selectedDraftQuote.quoteNumber }}</strong>.
+        Creating final quote from <strong>{{ selectedDraftQuote.quoteNumber }}</strong>.
       </div>
 
       <!-- ══════════════════════ WORKFLOW & PRODUCT ══════════════════════ -->
