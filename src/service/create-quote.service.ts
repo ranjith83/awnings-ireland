@@ -36,8 +36,8 @@ export interface QuoteDto {
   updatedBy?: string;
   customerId: number;
   quoteItems: QuoteItemDto[];
-  isFinalQuote?: boolean;
-  sourceDraftQuoteId?: number;
+  isFinal?: boolean;
+  draftQuoteId?: number;
 }
 
 export interface QuoteItemDto {
@@ -63,8 +63,8 @@ export interface CreateQuoteDto {
   discountType?: string;
   discountValue?: number;
   quoteItems: CreateQuoteItemDto[];
-  isFinalQuote?: boolean;
-  sourceDraftQuoteId?: number;
+  isFinal?: boolean;
+  draftQuoteId?: number;
 }
 
 export interface CreateQuoteItemDto {
@@ -76,6 +76,17 @@ export interface CreateQuoteItemDto {
   productItemId?: number;
 }
 
+export interface CreateFinalQuoteDto {
+  draftQuoteId: number;
+  quoteDate: string | Date;
+  followUpDate: string | Date;
+  notes?: string;
+  terms?: string;
+  discountType?: string;
+  discountValue?: number;
+  quoteItems: CreateQuoteItemDto[];
+}
+
 export interface UpdateQuoteDto {
   quoteDate?: string | Date;
   followUpDate?: string | Date;
@@ -84,7 +95,6 @@ export interface UpdateQuoteDto {
   discountType?: string;
   discountValue?: number;
   quoteItems?: UpdateQuoteItemDto[];
-  isVoided?: boolean;
 }
 
 export interface UpdateQuoteItemDto {
@@ -130,6 +140,16 @@ export class CreateQuoteService {
       discountValue: createDto.discountType?.trim() ? (createDto.discountValue ?? 0) : 0
     };
     return this.http.post<QuoteDto>(this.apiUrl, sanitised)
+      .pipe(catchError(this.handleError));
+  }
+
+  createFinalQuote(dto: CreateFinalQuoteDto): Observable<QuoteDto> {
+    const sanitised: CreateFinalQuoteDto = {
+      ...dto,
+      discountType:  dto.discountType?.trim() || undefined,
+      discountValue: dto.discountType?.trim() ? (dto.discountValue ?? 0) : 0
+    };
+    return this.http.post<QuoteDto>(`${this.apiUrl}/finalize`, sanitised)
       .pipe(catchError(this.handleError));
   }
 

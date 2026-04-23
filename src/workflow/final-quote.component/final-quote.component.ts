@@ -11,6 +11,7 @@ import { map, take } from 'rxjs/operators';
 import {
   CreateQuoteService,
   CreateQuoteDto,
+  CreateFinalQuoteDto,
   QuoteDto,
   UpdateQuoteDto,
   UpdateQuoteItemDto,
@@ -100,7 +101,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   get linkedFinalQuotes(): QuoteDto[] {
     if (!this.selectedDraftQuote) return [];
     return this.finalQuotesSubject$.value.filter(
-      fq => fq.sourceDraftQuoteId === this.selectedDraftQuote!.quoteId
+      fq => fq.draftQuoteId === this.selectedDraftQuote!.quoteId
     );
   }
 
@@ -387,8 +388,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(quotes => {
-          this.draftQuotesSubject$.next(quotes.filter(q => !q.isFinalQuote));
-          this.finalQuotesSubject$.next(quotes.filter(q => !!q.isFinalQuote));
+          this.draftQuotesSubject$.next(quotes.filter(q => !q.isFinal));
+          this.finalQuotesSubject$.next(quotes.filter(q => !!q.isFinal));
         }),
         catchError(() => { this.errorMessage$.next('Failed to load existing quotes'); return of([]); }),
         finalize(() => this.isLoadingQuotes$.next(false))
@@ -402,7 +403,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.editingFinalQuote  = null;
 
     const linked = this.finalQuotesSubject$.value.filter(
-      fq => fq.sourceDraftQuoteId === quote.quoteId
+      fq => fq.draftQuoteId === quote.quoteId
     );
 
     if (linked.length === 0) {
@@ -438,37 +439,34 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   deleteFinalQuote(fq: QuoteDto) {
-    this.createQuoteService.updateQuote(fq.quoteId, { isVoided: true })
+    this.createQuoteService.deleteQuote(fq.quoteId)
       .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
-      .subscribe();
+      .subscribe(() => {
+        const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
+        this.finalQuotesSubject$.next(remaining);
 
-    const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
-    this.finalQuotesSubject$.next(remaining);
-
-    if (this.editingFinalQuote?.quoteId === fq.quoteId) {
-      this.editingFinalQuote = null;
-      this.quoteItemsSubject$.next([]);
-      this.resetAddonCheckboxes();
-    }
-    this.successMessage$.next(`Final Quote FINAL-${fq.quoteNumber} deleted.`);
-    setTimeout(() => this.successMessage$.next(''), 3000);
+        if (this.editingFinalQuote?.quoteId === fq.quoteId) {
+          this.editingFinalQuote = null;
+          this.quoteItemsSubject$.next([]);
+          this.resetAddonCheckboxes();
+        }
+        this.successMessage$.next(`Final Quote ${fq.quoteNumber} deleted.`);
+        setTimeout(() => this.successMessage$.next(''), 3000);
+      });
   }
 
   regenerateFinalQuote(fq: QuoteDto) {
-    // Void the current final quote on the backend
-    this.createQuoteService.updateQuote(fq.quoteId, { isVoided: true })
+    this.createQuoteService.deleteQuote(fq.quoteId)
       .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
-      .subscribe();
+      .subscribe(() => {
+        const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
+        this.finalQuotesSubject$.next(remaining);
 
-    // Remove from the visible list so the form appears again
-    const remaining = this.finalQuotesSubject$.value.filter(q => q.quoteId !== fq.quoteId);
-    this.finalQuotesSubject$.next(remaining);
-
-    // Re-populate form from the selected draft
-    this.editingFinalQuote = null;
-    if (this.selectedDraftQuote) {
-      this.populateFormFromQuote(this.selectedDraftQuote);
-    }
+        this.editingFinalQuote = null;
+        if (this.selectedDraftQuote) {
+          this.populateFormFromQuote(this.selectedDraftQuote);
+        }
+      });
   }
 
   // ── Shared form population ─────────────────────────────────────────────────
@@ -987,17 +985,19 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   private createNewFinalQuote(items: QuoteItemDisplay[]) {
-    const createDto: CreateQuoteDto = {
-      workflowId:         this.workflowId!,
-      customerId:         this.customerId!,
-      quoteDate:          this.quoteDate,
-      followUpDate:       this.followUpDate,
-      notes:              this.notes,
-      terms:              this.terms,
-      discountType:       this.discountType  || undefined,
-      discountValue:      this.discountValue || undefined,
-      isFinalQuote:       true,
-      sourceDraftQuoteId: this.selectedDraftQuote?.quoteId,
+    if (!this.selectedDraftQuote?.quoteId) {
+      this.errorMessage$.next('No draft quote selected.');
+      return;
+    }
+
+    const dto: CreateFinalQuoteDto = {
+      draftQuoteId:  this.selectedDraftQuote.quoteId,
+      quoteDate:     this.quoteDate,
+      followUpDate:  this.followUpDate,
+      notes:         this.notes,
+      terms:         this.terms,
+      discountType:  this.discountType  || undefined,
+      discountValue: this.discountValue || 0,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,
@@ -1012,28 +1012,26 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.errorMessage$.next('');
     this.successMessage$.next('');
 
-    this.createQuoteService.createQuote(createDto)
+    this.createQuoteService.createFinalQuote(dto)
       .pipe(
         takeUntil(this.destroy$),
         tap(async (newQuote) => {
-          // Add to the final quotes observable
-          this.finalQuotesSubject$.next([...this.finalQuotesSubject$.value, newQuote]);
+          // Guarantee draftQuoteId and isFinal are present so linkedFinalQuotes
+          // filter works even if the backend omits them from the finalize response.
+          const finalQuote: QuoteDto = {
+            ...newQuote,
+            isFinal:      true,
+            draftQuoteId: newQuote.draftQuoteId ?? this.selectedDraftQuote!.quoteId
+          };
+          this.finalQuotesSubject$.next([...this.finalQuotesSubject$.value, finalQuote]);
 
-          // Void the source draft on the backend
-          if (this.selectedDraftQuote) {
-            this.createQuoteService.updateQuote(this.selectedDraftQuote.quoteId, { isVoided: true })
-              .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
-              .subscribe();
-          }
-
-          this.successMessage$.next(`Final Quote FINAL-${newQuote.quoteNumber} created successfully!`);
+          this.successMessage$.next(`Final Quote ${newQuote.quoteNumber} created successfully!`);
 
           const pdfBase64 = await this.generatePdf(newQuote);
           if (this.emailToCustomer) {
             this.sendQuoteEmail(newQuote, pdfBase64);
           }
 
-          // Clear the form — the final grid will now show
           this.quoteItemsSubject$.next([]);
           this.resetAddonCheckboxes();
           this.discountType  = '';
@@ -1074,9 +1072,14 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(async (updatedQuote) => {
-          // Reflect updated quote in the final quotes list
+          // Preserve draftQuoteId so linkedFinalQuotes filter keeps working
+          const enriched: QuoteDto = {
+            ...updatedQuote,
+            isFinal:      true,
+            draftQuoteId: updatedQuote.draftQuoteId ?? fq.draftQuoteId
+          };
           const updated = this.finalQuotesSubject$.value.map(q =>
-            q.quoteId === updatedQuote.quoteId ? updatedQuote : q
+            q.quoteId === enriched.quoteId ? enriched : q
           );
           this.finalQuotesSubject$.next(updated);
           this.editingFinalQuote = null;
