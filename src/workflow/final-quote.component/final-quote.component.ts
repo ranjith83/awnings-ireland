@@ -388,8 +388,9 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(quotes => {
-          this.draftQuotesSubject$.next(quotes.filter(q => !q.isFinal));
-          this.finalQuotesSubject$.next(quotes.filter(q => !!q.isFinal));
+          // Drafts have no draftQuoteId; finals point back to their source draft.
+          this.draftQuotesSubject$.next(quotes.filter(q => !q.draftQuoteId));
+          this.finalQuotesSubject$.next(quotes.filter(q =>  !!q.draftQuoteId));
         }),
         catchError(() => { this.errorMessage$.next('Failed to load existing quotes'); return of([]); }),
         finalize(() => this.isLoadingQuotes$.next(false))
@@ -402,15 +403,15 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.selectedDraftQuote = quote;
     this.editingFinalQuote  = null;
 
-    const linked = this.finalQuotesSubject$.value.filter(
-      fq => fq.draftQuoteId === quote.quoteId
-    );
+    // Use isFinal on the draft (set by backend when finalized) as the primary check.
+    // Fall back to scanning finalQuotesSubject$ in case the in-memory draft
+    // hasn't been refreshed yet (e.g. optimistic add after create).
+    const hasLinked = !!quote.isFinal ||
+      this.finalQuotesSubject$.value.some(fq => fq.draftQuoteId === quote.quoteId);
 
-    if (linked.length === 0) {
-      // No final quote yet — populate form so user can create one
+    if (!hasLinked) {
       this.populateFormFromQuote(quote);
     } else {
-      // Final quote already exists — clear form, show the final grid
       this.quoteItemsSubject$.next([]);
       this.resetAddonCheckboxes();
     }
@@ -1014,6 +1015,18 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
             draftQuoteId: newQuote.draftQuoteId ?? this.selectedDraftQuote!.quoteId
           };
           this.finalQuotesSubject$.next([...this.finalQuotesSubject$.value, finalQuote]);
+
+          // Mark the in-memory draft as isFinal so the draft grid reflects the
+          // locked state immediately without a reload.
+          if (this.selectedDraftQuote) {
+            const updatedDraft = { ...this.selectedDraftQuote, isFinal: true };
+            this.selectedDraftQuote = updatedDraft;
+            this.draftQuotesSubject$.next(
+              this.draftQuotesSubject$.value.map(d =>
+                d.quoteId === updatedDraft.quoteId ? updatedDraft : d
+              )
+            );
+          }
 
           this.successMessage$.next(`Final Quote ${newQuote.quoteNumber} created successfully!`);
 

@@ -12,6 +12,8 @@ import {
   CreateQuoteService,
   CreateQuoteDto,
   QuoteDto,
+  UpdateQuoteDto,
+  UpdateQuoteItemDto,
   ProductItemType,
 } from '../../service/create-quote.service';
 import {
@@ -67,10 +69,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   isFormValid$!: Observable<boolean>;
 
   // ── State subjects ─────────────────────────────────────────────────────────
-  isLoading$       = new BehaviorSubject<boolean>(false);
-  isSendingEmail$  = new BehaviorSubject<boolean>(false);
-  errorMessage$    = new BehaviorSubject<string>('');
-  successMessage$  = new BehaviorSubject<string>('');
+  isLoading$         = new BehaviorSubject<boolean>(false);
+  isLoadingQuotes$   = new BehaviorSubject<boolean>(false);
+  isSendingEmail$    = new BehaviorSubject<boolean>(false);
+  errorMessage$      = new BehaviorSubject<string>('');
+  successMessage$    = new BehaviorSubject<string>('');
+
+  private draftQuotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
+  private finalQuotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
+  draftQuotes$!: Observable<QuoteDto[]>;
+
+  // ── Edit state ─────────────────────────────────────────────────────────────
+  editingQuote: QuoteDto | null = null;
 
   private workflowsSubject$          = new BehaviorSubject<WorkflowDto[]>([]);
   private suppliersSubject$          = new BehaviorSubject<SupplierDto[]>([]);
@@ -243,6 +253,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.availableWidths$     = this.widthsSubject$.asObservable();
     this.availableProjections$ = this.projectionsSubject$.asObservable();
     this.quoteItems$          = this.quoteItemsSubject$.asObservable();
+    this.draftQuotes$         = this.draftQuotesSubject$.asObservable();
 
     this.subtotal$ = this.quoteItems$.pipe(
       map(items => items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))
@@ -394,6 +405,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       this.selectedProductName = wf.productName;
       this.loadProductWidthsAndProjections();
       this.loadProductAddons();
+      this.loadExistingQuotes(wf.workflowId);
     }
   }
 
@@ -861,7 +873,111 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     return this.calculateAmount(item.quantity, item.unitPrice, item.taxRate || 0, item.discountPercentage || 0);
   }
 
-  // ── Generate quote ─────────────────────────────────────────────────────────
+  // ── Existing quotes grid ───────────────────────────────────────────────────
+
+  loadExistingQuotes(workflowId: number) {
+    this.isLoadingQuotes$.next(true);
+    this.createQuoteService.getQuotesByWorkflowId(workflowId)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(quotes => {
+          // Drafts have no draftQuoteId; finals point back to their source draft.
+          // isFinal on a draft means it has been finalized — used by hasFinalQuote().
+          this.draftQuotesSubject$.next(quotes.filter(q => !q.draftQuoteId));
+          this.finalQuotesSubject$.next(quotes.filter(q =>  !!q.draftQuoteId));
+        }),
+        catchError(() => { this.errorMessage$.next('Failed to load quotes'); return of([]); }),
+        finalize(() => this.isLoadingQuotes$.next(false))
+      ).subscribe();
+  }
+
+  hasFinalQuote(draft: QuoteDto): boolean {
+    // Backend marks the draft isFinal=true when a final quote is created from it.
+    return !!draft.isFinal;
+  }
+
+  editQuote(quote: QuoteDto) {
+    this.editingQuote = quote;
+    this.populateFormFromQuote(quote);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }
+
+  cancelEdit() {
+    this.editingQuote = null;
+    this.resetFormPartial();
+  }
+
+  deleteQuote(quote: QuoteDto) {
+    this.createQuoteService.deleteQuote(quote.quoteId)
+      .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
+      .subscribe(() => {
+        this.draftQuotesSubject$.next(
+          this.draftQuotesSubject$.value.filter(q => q.quoteId !== quote.quoteId)
+        );
+        if (this.editingQuote?.quoteId === quote.quoteId) {
+          this.editingQuote = null;
+          this.resetFormPartial();
+        }
+        this.successMessage$.next(`Quote ${quote.quoteNumber} deleted.`);
+        setTimeout(() => this.successMessage$.next(''), 3000);
+      });
+  }
+
+  private populateFormFromQuote(quote: QuoteDto) {
+    const parseDate = (d: string | Date): string =>
+      typeof d === 'string' ? d.split('T')[0] : d.toISOString().split('T')[0];
+    this.quoteDate    = parseDate(quote.quoteDate);
+    this.followUpDate = parseDate(quote.followUpDate);
+    this.discountType  = quote.discountType  || '';
+    this.discountValue = quote.discountValue || 0;
+
+    const displayItems: QuoteItemDisplay[] = (quote.quoteItems || []).map(qi => ({
+      productItemId:      qi.productItemId,
+      description:        qi.description,
+      quantity:           qi.quantity,
+      unitPrice:          qi.unitPrice,
+      taxRate:            qi.taxRate,
+      discountPercentage: qi.discountPercentage,
+      amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
+    }));
+    this.quoteItemsSubject$.next(displayItems);
+    this.onDiscountChange();
+  }
+
+  // ── Grid calculation helpers ───────────────────────────────────────────────
+
+  calcSubTotal(q: QuoteDto): number {
+    return (q.quoteItems || []).reduce((s, i) => s + (i.quantity * i.unitPrice), 0);
+  }
+
+  calcQuoteDiscount(q: QuoteDto): number {
+    if (!q.discountType || !q.discountValue || q.discountValue <= 0) return 0;
+    const sub = this.calcSubTotal(q);
+    return q.discountType === 'Percentage' ? sub * (q.discountValue / 100) : q.discountValue;
+  }
+
+  calcTax(q: QuoteDto): number {
+    const items = q.quoteItems || [];
+    const sub   = this.calcSubTotal(q);
+    const itemDisc = items.reduce((s, i) =>
+      s + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    const itemTax  = items.reduce((s, i) => {
+      const line = i.quantity * i.unitPrice;
+      const disc = line * ((i.discountPercentage || 0) / 100);
+      return s + ((line - disc) * ((i.taxRate || 0) / 100));
+    }, 0);
+    const qDisc = this.calcQuoteDiscount(q);
+    if (qDisc > 0 && (sub - itemDisc) > 0) return itemTax * (1 - qDisc / (sub - itemDisc));
+    return itemTax;
+  }
+
+  calcTotal(q: QuoteDto): number {
+    const itemDisc = (q.quoteItems || []).reduce((s, i) =>
+      s + (i.quantity * i.unitPrice * ((i.discountPercentage || 0) / 100)), 0);
+    return this.calcSubTotal(q) - itemDisc - this.calcQuoteDiscount(q) + this.calcTax(q);
+  }
+
+  // ── Generate / Update quote ────────────────────────────────────────────────
 
   generateQuote() {
     const items = this.quoteItemsSubject$.value;
@@ -869,7 +985,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       this.errorMessage$.next('Please fill in all required fields and ensure at least one quote item exists');
       return;
     }
+    if (this.editingQuote) {
+      this.updateDraftQuote(items);
+    } else {
+      this.createDraftQuote(items);
+    }
+  }
 
+  private createDraftQuote(items: QuoteItemDisplay[]) {
     const createDto: CreateQuoteDto = {
       workflowId:    this.workflowId!,
       customerId:    this.customerId!,
@@ -877,7 +1000,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       followUpDate:  this.followUpDate,
       notes:         this.notes,
       terms:         this.terms,
-      // discount is optional — only include if the user has selected a type & value
       discountType:  this.discountType  || undefined,
       discountValue: this.discountValue || undefined,
       quoteItems: items.map(item => ({
@@ -898,24 +1020,66 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(async (createdQuote) => {
-          this.successMessage$.next(`Draft Quote DRAFT-${createdQuote.quoteNumber} created successfully!`);
+          this.draftQuotesSubject$.next([...this.draftQuotesSubject$.value, createdQuote]);
+          this.successMessage$.next(`Draft Quote ${createdQuote.quoteNumber} created successfully!`);
 
-          // FIXED: await the async PDF method so the download fires after layout is drawn
           const pdfBase64 = await this.generatePdf(createdQuote);
-
-          if (this.emailToCustomer) {
-            this.sendQuoteEmail(createdQuote, pdfBase64);
-          }
+          if (this.emailToCustomer) this.sendQuoteEmail(createdQuote, pdfBase64);
 
           setTimeout(() => this.resetFormPartial(), 2000);
-        }),        
+        }),
         catchError(error => {
           this.errorMessage$.next(error.message || 'Error generating quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
-      )
-      .subscribe();
+      ).subscribe();
+  }
+
+  private updateDraftQuote(items: QuoteItemDisplay[]) {
+    const q = this.editingQuote!;
+    const updateDto: UpdateQuoteDto = {
+      quoteDate:     this.quoteDate,
+      followUpDate:  this.followUpDate,
+      notes:         this.notes,
+      terms:         this.terms,
+      discountType:  this.discountType  || undefined,
+      discountValue: this.discountValue || undefined,
+      quoteItems: items.map(item => ({
+        description:        item.description,
+        quantity:           item.quantity,
+        unitPrice:          item.unitPrice,
+        taxRate:            item.taxRate || this.vatRate,
+        discountPercentage: item.discountPercentage || 0,
+        productItemId:      item.productItemId
+      })) as UpdateQuoteItemDto[]
+    };
+
+    this.isLoading$.next(true);
+    this.errorMessage$.next('');
+    this.successMessage$.next('');
+
+    this.createQuoteService.updateQuote(q.quoteId, updateDto)
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(async (updatedQuote) => {
+          this.draftQuotesSubject$.next(
+            this.draftQuotesSubject$.value.map(dq => dq.quoteId === updatedQuote.quoteId ? updatedQuote : dq)
+          );
+          this.editingQuote = null;
+          this.successMessage$.next(`Quote ${updatedQuote.quoteNumber} updated successfully!`);
+
+          const pdfBase64 = await this.generatePdf(updatedQuote);
+          if (this.emailToCustomer) this.sendQuoteEmail(updatedQuote, pdfBase64);
+
+          setTimeout(() => this.resetFormPartial(), 2000);
+        }),
+        catchError(error => {
+          this.errorMessage$.next(error.message || 'Error updating quote. Please try again.');
+          return of(null);
+        }),
+        finalize(() => this.isLoading$.next(false))
+      ).subscribe();
   }
 
   /**

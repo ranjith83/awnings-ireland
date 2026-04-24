@@ -926,3 +926,137 @@
   box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.15);
   background-color: #fff;
 }
+/* ── Draft quotes grid ────────────────────────────────────────────────────── */
+
+.quotes-loading {
+  color: #666;
+  font-size: 14px;
+  padding: 12px 0;
+}
+
+.existing-quotes-grid {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.existing-quotes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.existing-quotes-table thead th {
+  background: #f5f7fa;
+  color: #555;
+  font-weight: 600;
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.existing-quotes-table tbody tr {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+
+.existing-quotes-table tbody tr:hover { background: #fafafa; }
+
+.existing-quotes-table tbody tr.row-selected {
+  background: #e3f2fd;
+  border-left: 3px solid #1976d2;
+}
+
+.existing-quotes-table td {
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.quote-number-cell {
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.total-cell { font-weight: 600; }
+
+.no-quotes-msg {
+  color: #777;
+  font-size: 14px;
+  padding: 16px 0;
+}
+
+.quote-actions {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn-action {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-edit {
+  border-color: #1976d2;
+  background: white;
+  color: #1976d2;
+}
+
+.btn-edit:hover,
+.btn-edit.btn-selected {
+  background: #1976d2;
+  color: white;
+}
+
+.btn-delete {
+  border-color: #c62828;
+  background: white;
+  color: #c62828;
+}
+
+.btn-delete:hover {
+  background: #c62828;
+  color: white;
+}
+
+/* ── Editing banner ───────────────────────────────────────────────────────── */
+
+.amend-notice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 10px 16px;
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #e65100;
+}
+
+.btn-cancel-edit {
+  margin-left: auto;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #e65100;
+  background: white;
+  color: #e65100;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.btn-cancel-edit:hover {
+  background: #e65100;
+  color: white;
+}
+
+.btn-action:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

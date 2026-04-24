@@ -11,6 +11,69 @@
 
   <div class="quote-content">
 
+
+    <!-- ══════════════════════ EXISTING DRAFT QUOTES ═════════════════════ -->
+    <div class="form-section">
+      <h3 class="section-title">Draft Quotes</h3>
+
+      <div *ngIf="isLoadingQuotes$ | async" class="quotes-loading">Loading quotes…</div>
+
+      <ng-container *ngIf="!(isLoadingQuotes$ | async)">
+        <div class="existing-quotes-grid" *ngIf="(draftQuotes$ | async)?.length; else noDraftQuotes">
+          <table class="existing-quotes-table">
+            <thead>
+              <tr>
+                <th>QUOTE NUMBER</th>
+                <th>DATE</th>
+                <th>FOLLOW-UP DATE</th>
+                <th>SUBTOTAL</th>
+                <th>DISCOUNT</th>
+                <th>TAX</th>
+                <th>TOTAL</th>
+                <th>CREATED BY</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let q of draftQuotes$ | async"
+                  [class.row-selected]="editingQuote?.quoteId === q.quoteId">
+                <td class="quote-number-cell">{{ q.quoteNumber }}</td>
+                <td>{{ q.quoteDate | date:'dd/MM/yyyy' }}</td>
+                <td>{{ q.followUpDate | date:'dd/MM/yyyy' }}</td>
+                <td>€{{ calcSubTotal(q) | number:'1.2-2' }}</td>
+                <td>{{ calcQuoteDiscount(q) > 0 ? ('€' + (calcQuoteDiscount(q) | number:'1.2-2')) : '—' }}</td>
+                <td>€{{ calcTax(q) | number:'1.2-2' }}</td>
+                <td class="total-cell">€{{ calcTotal(q) | number:'1.2-2' }}</td>
+                <td>{{ q.createdBy }}</td>
+                <td class="quote-actions">
+                  <button class="btn-action btn-edit"
+                    [class.btn-selected]="editingQuote?.quoteId === q.quoteId"
+                    [disabled]="hasFinalQuote(q)"
+                    [title]="hasFinalQuote(q) ? 'Cannot edit — a final quote exists for this draft' : 'Edit this draft quote'"
+                    (click)="editQuote(q)">
+                    {{ editingQuote?.quoteId === q.quoteId ? 'Editing' : 'Edit' }}
+                  </button>
+                  <button class="btn-action btn-delete"
+                    [disabled]="hasFinalQuote(q)"
+                    [title]="hasFinalQuote(q) ? 'Cannot delete — a final quote exists for this draft' : 'Delete this draft quote'"
+                    (click)="deleteQuote(q)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #noDraftQuotes>
+          <p class="no-quotes-msg">No draft quotes yet. Fill in the form below to create one.</p>
+        </ng-template>
+      </ng-container>
+    </div>
+
+    <!-- Editing banner -->
+    <div class="amend-notice" *ngIf="editingQuote">
+      Editing <strong>{{ editingQuote.quoteNumber }}</strong> — submit will update this quote.
+      <button class="btn-cancel-edit" (click)="cancelEdit()">Cancel</button>
+    </div>
+
     <!-- ══════════════════════ WORKFLOW & PRODUCT ══════════════════════ -->
     <div class="form-section">
       <h3 class="section-title">Select Workflow &amp; Product</h3>
