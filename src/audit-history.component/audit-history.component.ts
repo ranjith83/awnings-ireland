@@ -29,6 +29,7 @@ interface UserDto {
 
 // TaskHistoryAuditDto and TaskHistoryPagedDto are imported from audit-trail.service
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-audit-history',
   standalone: true,

@@ -29,6 +29,7 @@ interface DeleteTarget {
   label: string;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-configuration',
   standalone: true,
@@ -279,7 +280,8 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     return this.tabs.find(t => t.id === this.activeTabSubject.value)?.label ?? '';
   }
 
-  constructor(private configService: ConfigurationService) {}
+  constructor(private configService: ConfigurationService,
+    private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.loadActiveTab();

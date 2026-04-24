@@ -26,6 +26,7 @@ import {
  */
 export type StageStatus = 'disabled' | 'pending' | 'completed';
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-workflow-list',
   standalone: true,
@@ -44,8 +45,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   // State subjects
   isLoading$      = new BehaviorSubject<boolean>(false);
-  errorMessage$   = new BehaviorSubject<string>('');
-  successMessage$ = new BehaviorSubject<string>('');
+  
+  
 
   // Cascade select subjects
   private selectedSupplierSubject$    = new BehaviorSubject<number | null>(null);
@@ -93,8 +94,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private workflowStateService: WorkflowStateService,
-    private workflowService: WorkflowService
-  ) {}
+    private workflowService: WorkflowService,
+    private notificationService: NotificationService) {}
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
@@ -113,7 +114,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       switchMap(supplierId => {
         if (!supplierId) return new BehaviorSubject<ProductTypeDto[]>([]);
         return this.workflowService.getAllProductTypesForSupplier(supplierId).pipe(
-          catchError(() => { this.errorMessage$.next('Failed to load product types'); return new BehaviorSubject<ProductTypeDto[]>([]); })
+          catchError(() => { this.notificationService.error('Failed to load product types'); return new BehaviorSubject<ProductTypeDto[]>([]); })
         );
       })
     );
@@ -122,7 +123,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       switchMap(([supplierId, productTypeId]) => {
         if (!supplierId || !productTypeId) return new BehaviorSubject<ProductDto[]>([]);
         return this.workflowService.getAllProductsBySupplier(supplierId, productTypeId).pipe(
-          catchError(() => { this.errorMessage$.next('Failed to load products'); return new BehaviorSubject<ProductDto[]>([]); })
+          catchError(() => { this.notificationService.error('Failed to load products'); return new BehaviorSubject<ProductDto[]>([]); })
         );
       })
     );
@@ -147,20 +148,20 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   loadSuppliers() {
     this.suppliers$ = this.workflowService.getAllSuppliers().pipe(
-      catchError(() => { this.errorMessage$.next('Failed to load suppliers.'); return new BehaviorSubject<SupplierDto[]>([]); })
+      catchError(() => { this.notificationService.error('Failed to load suppliers.'); return new BehaviorSubject<SupplierDto[]>([]); })
     );
   }
 
   loadWorkflows(customerId: number) {
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
+    this.notificationService.error('');
     this.workflowService.getWorkflowsForCustomer(customerId).pipe(
       takeUntil(this.destroy$),
       map(workflows => workflows.map(w => ({ ...w, dateAdded: new Date(w.dateAdded) }))),
       finalize(() => this.isLoading$.next(false))
     ).subscribe({
       next: (workflows) => { this.workflowsSubject$.next(workflows); this.calculateTotalPages(workflows.length); },
-      error: () => this.errorMessage$.next('Failed to load workflows. Please try again.')
+      error: () => this.notificationService.error('Failed to load workflows. Please try again.')
     });
   }
 
@@ -217,7 +218,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   addNewWorkflow() {
     if (!this.selectedSupplier || !this.selectedProductType || !this.selectedProduct || !this.customerId) {
-      this.errorMessage$.next('Please select supplier, product type, and product');
+      this.notificationService.error('Please select supplier, product type, and product');
       this.clearMessagesAfterDelay(); return;
     }
 
@@ -233,7 +234,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       w.productId     === this.selectedProduct
     );
     if (isDuplicate) {
-      this.errorMessage$.next(
+      this.notificationService.error(
         `A workflow for "${productType?.description || ''} - ${product?.productName || ''}" already exists for this customer.`
       );
       this.clearMessagesAfterDelay(); return;
@@ -267,13 +268,13 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       finalize(() => this.isLoading$.next(false))
     ).subscribe({
       next: () => {
-        this.successMessage$.next('Workflow created successfully!');
+        this.notificationService.success('Workflow created successfully!');
         this.loadWorkflows(this.customerId!);
         this.selectedSupplier = null; this.selectedProductType = null; this.selectedProduct = null;
         this.selectedSupplierSubject$.next(null); this.selectedProductTypeSubject$.next(null); this.selectedProductSubject$.next(null);
         this.clearMessagesAfterDelay();
       },
-      error: () => this.errorMessage$.next('Failed to create workflow. Please try again.')
+      error: () => this.notificationService.error('Failed to create workflow. Please try again.')
     });
   }
 
@@ -283,7 +284,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     event.stopPropagation();
     this.editingWorkflow = { ...workflow };
     this.showEditModal   = true;
-    this.errorMessage$.next(''); this.successMessage$.next('');
+    this.notificationService.error(''); this.notificationService.success('');
   }
 
   closeEditModal() {
@@ -303,10 +304,10 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         const current = this.workflowsSubject$.value;
         const idx = current.findIndex(w => w.workflowId === updated.workflowId);
         if (idx !== -1) { current[idx] = updated; this.workflowsSubject$.next([...current]); }
-        this.successMessage$.next('Workflow updated successfully!');
+        this.notificationService.success('Workflow updated successfully!');
         this.closeEditModal(); this.clearMessagesAfterDelay();
       },
-      error: () => this.errorMessage$.next('Failed to update workflow. Please try again.')
+      error: () => this.notificationService.error('Failed to update workflow. Please try again.')
     });
   }
 
@@ -355,7 +356,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
           this.showDeleteConfirm = false;
           this.deletingWorkflow  = null;
           this.blockingDependencies = [];
-          this.successMessage$.next(`Workflow "${name}" deleted successfully!`);
+          this.notificationService.success(`Workflow "${name}" deleted successfully!`);
           this.clearMessagesAfterDelay();
         } else {
           // Blocked — update the workflow in the local list so the icon refreshes,
@@ -371,7 +372,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
-        this.errorMessage$.next('Failed to delete workflow. Please try again.');
+        this.notificationService.error('Failed to delete workflow. Please try again.');
         this.showDeleteConfirm = false;
         this.deletingWorkflow  = null;
         this.clearMessagesAfterDelay();
@@ -412,7 +413,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         const i = cw.findIndex(w => w.workflowId === workflow.workflowId);
         if (i !== -1) { cw[i] = updatedWorkflow; this.workflowsSubject$.next([...cw]); }
       },
-      error: () => { this.errorMessage$.next('Failed to update workflow stage.'); this.clearMessagesAfterDelay(); }
+      error: () => { this.notificationService.error('Failed to update workflow stage.'); this.clearMessagesAfterDelay(); }
     });
   }
 
@@ -445,7 +446,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       if (this.fromTask)      qp['fromTask']      = this.fromTask;
       this.router.navigate([`/workflow/${enabledStages[0]}`], { queryParams: qp });
     } else {
-      this.errorMessage$.next('Please enable at least one stage for this workflow');
+      this.notificationService.error('Please enable at least one stage for this workflow');
       this.clearMessagesAfterDelay();
     }
   }
@@ -465,6 +466,6 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   goToLastPage() { this.goToPage(this.totalPages$.value); }
 
   private clearMessagesAfterDelay(): void {
-    setTimeout(() => { this.successMessage$.next(''); this.errorMessage$.next(''); }, 3000);
+    setTimeout(() => { this.notificationService.success(''); this.notificationService.error(''); }, 3000);
   }
 }

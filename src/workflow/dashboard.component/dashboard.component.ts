@@ -13,6 +13,7 @@ import {
 } from '../../service/dashboard.service';
 import { QuickCalculatorComponent } from '../../app/quick-calculator.component/quick-calculator.component';
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -49,11 +50,12 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   
   showCalculator = false;
   isLoading$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
+  
   
   activeTab: 'today' | 'month' | 'year' = 'today';
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(private dashboardService: DashboardService,
+    private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.initializeObservables();
@@ -93,7 +95,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
 
   loadDashboardData(): void {
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
 
     forkJoin({
       stats: this.dashboardService.getDashboardStats()
@@ -221,7 +222,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   retryLoad(): void {
-    this.errorMessage$.next('');
     this.loadDashboardData();
     if (this.salesChart) {
       this.loadChartData(this.activeTab);

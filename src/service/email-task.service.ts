@@ -168,6 +168,7 @@ export interface TaskFilterParams {
 
   // ── Existing filters (unchanged) ──────────────────────────────────────────
   status?:             string | null;
+  statuses?:           string[] | null;
   taskType?:           string | null;
   priority?:           string | null;
   assignedToUserId?:   number | null;
@@ -238,6 +239,7 @@ export class EmailTaskService {
       page:              filters.page              ?? 1,
       pageSize:          filters.pageSize          ?? 20,
       status:            filters.status            ?? '',
+      statuses:          filters.statuses           ?? null,
       taskType:          filters.taskType          ?? '',
       priority:          filters.priority          ?? '',
       searchTerm:        filters.searchTerm        ?? '',

@@ -14,6 +14,7 @@ import {
   AuditAction 
 } from '../service/task.service';
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-task-detail',
   standalone: true,
@@ -52,8 +53,8 @@ export class TaskDetailComponent implements OnInit {
   constructor(
     private taskService: TaskService,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     const taskId = Number(this.route.snapshot.paramMap.get('id'));

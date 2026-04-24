@@ -1,12 +1,5 @@
 <div class="workflow-container">
   <!-- Success/Error Messages -->
-  <div *ngIf="successMessage$ | async as successMsg" class="alert alert-success">
-    {{ successMsg }}
-  </div>
-  <div *ngIf="errorMessage$ | async as errorMsg" class="alert alert-error">
-    {{ errorMsg }}
-  </div>
-
   <form [formGroup]="siteVisitForm" class="site-visit-form">
     <!-- Workflow + Product Model + Add New + Check Availability -->
     <div class="form-section">

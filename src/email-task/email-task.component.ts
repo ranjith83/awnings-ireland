@@ -2,9 +2,10 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { isPlatformBrowser } from '@angular/common';
 import { EmailTask, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
+import { CustomerService } from '../service/customer-service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { Observable, BehaviorSubject, combineLatest, of, Subject } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin } from 'rxjs';
 import { map, switchMap, catchError, shareReplay, take, filter, takeUntil } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
 
@@ -17,11 +18,11 @@ export interface EmailAttachment {
 }
 
 export interface EmailTaskExtended extends Omit<EmailTask, 'sourceType'> {
-  quoteId?:      number | null;
-  workflowId?:   number | null;
-  sourceType?:   string | null;
-  siteVisitId?:  number | null;
- // displayTitle?: string | null;
+  quoteId?:       number | null;
+  workflowId?:    number | null;
+  workflowName?:  string | null;
+  sourceType?:    string | null;
+  siteVisitId?:   number | null;
 }
 
 type WorkflowGuardResult =
@@ -35,14 +36,14 @@ type TopTab = 'email' | 'site-visit';
 type EmailSubTab = 'tasks' | 'in-progress' | 'completed' | 'junk';
 
 @Component({
-  selector: 'app-email-tasks',
+  selector: 'app-task',
   templateUrl: './email-task.component.html',
   standalone: true,
   imports: [FormsModule, CommonModule],
   styleUrls: ['./email-task.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EmailTaskComponent implements OnInit, OnDestroy {
+export class TaskComponent implements OnInit, OnDestroy {
   private isBrowser: boolean;
   private destroy$ = new Subject<void>();
 
@@ -140,6 +141,8 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   selectedSiteVisitTask: EmailTaskExtended | null = null;
   showSiteVisitPanel:    boolean = false;
   siteVisitAssignee:     number | null = null;
+  siteVisitStatus:       string = 'New';
+  readonly siteVisitStatuses = ['New', 'In Progress', 'Completed'];
   isSiteVisitSaving:     boolean = false;
 
   // ── Send Email state ─────────────────────────────────────────────────────
@@ -226,6 +229,7 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   constructor(
     private emailTaskService: EmailTaskService,
     private workflowService:  WorkflowService,
+    private customerService:  CustomerService,
     private router:           Router,
     private cdr:              ChangeDetectorRef,
     @Inject(PLATFORM_ID) platformId: Object
@@ -255,7 +259,15 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
       )),
       shareReplay(1)
     );
-    this.tasks$       = this.tasksResponse$.pipe(map(r => r.tasks));
+    // Client-side guard: exclude SiteVisit tasks from email tab; enrich site-visit tab with customer names
+    this.tasks$ = combineLatest([this.tasksResponse$, this.topTabSubject]).pipe(
+      switchMap(([r, topTab]) => {
+        const filtered = topTab === 'email'
+          ? r.tasks.filter(t => (t.sourceType ?? 'Email') !== 'SiteVisit')
+          : r.tasks;
+        return topTab === 'site-visit' ? this.enrichWithCustomerNames(filtered) : of(filtered);
+      })
+    );
     this.pageInfo$    = this.tasksResponse$.pipe(map(r => this.emailTaskService.getPageInfo(r)));
     this.totalItems$  = this.tasksResponse$.pipe(map(r => r.totalCount));
     this.totalPages$  = this.tasksResponse$.pipe(map(r => r.totalPages));
@@ -265,7 +277,15 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.users$       = this.emailTaskService.getUsers().pipe(catchError(() => of([])), shareReplay(1));
     this.currentUser$ = this.emailTaskService.getCurrentUser().pipe(catchError(() => of(null)), shareReplay(1));
     this.currentUser$.pipe(take(1)).subscribe(user => {
-      if (user) { this.currentUserId = (user as any).userId ?? null; this.isAdmin = (user as any).role === 'Admin'; this.cdr.markForCheck(); }
+      if (user) {
+        this.currentUserId = (user as any).userId ?? null;
+        this.isAdmin = (user as any).role === 'Admin';
+        // Non-admin users only see tasks assigned to themselves
+        if (!this.isAdmin && this.currentUserId) {
+          this.filterAssignedUserSubject.next(this.currentUserId);
+        }
+        this.cdr.markForCheck();
+      }
     });
   }
 
@@ -335,6 +355,38 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
     this.loadWorkflowStatus(task);
   }
 
+  private enrichWithCustomerNames(tasks: EmailTaskExtended[]): Observable<EmailTaskExtended[]> {
+    const customerIds = [...new Set(tasks.filter(t => t.customerId).map(t => t.customerId as number))];
+    if (customerIds.length === 0) return of(tasks);
+
+    const customerFetches$ = customerIds.map(id =>
+      this.customerService.getCustomerById(id).pipe(
+        map(c => ({ id, name: c.name })),
+        catchError(() => of({ id, name: null as string | null }))
+      )
+    );
+    const workflowFetches$ = customerIds.map(id =>
+      this.workflowService.getWorkflowsForCustomer(id).pipe(
+        map(wfs => ({ customerId: id, workflows: wfs })),
+        catchError(() => of({ customerId: id, workflows: [] as WorkflowDto[] }))
+      )
+    );
+
+    return forkJoin([forkJoin(customerFetches$), forkJoin(workflowFetches$)]).pipe(
+      map(([customerResults, workflowResults]) => {
+        const customerMap = new Map(customerResults.map(r => [r.id, r.name]));
+        const workflowMap = new Map<number, string>();
+        workflowResults.forEach(r => r.workflows.forEach(w => workflowMap.set(w.workflowId, w.workflowName)));
+        return tasks.map(t => {
+          const enriched = { ...t };
+          if (t.customerId && !t.customerName) enriched.customerName = customerMap.get(t.customerId) ?? t.customerName;
+          if (t.workflowId && !t.workflowName) enriched.workflowName = workflowMap.get(t.workflowId) ?? null;
+          return enriched;
+        });
+      })
+    );
+  }
+
   private loadWorkflowStatus(task: EmailTaskExtended): void {
     if (!task.customerId) { this.workflowStatus$.next({ exists: false, workflowId: null, workflowName: null }); return; }
     this.workflowService.getWorkflowsForCustomer(task.customerId).pipe(take(1), catchError(() => of([] as WorkflowDto[])))
@@ -376,12 +428,15 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
 
   // ── Site Visit panel ─────────────────────────────────────────────────────
   openSiteVisitPanel(task: EmailTaskExtended): void {
-    this.selectedSiteVisitTask = task; this.siteVisitAssignee = task.assignedToUserId ?? null;
+    this.selectedSiteVisitTask = task;
+    this.siteVisitAssignee = task.assignedToUserId ?? null;
+    this.siteVisitStatus   = task.status || 'New';
     this.showSiteVisitPanel = true; this.cdr.markForCheck();
   }
   closeSiteVisitPanel(): void {
     this.showSiteVisitPanel = false; this.selectedSiteVisitTask = null;
-    this.siteVisitAssignee = null;   this.isSiteVisitSaving = false;
+    this.siteVisitAssignee = null;   this.siteVisitStatus = 'New';
+    this.isSiteVisitSaving = false;
     this.cdr.markForCheck();
   }
 
@@ -401,17 +456,19 @@ export class EmailTaskComponent implements OnInit, OnDestroy {
   saveSiteVisitAssignment(): void {
     const task = this.selectedSiteVisitTask;
     if (!task) return;
-    const isAssigning   = this.siteVisitAssignee !== null && this.siteVisitAssignee !== task.assignedToUserId;
-    const isUnassigning = this.siteVisitAssignee === null && task.assignedToUserId !== null;
-    const isSameUser    = this.siteVisitAssignee !== null && this.siteVisitAssignee === task.assignedToUserId;
-    if (isSameUser)                   { this.showToast('warning', `Already assigned to ${task.assignedToUserName ?? 'this user'}.`); return; }
-    if (!isAssigning && !isUnassigning) { this.closeSiteVisitPanel(); return; }
+    const statusChanged  = this.siteVisitStatus !== (task.status || 'New');
+    const isAssigning    = this.siteVisitAssignee !== null && this.siteVisitAssignee !== task.assignedToUserId;
+    const isUnassigning  = this.siteVisitAssignee === null && task.assignedToUserId !== null;
+    if (!statusChanged && !isAssigning && !isUnassigning) { this.closeSiteVisitPanel(); return; }
     this.isSiteVisitSaving = true; this.cdr.markForCheck();
-    (isAssigning ? this.emailTaskService.assignTask(task.taskId, this.siteVisitAssignee!) : this.emailTaskService.unassignTask(task.taskId))
-      .subscribe({
-        next:  () => { this.isSiteVisitSaving = false; this.closeSiteVisitPanel(); this.refreshTrigger.next(); this.showToast('success', isAssigning ? 'Site visit assigned ✅' : 'Site visit unassigned.'); },
-        error: (err) => { this.isSiteVisitSaving = false; this.cdr.markForCheck(); this.showToast('error', `Failed: ${err?.message ?? 'Unknown error'}`); }
-      });
+    const ops$: Observable<any>[] = [];
+    if (statusChanged) ops$.push(this.emailTaskService.updateTaskStatus(task.taskId, this.siteVisitStatus));
+    if (isAssigning)   ops$.push(this.emailTaskService.assignTask(task.taskId, this.siteVisitAssignee!));
+    if (isUnassigning) ops$.push(this.emailTaskService.unassignTask(task.taskId));
+    forkJoin(ops$).subscribe({
+      next:  () => { this.isSiteVisitSaving = false; this.closeSiteVisitPanel(); this.refreshTrigger.next(); this.showToast('success', 'Site visit updated ✅'); },
+      error: (err) => { this.isSiteVisitSaving = false; this.cdr.markForCheck(); this.showToast('error', `Failed: ${err?.message ?? 'Unknown error'}`); }
+    });
   }
 
   // ── Save (email viewer) ──────────────────────────────────────────────────

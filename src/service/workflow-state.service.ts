@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 export interface WorkflowStages {
   initialEnquiry: boolean;
@@ -28,7 +28,25 @@ export class WorkflowStateService {
   private selectedWorkflowSubject = new BehaviorSubject<SelectedWorkflow | null>(null);
   public selectedWorkflow$: Observable<SelectedWorkflow | null> = this.selectedWorkflowSubject.asObservable();
 
+  private stepCompletedSubject = new Subject<string>();
+  /** Emits the step path (e.g. 'initial-enquiry') after a successful first save. */
+  public stepCompleted$ = this.stepCompletedSubject.asObservable();
+
+  private workflowChangedSubject = new Subject<void>();
+  /** Emits after any record deletion so the workflow status can be reloaded. */
+  public workflowChanged$ = this.workflowChangedSubject.asObservable();
+
   constructor() {}
+
+  /** Call from a step component after its first successful save. */
+  notifyStepCompleted(stepPath: string): void {
+    this.stepCompletedSubject.next(stepPath);
+  }
+
+  /** Call from a step component after a record is deleted. */
+  notifyWorkflowChanged(): void {
+    this.workflowChangedSubject.next();
+  }
 
   setSelectedWorkflow(workflow: SelectedWorkflow): void {
     this.selectedWorkflowSubject.next(workflow);

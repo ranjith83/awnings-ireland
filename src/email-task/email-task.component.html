@@ -96,9 +96,9 @@
         <option value="High">High</option>
         <option value="Urgent">Urgent</option>
       </select>
-      <!-- Assigned-user filter: shown on both tabs, hidden only on site-visit where assignment is done in-panel -->
+      <!-- Assigned-user filter: admins only — non-admins auto-filtered to their own tasks -->
       <select [(ngModel)]="filterAssignedUser" class="filter-select" (change)="applyFilters()"
-              *ngIf="(topTab$ | async) === 'email'">
+              *ngIf="(topTab$ | async) === 'email' && isAdmin">
         <option [value]="null">All Users</option>
         <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
       </select>
@@ -222,8 +222,8 @@
             <span class="priority-badge" [class]="'priority-' + (task.priority || 'normal').toLowerCase()">{{ task.priority || 'Normal' }}</span>
           </td>
           <td>
-            <span *ngIf="task.workflowId" class="sv-workflow-id">#{{ task.workflowId }}</span>
-            <span *ngIf="!task.workflowId" class="unassigned">—</span>
+            <span *ngIf="task.workflowName">{{ task.workflowName }}</span>
+            <span *ngIf="!task.workflowName" class="unassigned">—</span>
           </td>
         </tr>
         <tr *ngIf="(tasks$ | async)?.length === 0 && !(isLoading$ | async)">
@@ -290,7 +290,19 @@
             </div>
             <div class="sv-modal-meta-item" *ngIf="selectedSiteVisitTask.workflowId">
               <span class="sv-modal-meta-label">Workflow</span>
-              <span class="sv-workflow-chip">#{{ selectedSiteVisitTask.workflowId }}</span>
+              <span class="sv-workflow-chip">{{ selectedSiteVisitTask.workflowName || ('#' + selectedSiteVisitTask.workflowId) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status section -->
+        <div class="sv-modal-assign-box">
+          <div class="sv-modal-assign-title">Status</div>
+          <div class="sv-modal-assign-body">
+            <div class="sv-modal-assign-row">
+              <select id="svStatusSelect" class="sv-panel__assign-select" [(ngModel)]="siteVisitStatus">
+                <option *ngFor="let s of siteVisitStatuses" [value]="s">{{ s }}</option>
+              </select>
             </div>
           </div>
         </div>
@@ -308,7 +320,6 @@
                 </option>
               </select>
             </div>
-            <p class="sv-panel__assign-hint">Saving will set the task to <strong>In Progress</strong>.</p>
           </div>
         </div>
       </div>

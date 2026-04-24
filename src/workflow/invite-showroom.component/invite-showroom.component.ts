@@ -35,6 +35,7 @@ interface CalendarEvent {
   }>;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-invite-showroom',
   imports: [ReactiveFormsModule, CommonModule],
@@ -101,7 +102,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private workflowStateService: WorkflowStateService,
     private workflowService: WorkflowService,
-  ) {
+    private notificationService: NotificationService) {
     this.bookingForm = this.fb.group({
       workflow: ['', Validators.required],
       eventName: ['', Validators.required],
@@ -149,7 +150,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         }
 
         if (!this.customerId) {
-          this.errorMessageSubject$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -194,7 +195,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading workflows:', error);
-          this.errorMessageSubject$.next('Failed to load workflows');
+          this.notificationService.error('Failed to load workflows');
           return of([]);
         }),
         finalize(() => this.isLoadingSubject$.next(false))
@@ -238,7 +239,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       }),
       catchError(error => {
         console.error('❌ Error loading calendar events:', error);
-        this.errorMessageSubject$.next('Failed to load calendar events');
+        this.notificationService.error('Failed to load calendar events');
         return of({ value: [] });
       })
     )
@@ -260,8 +261,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     // Set loading states
     this.deletingEventIdSubject$.next(idToDelete);
     this.isLoadingSubject$.next(true);
-    this.errorMessageSubject$.next('');
-    this.successMessageSubject$.next('');
+
+
 
     try {
       console.log('🗑️ Starting delete operation for:', idToDelete);
@@ -279,8 +280,9 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       this.closeEventsPopup();
       
       // Show success message
-      this.successMessageSubject$.next(`Event "${nameToDelete}" has been successfully deleted!`);
-      
+      this.notificationService.success(`Event "${nameToDelete}" has been successfully deleted!`);
+      this.workflowStateService.notifyWorkflowChanged();
+
       // Refresh calendar from server
       this.loadCalendarEvents();
       
@@ -295,15 +297,15 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       
       // Auto-clear success message
       setTimeout(() => {
-        this.successMessageSubject$.next('');
+
       }, 3000);
       
     } catch (error) {
       console.error('❌ Error deleting event:', error);
-      this.errorMessageSubject$.next('Failed to delete event. Please try again.');
+      this.notificationService.error('Failed to delete event. Please try again.');
       
       setTimeout(() => {
-        this.errorMessageSubject$.next('');
+
       }, 5000);
       
     } finally {
@@ -345,7 +347,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     const selectedWorkflow = this.workflowsSubject$.value.find(w => w.workflowId === selectedWorkflowId);
     if (selectedWorkflow) {
       this.bookingForm.patchValue({ 
-        eventName: `${selectedWorkflow.workflowName} - ${this.customerName}`,
+       // eventName: `${selectedWorkflow.workflowName} - ${this.customerName}`,
         description: `Showroom visit for ${selectedWorkflow.workflowName}`
       });
     }
@@ -357,7 +359,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     const workflowName = workflow.productName || workflow.description || 'Showroom Visit';
     
     this.bookingForm.patchValue({ 
-      eventName: `${workflowName} - ${this.customerName}`,
+      // eventName: `${workflowName} - ${this.customerName}`,
       description: `Showroom visit for ${workflowName}`
     });
   }
@@ -592,7 +594,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       hour = 0;
     }
 
-    return new Date(
+    const local = new Date(
       eventDate.getFullYear(),
       eventDate.getMonth(),
       eventDate.getDate(),
@@ -600,6 +602,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       minute,
       0
     );
+    // Compensate for timezone offset so the ISO string reflects local clock time
+    return new Date(local.getTime() - local.getTimezoneOffset() * 60 * 1000);
   }
 
   showMoreEvents(day: number | null, event: Event): void {
@@ -650,8 +654,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     this.bookingForm.get('startTime')?.disable();
     this.bookingForm.get('endTime')?.disable();
     this.selectedDate = null;
-    this.errorMessageSubject$.next('');
-    this.successMessageSubject$.next('');
+
+
     this.showEventsList = false;
     this.eventsForSelectedDateSubject$.next([]);
     this.availableStartTimeSlots = [];
@@ -663,8 +667,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
   onSave(): void {
     if (this.bookingForm.valid) {
       this.isLoadingSubject$.next(true);
-      this.errorMessageSubject$.next('');
-      this.successMessageSubject$.next('');
+
+
 
       const formData = this.bookingForm.value;
       
@@ -690,7 +694,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
           takeUntil(this.destroy$),
           tap(response => {
             const eventName = formData.eventName || 'Showroom Visit';
-            this.successMessageSubject$.next(`Event "${eventName}" has been successfully created!`);
+            this.notificationService.success(`Event "${eventName}" has been successfully created!`);
+            this.workflowStateService.notifyStepCompleted('invite-showroom');
 
             // Delay the calendar refresh slightly so Graph has time to index
             // the new event before we fetch the CalendarView.
@@ -707,7 +712,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
           }),
           catchError(error => {
             console.error('Error creating showroom invite:', error);
-            this.errorMessageSubject$.next('Failed to create showroom invitation. Please try again.');
+            this.notificationService.error('Failed to create showroom invitation. Please try again.');
             this.isLoadingSubject$.next(false);
             return of(null);
           })
@@ -717,7 +722,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         .subscribe();
     } else {
       this.markFormGroupTouched(this.bookingForm);
-      this.errorMessageSubject$.next('Please fill in all required fields.');
+      this.notificationService.error('Please fill in all required fields.');
     }
   }
 

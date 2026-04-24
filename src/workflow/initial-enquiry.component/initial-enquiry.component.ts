@@ -85,6 +85,8 @@ const LAYOUT_OPTIONS = [
   { value: 'company_first', label: 'Company → Name → Job Title' },
 ];
 
+import { NotificationService } from '../../service/notification.service';
+import { WorkflowStateService } from '../../service/workflow-state.service';
 @Component({
   selector: 'app-initial-enquiry',
   standalone: true,
@@ -108,8 +110,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   isSendingEmail$     = new BehaviorSubject<boolean>(false);
   isLoadingSigs$      = new BehaviorSubject<boolean>(false);
   isSavingSig$        = new BehaviorSubject<boolean>(false);
-  successMessage$     = new BehaviorSubject<string>('');
-  errorMessage$       = new BehaviorSubject<string>('');
+  
+  
 
   // ── Data ───────────────────────────────────────────────────────────────────
   enquiries: InitialEnquiryDto[] = [];
@@ -166,8 +168,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private workflowService: WorkflowService,
     private emailTaskService: EmailTaskService,
     private signatureService: SignatureService,
-    private sanitizer: DomSanitizer
-  ) {}
+    private sanitizer: DomSanitizer,
+    private notificationService: NotificationService,
+    private workflowStateService: WorkflowStateService) {}
 
   ngOnInit() {
     this.loadUserSignatures();
@@ -462,6 +465,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
           this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
           this.pendingAttachments = [];
           this.showSuccess('Enquiry added successfully!');
+          this.workflowStateService.notifyStepCompleted('initial-enquiry');
           if (shouldSend && emailToSend)
             this.dispatchDirectEmail(emailToSend, `Re: Initial Enquiry – ${this.customerName}`,
               this.buildEmailBody(commentsToSend, signatureToSend), attachsToSend);
@@ -481,7 +485,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.sendEmailOnUpdate = true;
     this.editPendingAttachments = [];
     this.showEditModal     = true;
-    this.errorMessage$.next('');
+    this.notificationService.error('');
   }
 
   closeEditModal() {
@@ -538,7 +542,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   openSendModal(row: CustomerEmailRow) {
     this.sendModalTaskId = row.taskId; this.sendToEmail = row.fromEmail;
     this.sendSubject = `Re: ${row.subject}`; this.sendBody = '';
-    this.showSendModal = true; this.errorMessage$.next('');
+    this.showSendModal = true; this.notificationService.error('');
   }
   closeSendModal() {
     this.showSendModal = false; this.sendModalTaskId = null;
@@ -585,8 +589,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       .subscribe({ next: () => onSuccess?.(), error: () => this.showError('Enquiry saved, but the email could not be sent.') });
   }
 
-  private showSuccess(msg: string) { this.successMessage$.next(msg); setTimeout(() => this.successMessage$.next(''), 3500); }
-  private showError(msg: string)   { this.errorMessage$.next(msg);   setTimeout(() => this.errorMessage$.next(''),   4000); }
+  private showSuccess(msg: string) { this.notificationService.success(msg);  }
+  private showError(msg: string)   { this.notificationService.error(msg);    }
 
   // ── Attachment helpers ─────────────────────────────────────────────────────
 

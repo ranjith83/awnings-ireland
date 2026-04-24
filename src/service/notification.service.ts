@@ -31,6 +31,7 @@ export class NotificationService {
   }
 
   private show(notification: Notification): void {
+    if (!notification.message?.trim()) return;
     this.notificationSubject.next(notification);
   }
 }

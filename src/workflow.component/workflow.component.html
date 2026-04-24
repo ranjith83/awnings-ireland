@@ -12,11 +12,16 @@
   <!-- Tab Navigation -->
   <div class="tabs-container">
     <div class="tabs-nav">
-      <button 
+      <button
         *ngFor="let tab of tabs"
-        class="tab-btn" 
+        class="tab-btn"
         [class.active]="isActive(tab.path)"
+        [class.tab-completed]="isTabCompleted(tab)"
+        [class.tab-locked]="isTabLocked(tab)"
+        [title]="isTabLocked(tab) ? 'Complete &quot;' + (getBlockingStep(tab.path) || '') + '&quot; first' : tab.label"
         (click)="navigateToTab(tab)">
+        <span *ngIf="isTabCompleted(tab)" class="tab-status-icon">✓</span>
+        <span *ngIf="isTabLocked(tab) && !isTabCompleted(tab)" class="tab-status-icon">🔒</span>
         {{ tab.label }}
       </button>
     </div>

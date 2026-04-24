@@ -40,6 +40,7 @@ interface InvoiceItemDisplay {
   totalPrice: number;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-invoice',
   standalone: true,
@@ -69,8 +70,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   
   // State management with BehaviorSubjects
   isLoading$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
-  successMessage$ = new BehaviorSubject<string>('');
+  
+  
   
   private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
   private quotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
@@ -183,8 +184,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     private workflowStateService: WorkflowStateService,
     private pdfService: PdfGenerationService,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private notificationService: NotificationService) {}
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
@@ -280,7 +281,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         let workflowId = 0;
 
         if (!this.customerId) {
-          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -317,7 +318,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading workflows:', error);
-          this.errorMessage$.next('Failed to load workflows');
+          this.notificationService.error('Failed to load workflows');
           return of([]);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -366,7 +367,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading quotes:', error);
-          this.errorMessage$.next('Failed to load quotes for this workflow');
+          this.notificationService.error('Failed to load quotes for this workflow');
           return of([]);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -474,7 +475,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading quote details:', error);
-          this.errorMessage$.next('Failed to load quote details');
+          this.notificationService.error('Failed to load quote details');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -685,7 +686,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }),
-        catchError(() => { this.errorMessage$.next('Failed to get price for selected dimensions'); return of(0); })
+        catchError(() => { this.notificationService.error('Failed to get price for selected dimensions'); return of(0); })
       )
       .subscribe();
   }
@@ -1102,7 +1103,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     const items = this.invoiceItemsSubject$.value;
     
     if (!this.workflowId || !this.customerId || items.length === 0 || !this.invoiceDate || !this.dueDate) {
-      this.errorMessage$.next('Please fill in all required fields and ensure at least one invoice item exists');
+      this.notificationService.error('Please fill in all required fields and ensure at least one invoice item exists');
       return;
     }
 
@@ -1124,15 +1125,16 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     this.invoiceService.createInvoice(createDto)
       .pipe(
         takeUntil(this.destroy$),
         tap(createdInvoice => {
           console.log('Invoice created successfully:', createdInvoice);
-          this.successMessage$.next(`Invoice ${createdInvoice.invoiceNumber} created successfully!`);
+          this.notificationService.success(`Invoice ${createdInvoice.invoiceNumber} created successfully!`);
+          this.workflowStateService.notifyStepCompleted('invoice');
           
           this.generatePdf(createdInvoice);
           
@@ -1146,7 +1148,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error creating invoice:', error);
-          this.errorMessage$.next(error.message || 'Error generating invoice. Please try again.');
+          this.notificationService.error(error.message || 'Error generating invoice. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -1228,7 +1230,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       this.resetSelections();
     }
     
-    this.successMessage$.next('');
+    this.notificationService.success('');
   }
 
   close() {

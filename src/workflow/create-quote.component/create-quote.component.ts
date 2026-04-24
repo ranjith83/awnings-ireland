@@ -41,6 +41,7 @@ interface QuoteItemDisplay {
   amount: number;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-create-quote.component',
   standalone: true,
@@ -72,8 +73,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   isLoading$         = new BehaviorSubject<boolean>(false);
   isLoadingQuotes$   = new BehaviorSubject<boolean>(false);
   isSendingEmail$    = new BehaviorSubject<boolean>(false);
-  errorMessage$      = new BehaviorSubject<string>('');
-  successMessage$    = new BehaviorSubject<string>('');
+  
+  
 
   private draftQuotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
   private finalQuotesSubject$ = new BehaviorSubject<QuoteDto[]>([]);
@@ -209,8 +210,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     private pdfService: PdfGenerationService,
     private emailTaskService: EmailTaskService,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private notificationService: NotificationService) {}
 
   ngOnInit() {
     this.initializeObservables();
@@ -326,7 +327,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         let workflowId = 0;
 
         if (!this.customerId) {
-          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -365,7 +366,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.workflowService.getAllSuppliers()
       .pipe(takeUntil(this.destroy$),
         tap(s => this.suppliersSubject$.next(s)),
-        catchError(() => { this.errorMessage$.next('Failed to load suppliers'); return of([]); }))
+        catchError(() => { this.notificationService.error('Failed to load suppliers'); return of([]); }))
       .subscribe();
   }
 
@@ -387,7 +388,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
             this.onWorkflowChange();
           }
         }),
-        catchError(() => { this.errorMessage$.next('Failed to load workflows'); return of([]); }),
+        catchError(() => { this.notificationService.error('Failed to load workflows'); return of([]); }),
         finalize(() => this.isLoading$.next(false))
       )
       .subscribe();
@@ -607,7 +608,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const projcm    = this.selectedAwning;
 
     this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
-      .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.errorMessage$.next('Failed to get price'); return of(0); }))
+      .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.notificationService.error('Failed to get price'); return of(0); }))
       .subscribe();
   }
 
@@ -886,7 +887,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           this.draftQuotesSubject$.next(quotes.filter(q => !q.draftQuoteId));
           this.finalQuotesSubject$.next(quotes.filter(q =>  !!q.draftQuoteId));
         }),
-        catchError(() => { this.errorMessage$.next('Failed to load quotes'); return of([]); }),
+        catchError(() => { this.notificationService.error('Failed to load quotes'); return of([]); }),
         finalize(() => this.isLoadingQuotes$.next(false))
       ).subscribe();
   }
@@ -918,8 +919,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           this.editingQuote = null;
           this.resetFormPartial();
         }
-        this.successMessage$.next(`Quote ${quote.quoteNumber} deleted.`);
-        setTimeout(() => this.successMessage$.next(''), 3000);
+        this.notificationService.success(`Quote ${quote.quoteNumber} deleted.`);
+        this.workflowStateService.notifyWorkflowChanged();
       });
   }
 
@@ -982,7 +983,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   generateQuote() {
     const items = this.quoteItemsSubject$.value;
     if (!this.workflowId || !this.customerId || items.length === 0) {
-      this.errorMessage$.next('Please fill in all required fields and ensure at least one quote item exists');
+      this.notificationService.error('Please fill in all required fields and ensure at least one quote item exists');
       return;
     }
     if (this.editingQuote) {
@@ -1013,15 +1014,16 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     this.createQuoteService.createQuote(createDto)
       .pipe(
         takeUntil(this.destroy$),
         tap(async (createdQuote) => {
           this.draftQuotesSubject$.next([...this.draftQuotesSubject$.value, createdQuote]);
-          this.successMessage$.next(`Draft Quote ${createdQuote.quoteNumber} created successfully!`);
+          this.notificationService.success(`Draft Quote ${createdQuote.quoteNumber} created successfully!`);
+          this.workflowStateService.notifyStepCompleted('create-quote');
 
           const pdfBase64 = await this.generatePdf(createdQuote);
           if (this.emailToCustomer) this.sendQuoteEmail(createdQuote, pdfBase64);
@@ -1029,7 +1031,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           setTimeout(() => this.resetFormPartial(), 2000);
         }),
         catchError(error => {
-          this.errorMessage$.next(error.message || 'Error generating quote. Please try again.');
+          this.notificationService.error(error.message || 'Error generating quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -1056,8 +1058,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     this.createQuoteService.updateQuote(q.quoteId, updateDto)
       .pipe(
@@ -1067,7 +1069,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
             this.draftQuotesSubject$.value.map(dq => dq.quoteId === updatedQuote.quoteId ? updatedQuote : dq)
           );
           this.editingQuote = null;
-          this.successMessage$.next(`Quote ${updatedQuote.quoteNumber} updated successfully!`);
+          this.notificationService.success(`Quote ${updatedQuote.quoteNumber} updated successfully!`);
 
           const pdfBase64 = await this.generatePdf(updatedQuote);
           if (this.emailToCustomer) this.sendQuoteEmail(updatedQuote, pdfBase64);
@@ -1075,7 +1077,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           setTimeout(() => this.resetFormPartial(), 2000);
         }),
         catchError(error => {
-          this.errorMessage$.next(error.message || 'Error updating quote. Please try again.');
+          this.notificationService.error(error.message || 'Error updating quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -1095,7 +1097,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
     const toEmail = this.customerEmail;
     if (!toEmail) {
-      this.errorMessage$.next('Cannot send email: no customer email address found.');
+      this.notificationService.error('Cannot send email: no customer email address found.');
       return;
     }
 
@@ -1126,11 +1128,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         finalize(() => this.isSendingEmail$.next(false))
       )
       .subscribe({
-        next: () => this.successMessage$.next(
+        next: () => this.notificationService.success(
           `Draft Quote DRAFT-${quote.quoteNumber} emailed to ${toEmail}` +
           (attachments.length > 0 ? ' with PDF attached' : '')
         ),
-        error: () => this.errorMessage$.next('Quote saved but email could not be sent.')
+        error: () => this.notificationService.error('Quote saved but email could not be sent.')
       });
   }
 
@@ -1259,7 +1261,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.selectedAwning = null;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
     this.quoteItemsSubject$.next(first ? [first] : []);
-    this.successMessage$.next('');
+    this.notificationService.success('');
   }
 
   close() {

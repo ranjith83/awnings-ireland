@@ -9,6 +9,7 @@ import { map, shareReplay, tap } from 'rxjs/operators';
 import { EmailTask, EmailTaskService } from '../../service/email-task.service';
 import { AuditTrailService, AuditAction, AuditEntityType } from '../../service/audit-trail.service';
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-customer-details',
   standalone: true,
@@ -118,7 +119,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     private emailTaskService: EmailTaskService,
     private auditService: AuditTrailService,
     private route: ActivatedRoute,
-  ) {
+    private notificationService: NotificationService) {
     this.customerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
       companyNumber: [''],
@@ -198,7 +199,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
 
   loadCustomers(): void {
     this.isLoadingSubject.next(true);
-    this.errorMessageSubject.next('');
+
     
     this.customerService.getAllCustomers().pipe(
       tap(data => {
@@ -208,7 +209,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     ).subscribe({
       error: (error: Error) => {
         console.error('Error loading customers:', error);
-        this.errorMessageSubject.next('Failed to load customers. Please try again.');
+        this.notificationService.error('Failed to load customers. Please try again.');
         this.isLoadingSubject.next(false);
       }
     });
@@ -290,7 +291,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     ).subscribe({
       error: (error: Error) => {
         console.error('Error loading customer details:', error);
-        this.errorMessageSubject.next('Failed to load customer details');
+        this.notificationService.error('Failed to load customer details');
         this.isLoadingSubject.next(false);
       }
     });
@@ -308,7 +309,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     this.addNewContact = false;
     this.eircodeError = '';
     this.customerForm.reset();
-    this.errorMessageSubject.next('');
+
   }
 
   closeDeleteModal(): void {
@@ -321,7 +322,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     if (!customer) return;
 
     this.isLoadingSubject.next(true);
-    this.errorMessageSubject.next('');
+
 
     this.customerService.deleteCompany(customer.customerId).pipe(
       tap(() => {
@@ -339,14 +340,14 @@ export class CustomerDetails implements OnInit, OnDestroy {
         }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
         // ──────────────────────────────────────────────────────────────────
 
-        alert('Customer deleted successfully');
+        this.notificationService.success(`Customer deleted successfully`);
         this.loadCustomers();
         this.closeDeleteModal();
       })
     ).subscribe({
       error: (error: Error) => {
         console.error('Error deleting customer:', error);
-        this.errorMessageSubject.next('Failed to delete customer. Please try again.');
+        this.notificationService.error('Failed to delete customer. Please try again.');
         this.isLoadingSubject.next(false);
       }
     });
@@ -411,7 +412,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     }
 
     this.isLoadingSubject.next(true);
-    this.errorMessageSubject.next('');
+
 
     if (this.modalModeSubject.value === 'add') {
       this.addCustomer();
@@ -471,11 +472,11 @@ export class CustomerDetails implements OnInit, OnDestroy {
         if (this.linkedTaskId) {
           this.emailTaskService.linkCustomerToTask(this.linkedTaskId, response.customerId)
             .subscribe(() => {
-              alert('Customer created and linked to task successfully');
+              this.notificationService.success(`Customer created and linked to task successfully`);
               this.router.navigate(['/task']); // Go back to tasks
             });
         } else {
-          alert('Customer added successfully');
+          this.notificationService.success(`Customer added successfully`);
         }
         
         this.loadCustomers();
@@ -484,7 +485,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     ).subscribe({
       error: (error: Error) => {
         console.error('Error adding customer:', error);
-        this.errorMessageSubject.next('Failed to add customer. Please try again.');
+        this.notificationService.error('Failed to add customer. Please try again.');
         this.isLoadingSubject.next(false);
       }
     });
@@ -513,7 +514,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     // Use the stored customer ID
     if (!this.currentCustomerId) {
       console.error('No customer ID found for update');
-      this.errorMessageSubject.next('Failed to update customer. Customer ID not found.');
+      this.notificationService.error('Failed to update customer. Customer ID not found.');
       this.isLoadingSubject.next(false);
       return;
     }
@@ -568,14 +569,14 @@ export class CustomerDetails implements OnInit, OnDestroy {
           notes:       `Customer record updated via Customer Details form`
         }).subscribe({ error: e => console.warn('Audit log failed (non-critical):', e) });
 
-        alert('Customer updated successfully');
+        this.notificationService.success(`Customer updated successfully`);
         this.loadCustomers();
         this.closeModal();
       })
     ).subscribe({
       error: (error: Error) => {
         console.error('Error updating customer:', error);
-        this.errorMessageSubject.next('Failed to update customer. Please try again.');
+        this.notificationService.error('Failed to update customer. Please try again.');
         this.isLoadingSubject.next(false);
       }
     });

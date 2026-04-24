@@ -42,6 +42,7 @@ interface QuoteItemDisplay {
   amount: number;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-final-quote',
   standalone: true,
@@ -78,8 +79,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   isLoading$         = new BehaviorSubject<boolean>(false);
   isLoadingQuotes$   = new BehaviorSubject<boolean>(false);
   isSendingEmail$    = new BehaviorSubject<boolean>(false);
-  errorMessage$      = new BehaviorSubject<string>('');
-  successMessage$    = new BehaviorSubject<string>('');
+  
+  
 
   private workflowsSubject$         = new BehaviorSubject<WorkflowDto[]>([]);
   private suppliersSubject$         = new BehaviorSubject<SupplierDto[]>([]);
@@ -204,8 +205,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     private pdfService: PdfGenerationService,
     private emailTaskService: EmailTaskService,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private notificationService: NotificationService) {}
 
   ngOnInit() {
     this.initializeObservables();
@@ -320,7 +321,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
         let workflowId = 0;
 
         if (!this.customerId) {
-          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -353,7 +354,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(s => this.suppliersSubject$.next(s)),
-        catchError(() => { this.errorMessage$.next('Failed to load suppliers'); return of([]); })
+        catchError(() => { this.notificationService.error('Failed to load suppliers'); return of([]); })
       ).subscribe();
   }
 
@@ -377,7 +378,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
             this.loadExistingQuotes(workflows[0].workflowId);
           }
         }),
-        catchError(() => { this.errorMessage$.next('Failed to load workflows'); return of([]); }),
+        catchError(() => { this.notificationService.error('Failed to load workflows'); return of([]); }),
         finalize(() => this.isLoading$.next(false))
       ).subscribe();
   }
@@ -392,7 +393,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           this.draftQuotesSubject$.next(quotes.filter(q => !q.draftQuoteId));
           this.finalQuotesSubject$.next(quotes.filter(q =>  !!q.draftQuoteId));
         }),
-        catchError(() => { this.errorMessage$.next('Failed to load existing quotes'); return of([]); }),
+        catchError(() => { this.notificationService.error('Failed to load existing quotes'); return of([]); }),
         finalize(() => this.isLoadingQuotes$.next(false))
       ).subscribe();
   }
@@ -451,8 +452,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           this.quoteItemsSubject$.next([]);
           this.resetAddonCheckboxes();
         }
-        this.successMessage$.next(`Final Quote ${fq.quoteNumber} deleted.`);
-        setTimeout(() => this.successMessage$.next(''), 3000);
+        this.notificationService.success(`Final Quote ${fq.quoteNumber} deleted.`);
+        this.workflowStateService.notifyWorkflowChanged();
       });
   }
 
@@ -748,7 +749,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     const projcm    = this.selectedAwning;
 
     this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
-      .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.errorMessage$.next('Failed to get price'); return of(0); }))
+      .pipe(takeUntil(this.destroy$), tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }), catchError(() => { this.notificationService.error('Failed to get price'); return of(0); }))
       .subscribe();
   }
 
@@ -964,7 +965,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   submitFinalQuote() {
     const items = this.quoteItemsSubject$.value;
     if (!this.workflowId || !this.customerId || items.length === 0) {
-      this.errorMessage$.next('Please select a draft quote and ensure at least one line item exists.');
+      this.notificationService.error('Please select a draft quote and ensure at least one line item exists.');
       return;
     }
 
@@ -977,7 +978,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
 
   private createNewFinalQuote(items: QuoteItemDisplay[]) {
     if (!this.selectedDraftQuote?.quoteId) {
-      this.errorMessage$.next('No draft quote selected.');
+      this.notificationService.error('No draft quote selected.');
       return;
     }
 
@@ -1000,8 +1001,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     this.createQuoteService.createFinalQuote(dto)
       .pipe(
@@ -1028,7 +1029,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
             );
           }
 
-          this.successMessage$.next(`Final Quote ${newQuote.quoteNumber} created successfully!`);
+          this.notificationService.success(`Final Quote ${newQuote.quoteNumber} created successfully!`);
+          this.workflowStateService.notifyStepCompleted('final-quote');
 
           const pdfBase64 = await this.generatePdf(newQuote);
           if (this.emailToCustomer) {
@@ -1041,7 +1043,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           this.discountValue = 0;
         }),
         catchError(error => {
-          this.errorMessage$.next(error.message || 'Error generating final quote. Please try again.');
+          this.notificationService.error(error.message || 'Error generating final quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -1068,8 +1070,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     };
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     this.createQuoteService.updateQuote(fq.quoteId, updateDto)
       .pipe(
@@ -1087,7 +1089,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           this.finalQuotesSubject$.next(updated);
           this.editingFinalQuote = null;
 
-          this.successMessage$.next(`Final Quote FINAL-${updatedQuote.quoteNumber} updated successfully!`);
+          this.notificationService.success(`Final Quote FINAL-${updatedQuote.quoteNumber} updated successfully!`);
 
           const pdfBase64 = await this.generatePdf(updatedQuote);
           if (this.emailToCustomer) {
@@ -1101,7 +1103,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           this.discountValue = 0;
         }),
         catchError(error => {
-          this.errorMessage$.next(error.message || 'Error updating final quote. Please try again.');
+          this.notificationService.error(error.message || 'Error updating final quote. Please try again.');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -1112,7 +1114,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
 
   private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
     const toEmail = this.customerEmail;
-    if (!toEmail) { this.errorMessage$.next('Cannot send email: no customer email address found.'); return; }
+    if (!toEmail) { this.notificationService.error('Cannot send email: no customer email address found.'); return; }
     const body = this.buildQuoteEmailBody(quote);
     const attachments: EmailAttachmentPayload[] = [];
     if (pdfBase64) {
@@ -1127,8 +1129,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.emailTaskService.sendDirectEmail(payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({
-        next: () => this.successMessage$.next(`Final Quote FINAL-${quote.quoteNumber} emailed to ${toEmail}` + (attachments.length > 0 ? ' with PDF attached' : '')),
-        error: () => this.errorMessage$.next('Quote saved but email could not be sent.')
+        next: () => this.notificationService.success(`Final Quote ${quote.quoteNumber} emailed to ${toEmail}` + (attachments.length > 0 ? ' with PDF attached' : '')),
+        error: () => this.notificationService.error('Quote saved but email could not be sent.')
       });
   }
 
@@ -1266,7 +1268,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.discountValue       = 0;
     this.editingFinalQuote   = null;
     this.quoteItemsSubject$.next([]);
-    this.successMessage$.next('');
+    this.notificationService.success('');
   }
 
   close() {

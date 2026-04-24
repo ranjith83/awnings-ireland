@@ -23,6 +23,7 @@ interface PaymentTemplate {
   }[];
 }
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-payment',
   standalone: true,
@@ -37,8 +38,8 @@ export class PaymentComponent implements OnInit, OnDestroy {
   
   // State management
   isLoading$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
-  successMessage$ = new BehaviorSubject<string>('');
+  
+  
   
   private scheduleSubject$ = new BehaviorSubject<PaymentScheduleDto[]>([]);
   private invoicesSubject$ = new BehaviorSubject<InvoiceDto[]>([]);
@@ -95,8 +96,8 @@ export class PaymentComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private invoiceService: InvoiceService,
-    private paymentScheduleService: PaymentScheduleService
-  ) {}
+    private paymentScheduleService: PaymentScheduleService,
+    private notificationService: NotificationService) {}
 
   ngOnInit() {
     this.setupObservables();
@@ -129,7 +130,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
         }
 
         if (!this.customerId) {
-          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -159,7 +160,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading invoices:', error);
-          this.errorMessage$.next('Failed to load invoices for this customer');
+          this.notificationService.error('Failed to load invoices for this customer');
           return of([]);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -183,7 +184,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
         }),
         catchError(error => {
           console.error('Error loading invoice details:', error);
-          this.errorMessage$.next('Failed to load invoice details');
+          this.notificationService.error('Failed to load invoice details');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -217,7 +218,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
 
   generatePaymentSchedule() {
     if (this.totalInvoiceAmount <= 0 || !this.invoiceId) {
-      this.errorMessage$.next('Please select an invoice first with a valid amount.');
+      this.notificationService.error('Please select an invoice first with a valid amount.');
       return;
     }
 
@@ -250,12 +251,12 @@ export class PaymentComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         tap(schedules => {
           this.scheduleSubject$.next(schedules);
-          this.successMessage$.next('Payment schedule generated successfully');
-          setTimeout(() => this.successMessage$.next(''), 3000);
+          this.notificationService.success('Payment schedule generated successfully');
+          
         }),
         catchError(error => {
           console.error('Error creating payment schedule:', error);
-          this.errorMessage$.next('Failed to create payment schedule');
+          this.notificationService.error('Failed to create payment schedule');
           return of([]);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -296,7 +297,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
     const item = schedule[this.selectedPaymentIndex!];
 
     if (this.paymentAmount <= 0 || this.paymentAmount > item.amountDue) {
-      this.errorMessage$.next('Invalid payment amount');
+      this.notificationService.error('Invalid payment amount');
       return;
     }
 
@@ -312,14 +313,14 @@ export class PaymentComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(() => {
-          this.successMessage$.next(`Payment of €${this.paymentAmount.toFixed(2)} recorded successfully`);
+          this.notificationService.success(`Payment of €${this.paymentAmount.toFixed(2)} recorded successfully`);
           this.closePaymentModal();
           this.loadExistingPaymentSchedule();
-          setTimeout(() => this.successMessage$.next(''), 3000);
+          
         }),
         catchError(error => {
           console.error('Error recording payment:', error);
-          this.errorMessage$.next('Failed to record payment');
+          this.notificationService.error('Failed to record payment');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))
@@ -355,13 +356,13 @@ export class PaymentComponent implements OnInit, OnDestroy {
     const schedule = this.scheduleSubject$.value;
     
     if (schedule.length === 0) {
-      this.errorMessage$.next('Please generate a payment schedule first');
+      this.notificationService.error('Please generate a payment schedule first');
       return;
     }
 
     // Schedule is already saved when generated
-    this.successMessage$.next('Payment schedule is already saved');
-    setTimeout(() => this.successMessage$.next(''), 3000);
+    this.notificationService.success('Payment schedule is already saved');
+    
   }
 
   private loadExistingPaymentSchedule() {
@@ -387,7 +388,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
     const schedule = this.scheduleSubject$.value;
     
     if (schedule.length === 0 || !this.invoiceId) {
-      this.errorMessage$.next('No payment schedule to export');
+      this.notificationService.error('No payment schedule to export');
       return;
     }
 
@@ -396,12 +397,12 @@ export class PaymentComponent implements OnInit, OnDestroy {
       .pipe(
         takeUntil(this.destroy$),
         tap(() => {
-          this.successMessage$.next('Payment schedule exported to Xero successfully');
-          setTimeout(() => this.successMessage$.next(''), 3000);
+          this.notificationService.success('Payment schedule exported to Xero successfully');
+          
         }),
         catchError(error => {
           console.error('Error exporting to Xero:', error);
-          this.errorMessage$.next(error.message || 'Failed to export to Xero');
+          this.notificationService.error(error.message || 'Failed to export to Xero');
           return of(null);
         }),
         finalize(() => this.isLoading$.next(false))

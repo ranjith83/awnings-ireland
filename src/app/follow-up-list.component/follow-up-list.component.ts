@@ -9,6 +9,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 import { FollowUpDto, FollowUpService } from '../../service/follow-up.service';
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-follow-up-list.component',
   imports: [CommonModule, FormsModule],
@@ -28,8 +29,8 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
   isGenerating$ = new BehaviorSubject<boolean>(false);
 
   // ── Feedback messages ─────────────────────────────────────────────────────
-  successMessage$ = new BehaviorSubject<string>('');
-  errorMessage$   = new BehaviorSubject<string>('');
+  
+  
 
   // ── Dismiss modal ─────────────────────────────────────────────────────────
   showDismissModal    = false;
@@ -50,8 +51,8 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
   constructor(
     private followUpService: FollowUpService,
     private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {}
+    private cdr: ChangeDetectorRef,
+    private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.generateAndLoad();
@@ -256,12 +257,12 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
   }
 
   private showSuccess(msg: string): void {
-    this.successMessage$.next(msg);
-    setTimeout(() => { this.successMessage$.next(''); this.cdr.markForCheck(); }, 4000);
+    this.notificationService.success(msg);
+    setTimeout(() => { this.notificationService.success(''); this.cdr.markForCheck(); }, 4000);
   }
 
   private showError(msg: string): void {
-    this.errorMessage$.next(msg);
-    setTimeout(() => { this.errorMessage$.next(''); this.cdr.markForCheck(); }, 4000);
+    this.notificationService.error(msg);
+    setTimeout(() => { this.notificationService.error(''); this.cdr.markForCheck(); }, 4000);
   }
 }

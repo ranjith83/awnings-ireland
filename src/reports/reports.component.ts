@@ -15,6 +15,7 @@ import {
   InvoiceReportRow
 } from '../service/reports.service';
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-reports',
   standalone: true,
@@ -37,7 +38,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   // State management with BehaviorSubjects
   isLoading$ = new BehaviorSubject<boolean>(false);
   isExporting$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
+  
   
   private reportTypesSubject$ = new BehaviorSubject<ReportType[]>([]);
   private summaryStatsSubject$ = new BehaviorSubject<SummaryStats[]>([]);
@@ -83,7 +84,8 @@ export class ReportsComponent implements OnInit, OnDestroy {
     { id: 'this-year', name: 'This Year' }
   ];
 
-  constructor(private reportsService: ReportsService) {}
+  constructor(private reportsService: ReportsService,
+    private notificationService: NotificationService) {}
 
   ngOnInit(): void {
     this.initializeObservables();
@@ -134,7 +136,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   loadReportData(): void {
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
 
     // Load summary statistics
     this.reportsService.getSummaryStats(this.filters, this.selectedReport)
@@ -142,7 +143,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         tap(stats => this.summaryStatsSubject$.next(stats)),
         catchError(error => {
-          this.errorMessage$.next('Failed to load summary statistics. Please try again.');
+          this.notificationService.error('Failed to load summary statistics. Please try again.');
           console.error('Error loading summary stats:', error);
           return of([]);
         })
@@ -206,7 +207,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
           this.totalPages$.next(Math.ceil(response.total / pageSize));
         }),
         catchError(error => {
-          this.errorMessage$.next('Failed to load customer data. Please try again.');
+          this.notificationService.error('Failed to load customer data. Please try again.');
           console.error('Error loading customer data:', error);
           return of({ data: [], total: 0, page: 1, pageSize: pageSize } as PaginatedResponse<CustomerReportRow>);
         })
@@ -227,7 +228,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
           this.totalPages$.next(Math.ceil(response.total / pageSize));
         }),
         catchError(error => {
-          this.errorMessage$.next('Failed to load invoice data. Please try again.');
+          this.notificationService.error('Failed to load invoice data. Please try again.');
           console.error('Error loading invoice data:', error);
           return of({ data: [], total: 0, page: 1, pageSize: pageSize } as PaginatedResponse<InvoiceReportRow>);
         })
@@ -283,7 +284,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
           this.reportsService.downloadFile(blob, filename);
         }),
         catchError(error => {
-          this.errorMessage$.next('Failed to export report. Please try again.');
+          this.notificationService.error('Failed to export report. Please try again.');
           console.error('Error exporting report:', error);
           return of(new Blob());
         }),
@@ -322,7 +323,6 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   retryLoad(): void {
-    this.errorMessage$.next('');
     this.loadReportData();
   }
 

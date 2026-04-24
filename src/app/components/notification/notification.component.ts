@@ -1,154 +1,114 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Component, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NotificationService } from '../../../service/notification.service';
+import { Subscription } from 'rxjs';
+import { NotificationService, Notification } from '../../../service/notification.service';
 
 @Component({
   selector: 'app-notification',
   standalone: true,
   imports: [CommonModule],
+  encapsulation: ViewEncapsulation.None,
   template: `
-    <div class="notification-container">
-      <div 
-        *ngFor="let notification of notifications; let i = index"
-        class="notification"
-       
-        [@slideIn]>
-        <div class="notification-icon">
-          <!--<span *ngIf="notification. === 'success'">✓</span>
-          <span *ngIf="notification.type === 'error'">✕</span>
-          <span *ngIf="notification.type === 'warning'">⚠</span>
-          <span *ngIf="notification.type === 'info'">ℹ</span>-->
-        </div>
-       <!-- <div class="notification-message">{{ notification.message }}</div>-->
-        <button class="notification-close" (click)="remove(i)">×</button>
+    <div class="toast-container">
+      <div
+        *ngFor="let n of notifications; let i = index"
+        class="toast toast-{{ n.type }}">
+        <span class="toast-icon">
+          {{ n.type === 'success' ? '✓' : n.type === 'error' ? '✕' : n.type === 'warning' ? '⚠' : 'ℹ' }}
+        </span>
+        <span class="toast-message">{{ n.message }}</span>
+        <button class="toast-close" (click)="remove(i)">×</button>
       </div>
     </div>
   `,
   styles: [`
-    .notification-container {
+    app-notification {
       position: fixed;
-      top: 20px;
+      top: 80px;
       right: 20px;
-      z-index: 9999;
+      z-index: 99999;
+      pointer-events: none;
+    }
+
+    .toast-container {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      max-width: 400px;
+      max-width: 420px;
+      pointer-events: none;
     }
 
-    .notification {
+    .toast {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 14px 16px;
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-      animation: slideIn 0.3s ease-out;
-      min-width: 300px;
-    }
-
-    @keyframes slideIn {
-      from {
-        transform: translateX(400px);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-
-    .notification-success {
-      background: #10b981;
-      color: white;
-    }
-
-    .notification-error {
-      background: #ef4444;
-      color: white;
-    }
-
-    .notification-warning {
-      background: #f59e0b;
-      color: white;
-    }
-
-    .notification-info {
-      background: #3b82f6;
-      color: white;
-    }
-
-    .notification-icon {
-      font-size: 20px;
-      font-weight: bold;
-      flex-shrink: 0;
-    }
-
-    .notification-message {
-      flex: 1;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
       font-size: 14px;
       line-height: 1.4;
+      animation: toastIn 0.25s ease-out;
+      pointer-events: all;
+      min-width: 280px;
+      color: #fff;
     }
 
-    .notification-close {
+    @keyframes toastIn {
+      from { transform: translateX(110%); opacity: 0; }
+      to   { transform: translateX(0);    opacity: 1; }
+    }
+
+    .toast-success { background: #16a34a; }
+    .toast-error   { background: #dc2626; }
+    .toast-warning { background: #d97706; }
+    .toast-info    { background: #2563eb; }
+
+    .toast-icon {
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .toast-message { flex: 1; }
+
+    .toast-close {
       background: transparent;
       border: none;
-      color: white;
-      font-size: 24px;
+      color: rgba(255,255,255,0.85);
+      font-size: 20px;
+      line-height: 1;
       cursor: pointer;
       padding: 0;
-      width: 24px;
-      height: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
       flex-shrink: 0;
-      transition: background 0.2s;
+      transition: color 0.15s;
     }
+    .toast-close:hover { color: #fff; }
 
-    .notification-close:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    @media (max-width: 768px) {
-      .notification-container {
-        left: 10px;
-        right: 10px;
-        max-width: none;
-      }
-
-      .notification {
-        min-width: auto;
-      }
+    @media (max-width: 480px) {
+      app-notification { top: 72px; left: 10px; right: 10px; }
+      .toast-container { max-width: none; }
     }
   `]
 })
 export class NotificationComponent implements OnInit, OnDestroy {
   notifications: Notification[] = [];
-  private subscription?: Subscription;
+  private sub?: Subscription;
 
   constructor(private notificationService: NotificationService) {}
 
-  ngOnInit(): void {
-    this.subscription = this.notificationService.notification$.subscribe(
-      (notification) => {
-       // this.notifications.push(notification);
-        
-        // Auto-remove after duration
-        setTimeout(() => {
-          this.remove(0);
-        }, notification.duration || 3000);
-      }
-    );
+  ngOnInit() {
+    this.sub = this.notificationService.notification$.subscribe(n => {
+      this.notifications.push(n);
+      setTimeout(() => this.remove(this.notifications.indexOf(n)), n.duration ?? 3000);
+    });
   }
 
-  ngOnDestroy(): void {
-    this.subscription?.unsubscribe();
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 
-  remove(index: number): void {
-    this.notifications.splice(index, 1);
+  remove(index: number) {
+    if (index >= 0) this.notifications.splice(index, 1);
   }
 }

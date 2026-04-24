@@ -19,17 +19,6 @@
   </div>
 
   <div class="reports-content">
-    <!-- Error Message -->
-    <div class="error-banner" *ngIf="errorMessage$ | async as errorMessage">
-      <div class="error-content">
-        <i class="lucide-alert-triangle"></i>
-        <span>{{ errorMessage }}</span>
-      </div>
-      <button class="btn-retry" (click)="retryLoad()">
-        Retry
-      </button>
-    </div>
-
     <!-- Report Type Selection -->
     <div class="report-types-grid">
       <button

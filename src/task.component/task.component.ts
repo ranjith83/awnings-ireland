@@ -17,6 +17,7 @@ import {
   TaskService
 } from '../service/task.service';
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-task.component',
    imports: [CommonModule, FormsModule, ReactiveFormsModule],
@@ -51,8 +52,8 @@ export class TaskComponent implements OnInit  {
   constructor(
     private taskService: TaskService,
     private router: Router,
-    private fb: FormBuilder
-  ) {
+    private fb: FormBuilder,
+    private notificationService: NotificationService) {
     this.filterForm = this.fb.group({
       status: [[]],
       priority: [[]],

@@ -11,8 +11,6 @@ import { InitialEnquiryComponent } from '../workflow/initial-enquiry.component/i
 import { DashboardComponent } from '../workflow/dashboard.component/dashboard.component';
 import { TaskDetailComponent } from '../task-detail.component/task-detail.component';
 import { ReportsComponent } from '../reports/reports.component';
-import { TaskComponent } from '../task.component/task.component';
-import { AuthGuard } from '../guards/auth-guard';
 import { LoginComponent } from '../login.component/login.component';
 import { RegisterComponent } from '../register.component/register.component';
 import { UserManagementComponent } from '../user-management.component/user-management.component';
@@ -20,7 +18,7 @@ import { AuditHistoryComponent } from '../audit-history.component/audit-history.
 import { PaymentComponent } from '../payment/payment.component';
 import { FinalQuoteComponent } from '../workflow/final-quote.component/final-quote.component';
 import { QuickCalculatorComponent } from './quick-calculator.component/quick-calculator.component';
-import { EmailTaskComponent } from '../email-task/email-task.component';
+import { TaskComponent } from '../email-task/email-task.component';
 import { FollowUpListComponent } from './follow-up-list.component/follow-up-list.component';
 import { ConfigurationComponent } from './configuration/configuration.component';
 
@@ -63,8 +61,7 @@ export const routes: Routes = [
       { path: 'reports', component: ReportsComponent },
       
       // Tasks
-      { path: 'task', component: EmailTaskComponent },
-      //{ path: 'tasks', component: TaskComponent }, // Alias for consistency
+      { path: 'task', component: TaskComponent },
       { path: 'tasks/:id', component: TaskDetailComponent },
       { path: 'taskdetail', component: TaskDetailComponent },
       {  path: 'register', component: RegisterComponent },

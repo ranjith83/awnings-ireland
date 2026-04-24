@@ -49,6 +49,7 @@ export interface CalendarEvent {
   end: string;
 }
 
+import { NotificationService } from '../../service/notification.service';
 @Component({
   selector: 'app-setup-site-visit',
   standalone: true,
@@ -75,8 +76,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   
   isLoading$ = new BehaviorSubject<boolean>(false);
   isSaving$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
-  successMessage$ = new BehaviorSubject<string>('');
+  
+  
   
   currentWorkflowId: number | null = null;
   customerId: number | null = null;
@@ -206,8 +207,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private workflowStateService: WorkflowStateService,
-    private outlookCalendarService: OutlookCalendarService
-  ) {
+    private outlookCalendarService: OutlookCalendarService,
+    private notificationService: NotificationService) {
     this.siteVisitForm = this.fb.group({
       workflow: ['', Validators.required],
       productModel: [''],
@@ -275,7 +276,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         this.customerName = params['customerName'] || 'Customer';
 
         if (!this.customerId) {
-          this.errorMessage$.next('No customer selected. Please select a customer first.');
+          this.notificationService.error('No customer selected. Please select a customer first.');
           return;
         }
 
@@ -726,6 +727,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         .subscribe({
           next: () => {
             this.showSuccess('Site visit deleted successfully');
+            this.workflowStateService.notifyWorkflowChanged();
             if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId);
           },
           error: (error) => this.showError('Failed to delete site visit: ' + error.message)
@@ -766,8 +768,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       const createDto: CreateSiteVisitDto = {
         workflowId: this.currentWorkflowId,
         customerId: this.customerId!,
-        customerEmail: '',
-        customerName: '',
+        customerEmail: this.customerEmail || '',
+        customerName: this.customerName || '',
         productModelType,
         model: formValue.model,
         otherPleaseSpecify: formValue.otherPleaseSpecify,
@@ -827,7 +829,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
           finalize(() => this.isSaving$.next(false))
         )
         .subscribe({
-          next: () => { this.showSuccess('Site visit saved successfully'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
+          next: () => { this.showSuccess('Site visit saved successfully'); this.workflowStateService.notifyStepCompleted('setup-site-visit'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
           error: (error) => this.showError('Failed to create site visit: ' + error.message)
         });
     }
@@ -1039,12 +1041,12 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   private showSuccess(message: string): void {
-    this.successMessage$.next(message);
-    setTimeout(() => this.successMessage$.next(''), 5000);
+    this.notificationService.success(message);
+    
   }
 
   private showError(message: string): void {
-    this.errorMessage$.next(message);
-    setTimeout(() => this.errorMessage$.next(''), 5000);
+    this.notificationService.error(message);
+    
   }
 }

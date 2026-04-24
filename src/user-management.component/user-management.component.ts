@@ -25,6 +25,7 @@ interface SearchFilters {
   department: string;
 }
 
+import { NotificationService } from '../service/notification.service';
 @Component({
   selector: 'app-user-management',
   standalone: true,
@@ -47,8 +48,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   
   registerForm!: FormGroup;
   isLoading$ = new BehaviorSubject<boolean>(false);
-  errorMessage$ = new BehaviorSubject<string>('');
-  successMessage$ = new BehaviorSubject<string>('');
+  
+  
   showPassword$ = new BehaviorSubject<boolean>(false);
   showConfirmPassword$ = new BehaviorSubject<boolean>(false);
   showModal$ = new BehaviorSubject<boolean>(false);
@@ -75,8 +76,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
-  ) {
+    private router: Router,
+    private notificationService: NotificationService) {
     // Setup filtered users observable
     this.filteredUsers$ = combineLatest([
       this.users$,
@@ -161,8 +162,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error loading users:', error);
-        this.errorMessage$.next('Failed to load users');
-        setTimeout(() => this.errorMessage$.next(''), 5000);
+        this.notificationService.error('Failed to load users');
+        
       }
     });
   }
@@ -173,8 +174,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.registerForm.reset();
     this.registerForm.patchValue({ acceptTerms: false });
     this.showModal$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
   }
 
   openEditModal(user: User): void {
@@ -199,8 +200,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     });
 
     this.showModal$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
   }
 
   closeModal(): void {
@@ -208,8 +209,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     this.isEditMode$.next(false);
     this.selectedUserId = null;
     this.registerForm.reset();
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
     
     // Restore validators for add mode
     this.registerForm.get('password')?.setValidators([
@@ -269,8 +270,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
   addUser(): void {
     if (this.registerForm.valid) {
       this.isLoading$.next(true);
-      this.errorMessage$.next('');
-      this.successMessage$.next('');
+      this.notificationService.error('');
+      this.notificationService.success('');
 
       const registerRequest: RegisterRequest = {
         firstName: this.registerForm.value.firstName.trim(),
@@ -287,7 +288,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         finalize(() => this.isLoading$.next(false))
       ).subscribe({
         next: (response) => {
-          this.successMessage$.next('User registered successfully!');
+          this.notificationService.success('User registered successfully!');
           
           setTimeout(() => {
             this.closeModal();
@@ -296,12 +297,12 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Registration error:', error);
-          this.errorMessage$.next(error.message || 'Registration failed. Please try again.');
+          this.notificationService.error(error.message || 'Registration failed. Please try again.');
         }
       });
     } else {
       this.markFormGroupTouched(this.registerForm);
-      this.errorMessage$.next('Please fill in all required fields correctly.');
+      this.notificationService.error('Please fill in all required fields correctly.');
     }
   }
 
@@ -309,8 +310,8 @@ export class UserManagementComponent implements OnInit, OnDestroy {
     if (this.selectedUserId === null) return;
 
     this.isLoading$.next(true);
-    this.errorMessage$.next('');
-    this.successMessage$.next('');
+    this.notificationService.error('');
+    this.notificationService.success('');
 
     const updateData: any = {
       firstName: this.registerForm.value.firstName.trim(),
@@ -324,7 +325,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       finalize(() => this.isLoading$.next(false))
     ).subscribe({
       next: (response) => {
-        this.successMessage$.next('User updated successfully!');
+        this.notificationService.success('User updated successfully!');
         
         setTimeout(() => {
           this.closeModal();
@@ -333,7 +334,7 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Update error:', error);
-        this.errorMessage$.next(error.message || 'Update failed. Please try again.');
+        this.notificationService.error(error.message || 'Update failed. Please try again.');
       }
     });
   }
@@ -344,17 +345,17 @@ export class UserManagementComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       ).subscribe({
         next: () => {
-          this.successMessage$.next('User deleted successfully!');
+          this.notificationService.success('User deleted successfully!');
           this.loadUsers();
           
           setTimeout(() => {
-            this.successMessage$.next('');
+            this.notificationService.success('');
           }, 3000);
         },
         error: (error) => {
           console.error('Delete error:', error);
-          this.errorMessage$.next(error.message || 'Failed to delete user.');
-          setTimeout(() => this.errorMessage$.next(''), 5000);
+          this.notificationService.error(error.message || 'Failed to delete user.');
+          
         }
       });
     }
@@ -370,17 +371,17 @@ export class UserManagementComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe({
       next: () => {
-        this.successMessage$.next(`User ${action}d successfully!`);
+        this.notificationService.success(`User ${action}d successfully!`);
         this.loadUsers();
         
         setTimeout(() => {
-          this.successMessage$.next('');
+          this.notificationService.success('');
         }, 3000);
       },
       error: (error) => {
         console.error(`${action} error:`, error);
-        this.errorMessage$.next(error.message || `Failed to ${action} user.`);
-        setTimeout(() => this.errorMessage$.next(''), 5000);
+        this.notificationService.error(error.message || `Failed to ${action} user.`);
+        
       }
     });
   }

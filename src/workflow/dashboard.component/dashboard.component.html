@@ -37,14 +37,6 @@
       </div>
     </div>
 
-    <!-- Error Banner -->
-    <div class="error-banner" *ngIf="errorMessage$ | async as errorMessage">
-      <div class="error-content">
-        <span>{{ errorMessage }}</span>
-      </div>
-      <button class="btn-retry" (click)="retryLoad()">Retry</button>
-    </div>
-
     <!-- Loading State -->
     <div class="loading-state" *ngIf="isLoading$ | async">
       <div class="spinner"></div>
