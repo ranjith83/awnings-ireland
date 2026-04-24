@@ -196,7 +196,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
    * When true the quote PDF is emailed to the customer address via Graph.
    * The email is sent using the linked task's send-email endpoint.
    */
-  emailToCustomer = false;
+  emailToCustomer  = false;
+  brochureFile:    File | null       = null;
+  brochureBase64:  string | null     = null;
 
   calculatedPrice = 0;
   pageSize        = 10;
@@ -1094,7 +1096,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
    * @param pdfBase64  Base64-encoded PDF returned by generatePdf().
    *                   When null/empty the email is sent without an attachment.
    */
-  private sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
+  private async sendQuoteEmail(quote: QuoteDto, pdfBase64: string | null) {
     const toEmail = this.customerEmail;
     if (!toEmail) {
       this.notificationService.error('Cannot send email: no customer email address found.');
@@ -1103,20 +1105,27 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const body = this.buildQuoteEmailBody(quote);
 
-    // Build attachment list — only include when we actually have PDF bytes
+    // Build attachment list — quote PDF first, then brochure if checked
     const attachments: EmailAttachmentPayload[] = [];
     if (pdfBase64) {
       attachments.push({
-        fileName:     `DraftQuote-${quote.quoteNumber}.pdf`,
+        fileName:      `DraftQuote-${quote.quoteNumber}.pdf`,
         base64Content: pdfBase64,
-        contentType:  'application/pdf'
+        contentType:   'application/pdf'
+      });
+    }
+    if (this.brochureBase64 && this.brochureFile) {
+      attachments.push({
+        fileName:      this.brochureFile.name,
+        base64Content: this.brochureBase64,
+        contentType:   'application/pdf'
       });
     }
 
     const payload: SendDirectEmailPayload = {
       toEmail,
-      toName:   this.customerName,
-      subject:  `Your Draft Quote DRAFT-${quote.quoteNumber} from Awnings Ireland`,
+      toName:      this.customerName,
+      subject:     `Your Draft Quote DRAFT-${quote.quoteNumber} from Awnings Ireland`,
       body,
       attachments: attachments.length > 0 ? attachments : undefined
     };
@@ -1134,6 +1143,30 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
         ),
         error: () => this.notificationService.error('Quote saved but email could not be sent.')
       });
+  }
+
+  onBrochureSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';          // reset so same file can be re-selected
+    if (!file) return;
+    if (file.type !== 'application/pdf') {
+      this.notificationService.error('Only PDF files can be attached as a brochure.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      // result is "data:application/pdf;base64,<data>" — strip the prefix
+      this.brochureBase64 = result.split(',')[1];
+      this.brochureFile   = file;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeBrochure(): void {
+    this.brochureFile   = null;
+    this.brochureBase64 = null;
   }
 
   private buildQuoteEmailBody(quote: QuoteDto): string {

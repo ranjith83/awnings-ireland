@@ -650,6 +650,28 @@
   box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
 }
 
+.attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.remove-brochure-btn {
+  background: none;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.remove-brochure-btn:hover {
+  background-color: #fef2f2;
+}
+
 .summary-right {
   min-width: 300px;
   background-color: white;

@@ -420,7 +420,26 @@
           </div>
         </div>
 
-        <button class="attach-btn">Attach Brochure with email</button>
+        <!-- Brochure attachment -->
+        <div class="brochure-attach-block" style="margin-top:10px">
+          <input type="file" accept="application/pdf"
+                 style="display:none" (change)="onBrochureSelected($event)"
+                 #brochureFileInput>
+
+          <button type="button" class="attach-btn"
+                  [disabled]="!emailToCustomer"
+                  (click)="brochureFileInput.click()">
+            📎 Attach Brochure
+          </button>
+
+          <div *ngIf="brochureFile" class="brochure-selected-row" style="display:flex;align-items:center;gap:8px;margin-top:6px">
+            <span style="color:#16a34a;font-size:13px">✓ {{ brochureFile.name }}</span>
+            <button type="button" class="remove-brochure-btn" (click)="removeBrochure()" title="Remove brochure">✕</button>
+          </div>
+          <p *ngIf="!emailToCustomer" style="font-size:11px;color:#94a3b8;margin:4px 0 0">
+            Enable "Email Quote to customer" first.
+          </p>
+        </div>
       </div>
 
       <div class="summary-right">
