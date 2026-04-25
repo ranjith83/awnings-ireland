@@ -29,7 +29,12 @@ export class AuthInterceptor implements HttpInterceptor {
 
     return next.handle(authReq).pipe(
       catchError((error: HttpErrorResponse) => {
-        if (error.status === 401) {
+        // Never intercept 401s from the login or register endpoints — those
+        // mean bad credentials, not an expired session.  Let the error pass
+        // through so the service's handleError shows the correct API message.
+        const isAuthEndpoint = req.url.includes('/api/auth/login') ||
+                               req.url.includes('/api/auth/register');
+        if (error.status === 401 && !isAuthEndpoint) {
           return this.handle401Error(authReq, next);
         }
         return throwError(() => error);
