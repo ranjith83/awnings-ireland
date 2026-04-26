@@ -83,6 +83,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   customerId: number | null = null;
   customerName  = '';
   customerEmail = '';
+  customerPhone = '';
   taskId: number | null       = null;
   fromFollowUp: number | null = null;
   fromTask: number | null     = null;
@@ -102,6 +103,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       this.customerId    = params['customerId']   ? +params['customerId']   : null;
       this.customerName  = params['customerName']  || '';
       this.customerEmail = params['customerEmail'] || '';
+      this.customerPhone = params['customerPhone'] || '';
       this.taskId        = params['taskId']        ? +params['taskId']        : null;
       this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
       this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
@@ -441,6 +443,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         customerId: this.customerId, customerName: this.customerName, workflowId: workflow.workflowId
       };
       if (this.customerEmail) qp['customerEmail'] = this.customerEmail;
+      if (this.customerPhone) qp['customerPhone'] = this.customerPhone;
       if (this.taskId)        qp['taskId']        = this.taskId;
       if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
       if (this.fromTask)      qp['fromTask']      = this.fromTask;

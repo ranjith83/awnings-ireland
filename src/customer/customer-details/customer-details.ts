@@ -65,7 +65,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
         return (
           customer.companyName.toLowerCase().includes(filters.companyName.toLowerCase()) &&
           (customer.mobilePhone || '').includes(filters.mobile) &&
-          customer.contactEmail.toLowerCase().includes(filters.email.toLowerCase()) &&
+          (customer.email || '').toLowerCase().includes(filters.email.toLowerCase()) &&
           customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase()) &&
           (customer.assignedSalesperson || '').toLowerCase().includes(filters.salesperson.toLowerCase())
         );
@@ -372,9 +372,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     if (this.addNewContact) {
       contactFields.forEach(field => {
         const ctrl = this.customerForm.get(field)!;
-        const validators = field === 'contactEmail'
-          ? [Validators.required, Validators.email]
-          : [Validators.required];
+        const validators = field === 'contactEmail' ? [Validators.email] : [Validators.required];
         ctrl.setValidators(validators);
         ctrl.updateValueAndValidity();
       });
@@ -587,12 +585,13 @@ export class CustomerDetails implements OnInit, OnDestroy {
   }
 
   navigateToWorkflow(customer: CustomerMainViewDto): void {
-    this.router.navigate(['/workflow'], { 
-      queryParams: { 
+    this.router.navigate(['/workflow'], {
+      queryParams: {
         customerId:    customer.customerId,
         customerName:  customer.companyName,
-        customerEmail: customer.contactEmail   // ← pass email so Initial Enquiry can pre-populate it
-      } 
+        customerEmail: customer.email,
+        customerPhone: customer.mobilePhone
+      }
     });
   }
 
@@ -617,7 +616,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
 
   getFieldLabel(fieldName: string): string {
     const labels: { [key: string]: string } = {
-      name: 'Contact Name',
+      name: 'Customer Name',
       companyNumber: 'Company Number',
       eircode: 'EirCode',
       address1: 'Address Line 1',

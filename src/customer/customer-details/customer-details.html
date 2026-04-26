@@ -76,7 +76,7 @@
         <tr *ngFor="let customer of filteredCustomers$ | async" class="clickable-row" (click)="navigateToWorkflow(customer)">
           <td>{{ customer.companyName }}</td>
           <td>{{ customer.mobilePhone }}</td>
-          <td>{{ customer.contactEmail }}</td>
+          <td>{{ customer.email }}</td>
           <td>{{ customer.siteAddress }}</td>
           <td>{{ customer.assignedSalesperson || '-' }}</td>
           <td class="actions-cell" (click)="$event.stopPropagation()">
@@ -143,7 +143,7 @@
 
           <!-- Name -->
           <div class="cust-field-row">
-            <label class="cust-label">Contact Name <span class="required">*</span></label>
+            <label class="cust-label">Customer Name <span class="required">*</span></label>
             <input type="text" formControlName="name" class="form-control"
               placeholder="A business or persons name"
               [class.error]="customerForm.get('name')?.touched && customerForm.get('name')?.invalid" />
@@ -293,10 +293,10 @@
                 <span class="error-message" *ngIf="getError('contactPhone')">{{ getError('contactPhone') }}</span>
               </div>
               <div class="cust-field-row">
-                <label class="cust-label">Email <span class="required">*</span></label>
+                <label class="cust-label">Email</label>
                 <input type="email" formControlName="contactEmail" class="form-control"
                   [class.error]="customerForm.get('contactEmail')?.touched && customerForm.get('contactEmail')?.invalid"
-                  placeholder="Email" />
+                  placeholder="Email (optional)" />
                 <span class="error-message" *ngIf="getError('contactEmail')">{{ getError('contactEmail') }}</span>
               </div>
             </div>

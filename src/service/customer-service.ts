@@ -9,6 +9,8 @@ import { environment } from '../app/environments/environment';
 export interface CustomerMainViewDto {
   customerId: number;
   companyName: string;
+  email: string;
+  phone: string;
   contactName: string;
   contactEmail: string;
   mobilePhone: string;
