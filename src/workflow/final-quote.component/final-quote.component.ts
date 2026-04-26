@@ -774,7 +774,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   onBracketChange() {
-    this.removeAddonLineItem('bracket');
+    this.removeAllBracketLineItems();
     if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
     const allBrackets = this.bracketsSubject$.value;
     const seen = new Set<string>();
@@ -785,14 +785,26 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       return true;
     });
     if (selected.length === 0) return;
-    if (selected.length === 1) {
-      const b = selected[0];
-      this.addOrUpdateAddonLineItem('bracket', { description: b.bracketName, quantity: 1, unitPrice: b.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, b.price, this.vatRate, 0), id: this.getAddonItemId('bracket') });
-    } else {
-      const combinedDesc  = selected.map(b => b.bracketName).join(' + ');
-      const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
-      this.addOrUpdateAddonLineItem('bracket', { description: combinedDesc, quantity: 1, unitPrice: combinedPrice, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, combinedPrice, this.vatRate, 0), id: this.getAddonItemId('bracket') });
-    }
+    const items = this.quoteItemsSubject$.value;
+    let insertIdx = 1;
+    selected.forEach(b => {
+      const lineItem: QuoteItemDisplay = {
+        description: b.bracketName, quantity: 1, unitPrice: b.price,
+        taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, b.price, this.vatRate, 0),
+        id: 200000 + b.bracketId,
+        productItemId: this.getAddonProductItemId('bracket')
+      };
+      items.splice(insertIdx, 0, lineItem);
+      insertIdx++;
+    });
+    this.quoteItemsSubject$.next([...items]);
+  }
+
+  private removeAllBracketLineItems() {
+    const items = this.quoteItemsSubject$.value;
+    const filtered = items.filter(i => !i.id || i.id < 200000);
+    if (filtered.length !== items.length) this.quoteItemsSubject$.next(filtered);
   }
 
   onExtrasChange() {
@@ -1328,7 +1340,11 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
-      if (items.some(item => item.id === this.getAddonItemId(order[i]))) idx++;
+      if (order[i] === 'bracket') {
+        idx += items.filter(item => item.id !== undefined && item.id >= 200000).length;
+      } else if (items.some(item => item.id === this.getAddonItemId(order[i]))) {
+        idx++;
+      }
     }
     return idx;
   }

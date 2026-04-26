@@ -636,10 +636,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onBracketChange() {
-    this.removeAddonLineItem('bracket');
+    this.removeAllBracketLineItems();
     if (!this.selectedBrackets || this.selectedBrackets.length === 0) return;
 
-    // Look up by name in the current (arm-type-filtered) bracket list for correct prices
     const allBrackets = this.bracketsSubject$.value;
     const seen = new Set<string>();
     const selected = allBrackets.filter(b => {
@@ -651,24 +650,21 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     if (selected.length === 0) return;
 
-    if (selected.length === 1) {
-      const b = selected[0];
-      this.addOrUpdateAddonLineItem('bracket', {
+    // Each bracket gets its own line item inserted sequentially after the product row
+    const items = this.quoteItemsSubject$.value;
+    let insertIdx = 1;
+    selected.forEach(b => {
+      const lineItem: QuoteItemDisplay = {
         description: b.bracketName, quantity: 1, unitPrice: b.price,
         taxRate: this.vatRate, discountPercentage: 0,
         amount: this.calculateAmount(1, b.price, this.vatRate, 0),
-        id: this.getAddonItemId('bracket')
-      });
-    } else {
-      const combinedDesc = selected.map(b => b.bracketName).join(' + ');
-      const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
-      this.addOrUpdateAddonLineItem('bracket', {
-        description: combinedDesc, quantity: 1, unitPrice: combinedPrice,
-        taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, combinedPrice, this.vatRate, 0),
-        id: this.getAddonItemId('bracket')
-      });
-    }
+        id: 200000 + b.bracketId,
+        productItemId: this.getAddonProductItemId('bracket')
+      };
+      items.splice(insertIdx, 0, lineItem);
+      insertIdx++;
+    });
+    this.quoteItemsSubject$.next([...items]);
   }
 
   onExtrasChange() {
@@ -1329,6 +1325,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (idx !== -1) { items.splice(idx, 1); this.quoteItemsSubject$.next([...items]); }
   }
 
+  private removeAllBracketLineItems() {
+    const items = this.quoteItemsSubject$.value;
+    const filtered = items.filter(i => !i.id || i.id < 200000);
+    if (filtered.length !== items.length) this.quoteItemsSubject$.next(filtered);
+  }
+
   private getAddonItemId(type: string): number {
     const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012 };
     return ids[type] || 0;
@@ -1355,7 +1357,11 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
-      if (items.some(item => item.id === this.getAddonItemId(order[i]))) idx++;
+      if (order[i] === 'bracket') {
+        idx += items.filter(item => item.id !== undefined && item.id >= 200000).length;
+      } else if (items.some(item => item.id === this.getAddonItemId(order[i]))) {
+        idx++;
+      }
     }
     return idx;
   }

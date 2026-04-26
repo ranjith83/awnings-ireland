@@ -465,7 +465,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   // ── Addon handlers ────────────────────────────────────────────────────────
 
   onBracketChange() {
-    this.removeAddonItem('bracket');
+    this.removeAllBracketItems();
     if (!this.selectedBrackets.length) return;
     const allBrackets = this.bracketsSubject$.value;
     const seen = new Set<string>();
@@ -476,14 +476,20 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       return true;
     });
     if (selected.length === 0) return;
-    if (selected.length === 1) {
-      const b = selected[0];
-      this.addOrUpdateAddonItem('bracket', this.makeItem(b.bracketName, 1, b.price, this.getAddonItemId('bracket')));
-    } else {
-      const combinedDesc  = selected.map(b => b.bracketName).join(' + ');
-      const combinedPrice = selected.reduce((s, b) => s + b.price, 0);
-      this.addOrUpdateAddonItem('bracket', this.makeItem(combinedDesc, 1, combinedPrice, this.getAddonItemId('bracket')));
-    }
+    const items = this.calculatorItemsSubject$.value;
+    let insertIdx = 1;
+    selected.forEach(b => {
+      const item = this.makeItem(b.bracketName, 1, b.price, 200000 + b.bracketId);
+      items.splice(insertIdx, 0, item);
+      insertIdx++;
+    });
+    this.calculatorItemsSubject$.next([...items]);
+  }
+
+  private removeAllBracketItems() {
+    const items = this.calculatorItemsSubject$.value;
+    const filtered = items.filter(i => !i.id || i.id < 200000);
+    if (filtered.length !== items.length) this.calculatorItemsSubject$.next(filtered);
   }
 
   onMotorChange() {
@@ -752,7 +758,11 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     const items = this.calculatorItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
-      if (items.some(item => item.id === this.getAddonItemId(order[i]))) idx++;
+      if (order[i] === 'bracket') {
+        idx += items.filter(item => item.id !== undefined && item.id >= 200000).length;
+      } else if (items.some(item => item.id === this.getAddonItemId(order[i]))) {
+        idx++;
+      }
     }
     return idx;
   }
