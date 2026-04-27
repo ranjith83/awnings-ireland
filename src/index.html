@@ -8,13 +8,14 @@
   
   
   <!-- Content Security Policy - allows DevTools connection -->
- <meta http-equiv="Content-Security-Policy"
+<meta http-equiv="Content-Security-Policy"
     content="
       default-src 'self';
       connect-src 'self'
         http://localhost:*
         https://localhost:*
         https://chrisdevapi.uksouth.cloudapp.azure.com:7184;
+      style-src 'self' 'unsafe-inline';
     ">
   
   <!-- Make sure these paths are correct -->
