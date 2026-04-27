@@ -35,9 +35,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/"
+          #app_location: "/"
           api_location: "api"
           # app_location is where the source code lives
           # app_artifact_location is where the build results live
-          app_artifact_location: "dist/awnings-ireland/browser" 
+          app_location: "dist/awnings-ireland/browser"
           skip_app_build: true
