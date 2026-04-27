@@ -216,6 +216,10 @@ export interface CustomerExistsResponse {
   companyNumber?:  string;
 }
 
+export enum TaskSourceType {
+  Email     = 'Email',
+  SiteVisit = 'SiteVisit'
+}
 
 // ==================== SERVICE ====================
 
@@ -325,8 +329,14 @@ export class EmailTaskService {
     return this.http.get<EmailTask[]>(`${this.apiUrl}/category/${category}`);
   }
 
-  getTasksByCustomer(customerId: number): Observable<EmailTask[]> {
-    return this.http.get<EmailTask[]>(`${this.apiUrl}/customer/${customerId}`);
+  getTasksByCustomer(customerId: number,  sourceType?: TaskSourceType): Observable<EmailTask[]> {
+     const params: Record<string, string> = {};
+  
+    if (sourceType) {
+      params['sourceType'] = sourceType; 
+    }
+
+    return this.http.get<EmailTask[]>(`${this.apiUrl}/customer/${customerId}`, { params });
   }
 
   /** Convenience alias — named to clarify intent in the Initial Enquiry component. */

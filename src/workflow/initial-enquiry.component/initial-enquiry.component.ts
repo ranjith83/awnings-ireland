@@ -7,7 +7,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { takeUntil, finalize } from 'rxjs/operators';
 
 import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.service';
-import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload } from '../../service/email-task.service';
+import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload, TaskSourceType } from '../../service/email-task.service';
 import { SignatureService, UserSignatureDto } from '../../service/signature.service';
 
 export interface CustomerEmailRow {
@@ -411,7 +411,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
   loadCustomerEmails(customerId: number) {
     this.isLoadingEmails$.next(true);
-    this.emailTaskService.getTasksByCustomer(customerId)
+    this.emailTaskService.getTasksByCustomer(customerId, TaskSourceType.Email)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isLoadingEmails$.next(false)))
       .subscribe({
         next: (tasks: EmailTask[]) => {
