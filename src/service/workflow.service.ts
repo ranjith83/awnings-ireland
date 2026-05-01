@@ -220,6 +220,12 @@ export class WorkflowService {
       .pipe(catchError(this.handleError));
   }
 
+  /** DELETE /api/workflow/DeleteInitialEnquiry/{enquiryId} */
+  deleteInitialEnquiry(enquiryId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/DeleteInitialEnquiry/${enquiryId}`)
+      .pipe(catchError(this.handleError));
+  }
+
   /** GET /api/workflow/GetStandardWidthsForProduct */
   getStandardWidthsForProduct(productId: number): Observable<number[]> {
     const params = new HttpParams().set('ProductId', productId.toString());

@@ -5,5 +5,8 @@
   },
   "mimeTypes": {
     ".json": "application/json"
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-store"
   }
 }

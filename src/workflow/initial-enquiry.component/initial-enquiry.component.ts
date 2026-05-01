@@ -131,6 +131,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   newSigFontFamily  = 'georgia';   // ← tracks active font for add-form textarea
   sendEmailOnAdd    = true;
 
+  // ── Delete enquiry modal ───────────────────────────────────────────────────
+  showDeleteModal     = false;
+  deletingEnquiry: InitialEnquiryDto | null = null;
+  isDeleting$         = new BehaviorSubject<boolean>(false);
+
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
   showEditModal     = false;
   editingEnquiry: InitialEnquiryDto | null = null;
@@ -474,6 +479,34 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       });
   }
 
+  // ── Delete enquiry modal ───────────────────────────────────────────────────
+
+  openDeleteModal(enquiry: InitialEnquiryDto) {
+    this.deletingEnquiry = enquiry;
+    this.showDeleteModal = true;
+  }
+
+  closeDeleteModal() {
+    this.showDeleteModal  = false;
+    this.deletingEnquiry  = null;
+  }
+
+  confirmDelete() {
+    if (!this.deletingEnquiry?.enquiryId) return;
+    const id = this.deletingEnquiry.enquiryId;
+    this.isDeleting$.next(true);
+    this.workflowService.deleteInitialEnquiry(id)
+      .pipe(takeUntil(this.destroy$), finalize(() => this.isDeleting$.next(false)))
+      .subscribe({
+        next: () => {
+          this.enquiries = this.enquiries.filter(e => e.enquiryId !== id);
+          this.showSuccess('Enquiry deleted.');
+          this.closeDeleteModal();
+        },
+        error: () => this.showError('Failed to delete enquiry.')
+      });
+  }
+
   // ── Edit enquiry modal ─────────────────────────────────────────────────────
 
   openEditModal(enquiry: InitialEnquiryDto) {
@@ -626,7 +659,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   downloadEnquiryAttachment(att: PendingAttachment): void {
     const link = document.createElement('a');
     link.href = `data:${att.contentType};base64,${att.base64Content}`;
-    link.download = att.fileName; link.click();
+    link.download = att.fileName;
+    link.click();
   }
 
   formatBytes(b: number): string {

@@ -218,6 +218,9 @@
               <button class="btn-icon btn-edit" (click)="openEditModal(enq)">
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit
               </button>
+              <button class="btn-icon btn-delete" (click)="openDeleteModal(enq)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M5 4V2h6v2"/><path d="M3 4l1 10h8l1-10"/><line x1="6" y1="7" x2="6" y2="11"/><line x1="10" y1="7" x2="10" y2="11"/></svg>Delete
+              </button>
             </td>
           </tr>
         </tbody>
@@ -232,6 +235,44 @@
   </div>
 
 </div><!-- /ie-container -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     MODAL — DELETE ENQUIRY CONFIRMATION
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showDeleteModal" (click)="closeDeleteModal()">
+  <div class="modal-card modal-card--sm" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+          <polyline points="2,4 14,4"/><path d="M5 4V2h6v2"/><path d="M3 4l1 10h8l1-10"/>
+        </svg>
+        Delete Enquiry
+      </h3>
+      <button class="modal-close" (click)="closeDeleteModal()">
+        <svg viewBox="0 0 20 20" fill="currentColor" width="18" height="18"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="delete-confirm-text">Are you sure you want to delete this enquiry?</p>
+      <p class="delete-confirm-preview" *ngIf="deletingEnquiry?.comments">
+        "{{ deletingEnquiry!.comments | slice:0:120 }}{{ (deletingEnquiry!.comments?.length ?? 0) > 120 ? '…' : '' }}"
+      </p>
+      <p class="delete-confirm-warning">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeDeleteModal()" [disabled]="isDeleting$ | async">Cancel</button>
+      <button class="btn-danger" (click)="confirmDelete()" [disabled]="isDeleting$ | async">
+        <span *ngIf="(isDeleting$ | async) === false">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13" style="vertical-align:middle;margin-right:3px">
+            <polyline points="2,4 14,4"/><path d="M5 4V2h6v2"/><path d="M3 4l1 10h8l1-10"/>
+          </svg>Delete
+        </span>
+        <span *ngIf="isDeleting$ | async"><span class="spinner-inline"></span> Deleting…</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -544,7 +585,9 @@
         <div class="ie-attach-list">
           <div class="ie-attach-item ie-attach-item--saved" *ngFor="let a of getEnquiryAttachments(editingEnquiry)">
             <span class="ie-attach-icon">{{ fileIcon(a.contentType) }}</span><span class="ie-attach-name">{{ a.fileName }}</span><span class="ie-attach-size">{{ formatBytes(a.sizeBytes) }}</span>
-            <button class="ie-attach-dl" type="button" (click)="downloadEnquiryAttachment(a)">↓</button>
+            <button class="ie-attach-dl" type="button" (click)="downloadEnquiryAttachment(a)" title="Download">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M8 2v9"/><polyline points="4,7 8,11 12,7"/><line x1="2" y1="14" x2="14" y2="14"/></svg>
+            </button>
           </div>
         </div>
       </div>
