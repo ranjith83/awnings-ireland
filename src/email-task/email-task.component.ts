@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { EmailTask, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
+import { AppTaskSummaryDto, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
 import { CustomerService } from '../service/customer-service';
 import { FormsModule } from '@angular/forms';
@@ -23,12 +23,23 @@ export interface EmailAttachment {
   uploadedBy?:    string | null;
 }
 
-export interface EmailTaskExtended extends Omit<EmailTask, 'sourceType'> {
-  quoteId?:       number | null;
-  workflowId?:    number | null;
-  workflowName?:  string | null;
-  sourceType?:    string | null;
-  siteVisitId?:   number | null;
+export interface EmailTaskExtended extends Omit<AppTaskSummaryDto, 'sourceType'> {
+  sourceType?:      string | null;
+  quoteId?:         number | null;
+  workflowName?:    string | null;
+  // Heavy fields — populated after detail fetch, undefined on list items
+  emailBody?:       string | null;
+  bodyBlobUrl?:     string | null;
+  attachments?:     EmailAttachment[];
+  comments?:        any[];
+  history?:         any[];
+  aiReasoning?:     string | null;
+  processedBy?:     string | null;
+  completedBy?:     string | null;
+  completionNotes?: string | null;
+  createdBy?:       string | null;
+  updatedBy?:       string | null;
+  assignedTo?:      string | null;
 }
 
 type WorkflowGuardResult =
@@ -112,7 +123,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     })
   );
 
-  private tasksResponse$!: Observable<PaginatedResponse<EmailTaskExtended>>;
+  private tasksResponse$!: Observable<PaginatedResponse<AppTaskSummaryDto>>;
   tasks$!:       Observable<EmailTaskExtended[]>;
   pageInfo$!:    Observable<PageInfo>;
   totalItems$!:  Observable<number>;
@@ -132,6 +143,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   selectedStatus:     string = '';
   emailBodyHtml:      string = '';
   isLoadingEmailBody: boolean = false;
+  isLoadingTask:      boolean = false;
 
   readonly statusOptions = [
     { value: 'New',         label: 'New'         },
@@ -268,12 +280,11 @@ export class TaskComponent implements OnInit, OnDestroy {
       )),
       shareReplay(1)
     );
-    // Client-side guard: exclude SiteVisit tasks from email tab; enrich site-visit tab with customer names
     this.tasks$ = combineLatest([this.tasksResponse$, this.topTabSubject]).pipe(
       switchMap(([r, topTab]) => {
-        const filtered = topTab === 'email'
+        const filtered = (topTab === 'email'
           ? r.tasks.filter(t => (t.sourceType ?? 'Email') !== 'SiteVisit')
-          : r.tasks;
+          : r.tasks) as EmailTaskExtended[];
         return topTab === 'site-visit' ? this.enrichWithCustomerNames(filtered) : of(filtered);
       })
     );
@@ -352,9 +363,12 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   // ── Email viewer ─────────────────────────────────────────────────────────
   private _openEmailViewer(task: EmailTaskExtended): void {
+    // Open immediately with summary data so header/meta is visible right away
     this.selectedTask             = task;
     this.showEmailViewer          = true;
     this.activeEmailTab           = 'email';
+    this.isLoadingTask            = true;
+    this.emailBodyHtml            = '';
     this.selectedAssignee         = task.assignedToUserId ?? null;
     this.selectedStatus           = task.status ?? 'New';
     this.showNoWorkflowBanner     = false;
@@ -362,7 +376,20 @@ export class TaskComponent implements OnInit, OnDestroy {
     if (task.workflowId) this.workflowStatus$.next({ exists: true, workflowId: task.workflowId, workflowName: null });
     else                 this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this.loadWorkflowStatus(task);
-    this._loadEmailBody(task);
+    this.cdr.markForCheck();
+
+    // Phase 2: fetch full task (body, attachments, history)
+    this.emailTaskService.getTaskById(task.taskId).pipe(
+      take(1),
+      catchError(() => of(null))
+    ).subscribe(fullTask => {
+      this.isLoadingTask = false;
+      if (fullTask) {
+        this.selectedTask = { ...task, ...fullTask } as EmailTaskExtended;
+        this._loadEmailBody(this.selectedTask);
+      }
+      this.cdr.markForCheck();
+    });
   }
 
   private _loadEmailBody(task: EmailTaskExtended): void {

@@ -1,97 +1,64 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../app/environments/environment';
 
 // ==================== INTERFACES ====================
 
-export interface EmailTask {
-  // ── Core identity ──────────────────────────────────────────────────────────
-  taskId:           number;
+/** Lean DTO returned by list/search endpoints — no body, attachments, or history. */
+export interface AppTaskSummaryDto {
+  taskId:                       number;
+  sourceType:                   string;
+  displayTitle:                 string;
+  incomingEmailId?:             number | null;
+  fromName?:                    string | null;
+  fromEmail?:                   string | null;
+  subject?:                     string | null;
+  category?:                    string | null;
+  dateAdded:                    Date;
+  status:                       string;
+  taskType?:                    string | null;
+  priority:                     string;
+  assignedToUserId?:            number | null;
+  assignedToUserName?:          string | null;
+  assignedByUserId?:            number | null;
+  assignedByUserName?:          string | null;
+  previousAssignedToUserId?:    number | null;
+  previousAssignedToUserName?:  string | null;
+  hasAttachments:               boolean;
+  companyNumber?:               string | null;
+  selectedAction?:              string | null;
+  customerId?:                  number | null;
+  customerName?:                string | null;
+  customerEmail?:               string | null;
+  workflowId?:                  number | null;
+  siteVisitId?:                 number | null;
+  dueDate?:                     Date | null;
+  dateProcessed?:               Date | null;
+  completedDate?:               Date | null;
+  aiConfidence?:                number | null;
+  dateCreated:                  Date;
+  dateUpdated?:                 Date | null;
+}
 
-  /**
-   * Discriminator added in the Tasks table migration.
-   * 'Email' | 'SiteVisit' | 'Manual'
-   * All existing rows default to 'Email'.
-   */
-  sourceType:       string;
-
-  /**
-   * Human-readable display title computed server-side:
-   *   Title ?? Subject ?? '(No title)'
-   * Email tasks: matches subject.
-   * SiteVisit / Manual tasks: set explicitly on creation.
-   */
-  displayTitle:     string;
-
-  // ── Email-origin fields (null / empty for non-email tasks) ─────────────────
-  incomingEmailId?: number | null;
-  fromName?:        string;
-  fromEmail?:       string;
-  subject?:         string;
-
-  // ── Common fields ──────────────────────────────────────────────────────────
-  category:         string;
-  status:           string;
-  taskType:         string;
-  priority:         string;
-
-  // ── Dates ─────────────────────────────────────────────────────────────────
-  dateAdded:        Date;
-  dueDate?:         Date;
-  dateCreated?:     Date;
-  dateUpdated?:     Date;
-  dateProcessed?:   Date;
-  completedDate?:   Date;
-
-  // ── Assignment ────────────────────────────────────────────────────────────
-  assignedTo?:                    string | null;   // alias kept for template compat
-  assignedToUserId?:              number | null;
-  assignedToUserName?:            string | null;
-  assignedByUserId?:              number | null;
-  assignedByUserName?:            string | null;
-  previousAssignedToUserId?:      number | null;
-  previousAssignedToUserName?:    string | null;
-
-  // ── Customer / company ────────────────────────────────────────────────────
-  companyNumber?:   string | null;
-  customerId?:      number | null;
-  customerName?:    string | null;
-  customerEmail?:   string | null;
-  workflowId?:      number | null;
-  quoteId?:         number | null;
-
-  // ── Content ───────────────────────────────────────────────────────────────
-  emailBody?:       string;
+/** Full DTO returned by GET /api/EmailTask/{taskId} — includes body, attachments, history. */
+export interface EmailTask extends AppTaskSummaryDto {
+  emailBody?:       string | null;
   bodyBlobUrl?:     string | null;
-  hasAttachments:   boolean;
-  selectedAction?:  string | null;
-
-  // ── Site Visit deep-link ──────────────────────────────────────────────────
-  /**
-   * Populated only when sourceType === 'SiteVisit'.
-   * The Angular card / row uses this to navigate to /site-visit/:siteVisitId.
-   */
-  siteVisitId?:     number | null;
-
-  // ── Processing / completion ───────────────────────────────────────────────
+  extractedData?:   any;
+  aiReasoning?:     string | null;
   processedBy?:     string | null;
   completedBy?:     string | null;
   completionNotes?: string | null;
-
-  // ── AI / extracted data ───────────────────────────────────────────────────
-  aiConfidence?:    number;
-  aiReasoning?:     string | null;
-  extractedData?:   any;
-
-  // ── Audit trail ───────────────────────────────────────────────────────────
   createdBy?:       string | null;
   updatedBy?:       string | null;
-
-  // ── Relations ─────────────────────────────────────────────────────────────
   attachments?:     EmailAttachment[];
   comments?:        any[];
   history?:         any[];
+  // kept for template compat
+  assignedTo?:      string | null;
+  quoteId?:         number | null;
 }
 
 export interface EmailAttachment {
@@ -245,7 +212,7 @@ export class EmailTaskService {
    * Get tasks with pagination and filtering.
    * Passes sourceType so the Email Tasks screen only returns email-originated tasks.
    */
-  getTasksPaginated(filters: Partial<TaskFilterParams>): Observable<PaginatedResponse<EmailTask>> {
+  getTasksPaginated(filters: Partial<TaskFilterParams>): Observable<PaginatedResponse<AppTaskSummaryDto>> {
     const requestBody = {
       page:              filters.page              ?? 1,
       pageSize:          filters.pageSize          ?? 20,
@@ -267,19 +234,15 @@ export class EmailTaskService {
       sourceTypes:       filters.sourceTypes        ?? null,
     };
 
-    return this.http.post<PaginatedResponse<EmailTask>>(
+    return this.http.post<PaginatedResponse<AppTaskSummaryDto>>(
       `${this.apiUrl}/search`,
       requestBody
     );
   }
 
-  /**
-   * Fetch only Email-originated tasks (sourceType = 'Email').
-   * Used by the Email Tasks screen to exclude SiteVisit / Manual tasks.
-   */
   getEmailTasksPaginated(
     filters: Partial<Omit<TaskFilterParams, 'sourceType' | 'sourceTypes'>>
-  ): Observable<PaginatedResponse<EmailTask>> {
+  ): Observable<PaginatedResponse<AppTaskSummaryDto>> {
     return this.getTasksPaginated({ ...filters, sourceTypes: ['Email'] });
   }
 
@@ -289,8 +252,7 @@ export class EmailTaskService {
     pageSize = 20,
     sortBy = 'DateAdded',
     sortDirection: 'ASC' | 'DESC' = 'DESC'
-  ): Observable<PaginatedResponse<EmailTask>> {
-    // Scoped to Email source — this screen is the email inbox
+  ): Observable<PaginatedResponse<AppTaskSummaryDto>> {
     return this.getTasksPaginated({ status, page, pageSize, sortBy, sortDirection, sourceTypes: ['Email'] });
   }
 
@@ -298,7 +260,7 @@ export class EmailTaskService {
     userId: number,
     page = 1,
     pageSize = 20
-  ): Observable<PaginatedResponse<EmailTask>> {
+  ): Observable<PaginatedResponse<AppTaskSummaryDto>> {
     return this.getTasksPaginated({
       assignedToUserId: userId, page, pageSize,
       sortBy: 'DateAdded', sortDirection: 'DESC',
@@ -310,7 +272,7 @@ export class EmailTaskService {
     searchTerm: string,
     page = 1,
     pageSize = 20
-  ): Observable<PaginatedResponse<EmailTask>> {
+  ): Observable<PaginatedResponse<AppTaskSummaryDto>> {
     return this.getTasksPaginated({
       searchTerm, page, pageSize,
       sortBy: 'DateAdded', sortDirection: 'DESC',
@@ -320,8 +282,10 @@ export class EmailTaskService {
 
   // ==================== ORIGINAL METHODS (Non-Paginated) ====================
 
-  getTasks(status: string): Observable<EmailTask[]> {
-    return this.http.get<EmailTask[]>(`${this.apiUrl}/status/${status}`);
+  getTasks(status: string): Observable<AppTaskSummaryDto[]> {
+    return this.http.get<PaginatedResponse<AppTaskSummaryDto>>(
+      `${this.apiUrl}/status/${status}?page=1&pageSize=100`
+    ).pipe(map(r => r.tasks));
   }
 
   getTaskById(taskId: number): Observable<EmailTask> {
