@@ -5,16 +5,22 @@ import { WorkflowService, WorkflowDto } from '../service/workflow.service';
 import { CustomerService } from '../service/customer-service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin } from 'rxjs';
 import { map, switchMap, catchError, shareReplay, take, filter, takeUntil } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
 
 export interface EmailAttachment {
-  attachmentId: number;
-  fileName:     string;
-  fileSize:     number;
-  fileType:     string;
-  blobUrl:      string;
+  attachmentId:   number;
+  fileName:       string;
+  fileSize:       number;
+  fileType:       string;
+  blobUrl:        string;
+  isInline:       boolean;
+  contentId?:     string | null;
+  extractedText?: string | null;
+  dateUploaded?:  string | null;
+  uploadedBy?:    string | null;
 }
 
 export interface EmailTaskExtended extends Omit<EmailTask, 'sourceType'> {
@@ -118,12 +124,14 @@ export class TaskComponent implements OnInit, OnDestroy {
   currentUser$!: Observable<User | null>;
 
   // ── Email viewer state ───────────────────────────────────────────────────
-  selectedTask:     EmailTaskExtended | null = null;
-  showEmailViewer:  boolean = false;
-  activeEmailTab:   'email' | 'attachments' | 'send-email' = 'email';
-  selectedAssignee: number | null = null;
-  selectedAction:   string = '';
-  selectedStatus:   string = '';
+  selectedTask:       EmailTaskExtended | null = null;
+  showEmailViewer:    boolean = false;
+  activeEmailTab:     'email' | 'attachments' | 'send-email' = 'email';
+  selectedAssignee:   number | null = null;
+  selectedAction:     string = '';
+  selectedStatus:     string = '';
+  emailBodyHtml:      string = '';
+  isLoadingEmailBody: boolean = false;
 
   readonly statusOptions = [
     { value: 'New',         label: 'New'         },
@@ -232,6 +240,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     private customerService:  CustomerService,
     private router:           Router,
     private cdr:              ChangeDetectorRef,
+    private http:             HttpClient,
     @Inject(PLATFORM_ID) platformId: Object
   ) { this.isBrowser = isPlatformBrowser(platformId); }
 
@@ -353,6 +362,30 @@ export class TaskComponent implements OnInit, OnDestroy {
     if (task.workflowId) this.workflowStatus$.next({ exists: true, workflowId: task.workflowId, workflowName: null });
     else                 this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this.loadWorkflowStatus(task);
+    this._loadEmailBody(task);
+  }
+
+  private _loadEmailBody(task: EmailTaskExtended): void {
+    if (task.bodyBlobUrl) {
+      this.isLoadingEmailBody = true;
+      this.emailBodyHtml      = '';
+      this.cdr.markForCheck();
+      this.http.get(task.bodyBlobUrl, { responseType: 'text' })
+        .pipe(takeUntil(this.destroy$), catchError(() => of(task.emailBody ?? '')))
+        .subscribe(html => {
+          this.emailBodyHtml      = html;
+          this.isLoadingEmailBody = false;
+          this.cdr.markForCheck();
+        });
+    } else {
+      this.emailBodyHtml      = task.emailBody ?? '';
+      this.isLoadingEmailBody = false;
+    }
+  }
+
+  get downloadableAttachments(): EmailAttachment[] {
+    return (this.selectedTask?.attachments as EmailAttachment[] | undefined)
+      ?.filter(a => !a.isInline) ?? [];
   }
 
   private enrichWithCustomerNames(tasks: EmailTaskExtended[]): Observable<EmailTaskExtended[]> {
@@ -517,7 +550,21 @@ export class TaskComponent implements OnInit, OnDestroy {
     return this.isAdmin || this.selectedTask.assignedToUserId === this.currentUserId;
   }
 
-  downloadAttachment(attachment: EmailAttachment): void { if (this.isBrowser && attachment.blobUrl) window.open(attachment.blobUrl, '_blank'); }
+  downloadAttachment(attachment: EmailAttachment): void {
+    if (!this.isBrowser || !this.selectedTask) return;
+    const taskId = this.selectedTask.taskId;
+    this.emailTaskService.downloadAttachment(taskId, attachment.attachmentId)
+      .pipe(take(1), catchError(() => { this.showToast('error', 'Failed to download attachment.'); return of(null); }))
+      .subscribe(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = attachment.fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+  }
   createNewTask(): void { console.log('Create new task'); }
 
   // ── Workflow guard ────────────────────────────────────────────────────────

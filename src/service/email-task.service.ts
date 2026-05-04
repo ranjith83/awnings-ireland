@@ -45,11 +45,13 @@ export interface EmailTask {
   completedDate?:   Date;
 
   // ── Assignment ────────────────────────────────────────────────────────────
-  assignedTo?:             string | null;   // alias kept for template compat
-  assignedToUserId?:       number | null;
-  assignedToUserName?:     string | null;
-  assignedByUserId?:       number | null;
-  assignedByUserName?:     string | null;
+  assignedTo?:                    string | null;   // alias kept for template compat
+  assignedToUserId?:              number | null;
+  assignedToUserName?:            string | null;
+  assignedByUserId?:              number | null;
+  assignedByUserName?:            string | null;
+  previousAssignedToUserId?:      number | null;
+  previousAssignedToUserName?:    string | null;
 
   // ── Customer / company ────────────────────────────────────────────────────
   companyNumber?:   string | null;
@@ -61,6 +63,7 @@ export interface EmailTask {
 
   // ── Content ───────────────────────────────────────────────────────────────
   emailBody?:       string;
+  bodyBlobUrl?:     string | null;
   hasAttachments:   boolean;
   selectedAction?:  string | null;
 
@@ -92,12 +95,16 @@ export interface EmailTask {
 }
 
 export interface EmailAttachment {
-  attachmentId:  number;
-  fileName:      string;
-  fileSize:      number;
-  fileType:      string;
-  blobUrl:       string;
-  extractedText?: string;
+  attachmentId:   number;
+  fileName:       string;
+  fileSize:       number;
+  fileType:       string;
+  blobUrl:        string;
+  isInline:       boolean;
+  contentId?:     string | null;
+  extractedText?: string | null;
+  dateUploaded?:  string | null;
+  uploadedBy?:    string | null;
 }
 
 export interface User {
@@ -491,6 +498,13 @@ export class EmailTaskService {
     return this.http.post<{ message: string }>(
       `${this.apiUrl}/send-direct`,
       payload
+    );
+  }
+
+  downloadAttachment(taskId: number, attachmentId: number): Observable<Blob> {
+    return this.http.get(
+      `${this.apiUrl}/${taskId}/attachments/${attachmentId}`,
+      { responseType: 'blob' }
     );
   }
 

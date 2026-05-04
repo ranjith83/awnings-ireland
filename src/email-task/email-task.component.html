@@ -433,14 +433,15 @@
         </div>
         <div class="email-body-box">
           <div class="email-body-title">Contents of Email</div>
-          <div class="email-body-content" [innerHTML]="selectedTask.emailBody"></div>
+          <div *ngIf="isLoadingEmailBody" class="email-body-loading">Loading…</div>
+          <div *ngIf="!isLoadingEmailBody" class="email-body-content" [innerHTML]="emailBodyHtml"></div>
         </div>
       </div>
 
       <!-- Attachments Tab -->
       <div class="attachments-content" *ngIf="activeEmailTab === 'attachments'">
-        <div class="attachments-list" *ngIf="selectedTask?.attachments?.length">
-          <div class="attachment-item" *ngFor="let attachment of selectedTask.attachments" (click)="downloadAttachment(attachment)">
+        <div class="attachments-list" *ngIf="downloadableAttachments.length">
+          <div class="attachment-item" *ngFor="let attachment of downloadableAttachments" (click)="downloadAttachment(attachment)">
             <div class="attachment-icon">
               <span *ngIf="attachment.fileType.includes('pdf')">📄</span>
               <span *ngIf="attachment.fileType.includes('image')">🖼️</span>
@@ -453,7 +454,7 @@
             </div>
           </div>
         </div>
-        <div *ngIf="!selectedTask?.attachments?.length" class="no-attachments">No attachments</div>
+        <div *ngIf="!downloadableAttachments.length" class="no-attachments">No attachments</div>
       </div>
 
       <!-- Send Email Tab -->
