@@ -3,8 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { BehaviorSubject, Subject } from 'rxjs';
-import { takeUntil, finalize } from 'rxjs/operators';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Subject, of } from 'rxjs';
+import { takeUntil, finalize, catchError } from 'rxjs/operators';
 
 import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.service';
 import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload, TaskSourceType } from '../../service/email-task.service';
@@ -13,7 +14,7 @@ import { SignatureService, UserSignatureDto } from '../../service/signature.serv
 export interface CustomerEmailRow {
   taskId: number; subject: string; fromEmail: string; fromName: string;
   dateAdded: Date; status: string; taskType: string; priority: string;
-  emailBody: string; category: string;
+  emailBody: string; bodyBlobUrl?: string | null; category: string;
 }
 
 export interface PendingAttachment {
@@ -152,9 +153,10 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   sigPreview = '';
 
   // ── Email preview modal ────────────────────────────────────────────────────
-  showEmailModal     = false;
-  emailModalTask: CustomerEmailRow | null = null;
+  showEmailModal      = false;
+  emailModalTask:     CustomerEmailRow | null = null;
   emailModalBodyHtml: SafeHtml | null = null;
+  isLoadingEmailBody  = false;
 
   // ── Send-email modal ───────────────────────────────────────────────────────
   showSendModal   = false;
@@ -175,7 +177,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private signatureService: SignatureService,
     private sanitizer: DomSanitizer,
     private notificationService: NotificationService,
-    private workflowStateService: WorkflowStateService) {}
+    private workflowStateService: WorkflowStateService,
+    private http: HttpClient) {}
 
   ngOnInit() {
     this.loadUserSignatures();
@@ -423,8 +426,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
           this.customerEmails = tasks.map(t => ({
             taskId: t.taskId, subject: t.subject ?? '', fromEmail: t.fromEmail ?? '',
             fromName: t.fromName ?? '', dateAdded: new Date(t.dateAdded),
-            status: t.status, taskType: t.taskType, priority: t.priority,
-            emailBody: t.emailBody ?? '', category: t.category
+            status: t.status, taskType: t.taskType ?? '', priority: t.priority,
+            emailBody: t.emailBody ?? '', bodyBlobUrl: t.bodyBlobUrl ?? null, category: t.category ?? ''
           }));
           if (!this.newEmail && tasks.length) {
             const first = tasks.find(t => t.fromEmail);
@@ -564,9 +567,22 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Email preview ──────────────────────────────────────────────────────────
 
   openEmailPreview(row: CustomerEmailRow) {
-    this.emailModalTask = row;
-    this.emailModalBodyHtml = row.emailBody ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody) : null;
-    this.showEmailModal = true;
+    this.emailModalTask    = row;
+    this.emailModalBodyHtml = null;
+    this.showEmailModal    = true;
+
+    if (row.bodyBlobUrl) {
+      this.isLoadingEmailBody = true;
+      this.http.get(row.bodyBlobUrl, { responseType: 'text' })
+        .pipe(takeUntil(this.destroy$), catchError(() => of(row.emailBody)))
+        .subscribe(html => {
+          this.emailModalBodyHtml = html ? this.sanitizer.bypassSecurityTrustHtml(html) : null;
+          this.isLoadingEmailBody = false;
+        });
+    } else {
+      this.emailModalBodyHtml = row.emailBody ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody) : null;
+      this.isLoadingEmailBody = false;
+    }
   }
   closeEmailPreview() { this.showEmailModal = false; this.emailModalTask = null; this.emailModalBodyHtml = null; }
 

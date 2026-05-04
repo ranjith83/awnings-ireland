@@ -476,7 +476,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     if (!this.sendEmailBody.trim()) { this.sendEmailError = 'Please enter a message body.'; this.cdr.markForCheck(); return; }
     this.isSendingEmail = true; this.sendEmailError = ''; this.sendEmailSuccess = ''; this.cdr.markForCheck();
     this.emailTaskService.sendTaskEmail(this.selectedTask.taskId, {
-      toEmail: this.selectedTask.fromEmail, toName: this.selectedTask.fromName,
+      toEmail: this.selectedTask.fromEmail ?? undefined, toName: this.selectedTask.fromName ?? undefined,
       subject: this.sendEmailSubject, body: this.sendEmailBody,
       originalEmailGraphId: (this.selectedTask as any).emailGraphId ?? null
     }).subscribe({
@@ -657,7 +657,7 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   // ── Customer handlers ─────────────────────────────────────────────────────
   checkForExistingCustomer(task: EmailTaskExtended): void {
-    this.emailTaskService.checkCustomerExists({ email: task.fromEmail, companyNumber: task.companyNumber || undefined }).subscribe({
+    this.emailTaskService.checkCustomerExists({ email: task.fromEmail ?? undefined, companyNumber: task.companyNumber ?? undefined }).subscribe({
       next: (res) => { this.customerExistsInfo = res; if (res.exists) { if (confirm(`Customer "${res.customerName}" already exists. Link?`)) this.linkExistingCustomer(task.taskId, res.customerId!); } else this.openCustomerCreationModal(task); },
       error: () => this.openCustomerCreationModal(task)
     });
@@ -689,8 +689,9 @@ export class TaskComponent implements OnInit, OnDestroy {
     return pages;
   }
   formatDate(date: Date | string): string { if (!date) return ''; return new Date(date).toLocaleString('en-IE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-  getCategoryDisplay(category: string): string {
-    return ({ initial_enquiry: 'Initial Enquiry', site_visit_meeting: 'Site Visit', invoice_due: 'Invoice Due', quote_creation: 'Quote Request', showroom_booking: 'Showroom', complaint: 'Complaint', general_inquiry: 'General', junk: 'Junk' } as Record<string,string>)[category] || category;
+  getCategoryDisplay(category: string | null | undefined): string {
+    const key = category ?? '';
+    return ({ initial_enquiry: 'Initial Enquiry', site_visit_meeting: 'Site Visit', invoice_due: 'Invoice Due', quote_creation: 'Quote Request', showroom_booking: 'Showroom', complaint: 'Complaint', general_inquiry: 'General', junk: 'Junk' } as Record<string,string>)[key] || key;
   }
   onKeyDown(event: KeyboardEvent, task: EmailTaskExtended): void { if (event.key === 'Enter') this.onRowDoubleClick(task); }
   onContextMenu(event: MouseEvent, _task: EmailTaskExtended): void { event.preventDefault(); }
