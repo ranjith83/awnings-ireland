@@ -392,33 +392,6 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     return '•';
   }
 
-  // ── Stage toggle (enabled flag only — completed is server-computed) ───────
-
-  toggleStage(workflow: WorkflowDto, stage: string, event?: Event) {
-    if (event) event.stopPropagation();
-    const updatedWorkflow: WorkflowDto = { ...workflow };
-    const stageMapping: { [key: string]: keyof WorkflowDto } = {
-      'initialEnquiry':  'initialEnquiry',
-      'createQuote':     'createQuotation',
-      'inviteShowroom':  'inviteShowRoomVisit',
-      'setupSiteVisit':  'setupSiteVisit',
-      'finalQuote':      'finalQuote',
-      'invoice':         'invoiceSent'
-    };
-    const dtoProperty = stageMapping[stage];
-    if (!dtoProperty) return;
-    (updatedWorkflow as any)[dtoProperty] = !(updatedWorkflow as any)[dtoProperty];
-
-    this.workflowService.updateWorkflow(updatedWorkflow).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => {
-        const cw = this.workflowsSubject$.value;
-        const i = cw.findIndex(w => w.workflowId === workflow.workflowId);
-        if (i !== -1) { cw[i] = updatedWorkflow; this.workflowsSubject$.next([...cw]); }
-      },
-      error: () => { this.notificationService.error('Failed to update workflow stage.'); this.clearMessagesAfterDelay(); }
-    });
-  }
-
   // ── Navigate on row click ─────────────────────────────────────────────────
 
   selectWorkflow(workflow: WorkflowDto) {
@@ -437,21 +410,15 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       customerName: this.customerName
     };
     this.workflowStateService.setSelectedWorkflow(selected);
-    const enabledStages = this.workflowStateService.getEnabledStages();
-    if (enabledStages.length > 0) {
-      const qp: Record<string, any> = {
-        customerId: this.customerId, customerName: this.customerName, workflowId: workflow.workflowId
-      };
-      if (this.customerEmail) qp['customerEmail'] = this.customerEmail;
-      if (this.customerPhone) qp['customerPhone'] = this.customerPhone;
-      if (this.taskId)        qp['taskId']        = this.taskId;
-      if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
-      if (this.fromTask)      qp['fromTask']      = this.fromTask;
-      this.router.navigate([`/workflow/${enabledStages[0]}`], { queryParams: qp });
-    } else {
-      this.notificationService.error('Please enable at least one stage for this workflow');
-      this.clearMessagesAfterDelay();
-    }
+    const qp: Record<string, any> = {
+      customerId: this.customerId, customerName: this.customerName, workflowId: workflow.workflowId
+    };
+    if (this.customerEmail) qp['customerEmail'] = this.customerEmail;
+    if (this.customerPhone) qp['customerPhone'] = this.customerPhone;
+    if (this.taskId)        qp['taskId']        = this.taskId;
+    if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
+    if (this.fromTask)      qp['fromTask']      = this.fromTask;
+    this.router.navigate(['/workflow/initial-enquiry'], { queryParams: qp });
   }
 
   // ── Pagination ────────────────────────────────────────────────────────────

@@ -98,97 +98,72 @@
           <!-- ── INITIAL ENQUIRY ──────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.initialEnquiry, workflow.initialEnquiryCompleted) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Initial Enquiry', status)"
-                (click)="toggleStage(workflow, 'initialEnquiry', $event)"
-                [disabled]="(isLoading$ | async) === true">
-                <!-- disabled: empty ring; pending: ring; completed: check -->
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Initial Enquiry', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 
           <!-- ── CREATE QUOTE ─────────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.createQuotation, workflow.createQuotationCompleted) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Create Quote', status)"
-                (click)="toggleStage(workflow, 'createQuote', $event)"
-                [disabled]="(isLoading$ | async) === true">
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Create Quote', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 
           <!-- ── INVITE SHOWROOM ──────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.inviteShowRoomVisit, workflow.inviteShowRoomCompleted) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Invite Showroom', status)"
-                (click)="toggleStage(workflow, 'inviteShowroom', $event)"
-                [disabled]="(isLoading$ | async) === true">
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Invite Showroom', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 
           <!-- ── SETUP SITE VISIT ─────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.setupSiteVisit, workflow.setupSiteVisitCompleted) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Setup Site Visit', status)"
-                (click)="toggleStage(workflow, 'setupSiteVisit', $event)"
-                [disabled]="(isLoading$ | async) === true">
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Setup Site Visit', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 
           <!-- ── FINAL QUOTE ─────────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.finalQuote || false, workflow.finalQuoteCompleted || false) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Final Quote', status)"
-                (click)="toggleStage(workflow, 'finalQuote', $event)"
-                [disabled]="(isLoading$ | async) === true">
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Final Quote', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 
           <!-- ── INVOICE ──────────────────────────────────────────── -->
           <td class="stage-cell">
             <ng-container *ngIf="stageStatus(workflow.invoiceSent, workflow.invoiceSentCompleted) as status">
-              <button
-                [class]="stageCssClass(status)"
-                [title]="stageTooltip('Invoice', status)"
-                (click)="toggleStage(workflow, 'invoice', $event)"
-                [disabled]="(isLoading$ | async) === true">
+              <span [class]="stageCssClass(status)" [title]="stageTooltip('Invoice', status)">
                 <svg *ngIf="status === 'completed'" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12">
                   <polyline points="2,8 6,12 14,4"/>
                 </svg>
                 <span *ngIf="status === 'pending'" class="stage-dot-inner"></span>
-              </button>
+              </span>
             </ng-container>
           </td>
 

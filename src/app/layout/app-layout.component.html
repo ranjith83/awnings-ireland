@@ -2,17 +2,16 @@
   <!-- Sidebar -->
   <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
     <!-- Logo Section -->
-    <div class="sidebar-header">
-      <div class="logo">
-      <!---<span class="logo-icon"></span> -->
-        <img src="assets/awnings.png" alt="Logo" class="logo-icon" />
-        <span class="logo-text" *ngIf="!isSidebarCollapsed">Awnings of Ireland</span>
-      </div>
-      <button class="toggle-btn" (click)="toggleSidebar()">
-        <span *ngIf="!isSidebarCollapsed">‹</span>
-        <span *ngIf="isSidebarCollapsed">›</span>
-      </button>
+    <div class="sidebar-header" [class.sidebar-header--logo]="!isSidebarCollapsed">
+      <img *ngIf="!isSidebarCollapsed" src="assets/awnings-logo.png" alt="Awnings of Ireland" class="logo-full" />
+      <img *ngIf="isSidebarCollapsed" src="assets/awnings-logo.png" alt="Awnings of Ireland" class="logo-icon" />
     </div>
+
+    <!-- Toggle Button — floats on the right border of the sidebar -->
+    <button class="toggle-btn" (click)="toggleSidebar()">
+      <span *ngIf="!isSidebarCollapsed">‹</span>
+      <span *ngIf="isSidebarCollapsed">›</span>
+    </button>
 
     <!-- Navigation Menu -->
     <nav class="sidebar-nav">
