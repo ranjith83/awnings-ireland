@@ -6,7 +6,7 @@ import { CustomerService } from '../service/customer-service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin, lastValueFrom } from 'rxjs';
 import { map, switchMap, catchError, shareReplay, take, filter, takeUntil } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
 
@@ -87,6 +87,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   private sortDirectionSubject      = new BehaviorSubject<'ASC' | 'DESC'>('DESC');
   private filterPrioritySubject     = new BehaviorSubject<string>('');
   private filterAssignedUserSubject = new BehaviorSubject<number | null>(null);
+  private filterCategorySubject     = new BehaviorSubject<string>('');
   private refreshTrigger            = new BehaviorSubject<void>(undefined);
 
   currentPage$        = this.currentPageSubject.asObservable();
@@ -97,19 +98,21 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   // ── Master filters$ ───────────────────────────────────────────────────────
   // When topTab = 'email'      → sourceTypes=['Email'],     status driven by sub-tab
-  // When topTab = 'site-visit' → sourceTypes=['SiteVisit'], no status scoping
+  // When topTab = 'site-visit' → sourceTypes=['SiteVisit'], categories=['SiteVisit']
   private filters$ = combineLatest([
     this.topTabSubject, this.activeTabSubject,
     this.currentPageSubject, this.pageSizeSubject,
     this.searchTermSubject, this.sortBySubject, this.sortDirectionSubject,
-    this.filterPrioritySubject, this.filterAssignedUserSubject, this.refreshTrigger
+    this.filterPrioritySubject, this.filterAssignedUserSubject,
+    this.filterCategorySubject, this.refreshTrigger
   ]).pipe(
-    map(([topTab, activeTab, page, pageSize, searchTerm, sortBy, sortDirection, priority, assignedUser]) => {
+    map(([topTab, activeTab, page, pageSize, searchTerm, sortBy, sortDirection, priority, assignedUser, category]) => {
       const base = {
         page, pageSize, sortBy, sortDirection,
         searchTerm:       searchTerm   || undefined,
         priority:         priority     || undefined,
         assignedToUserId: assignedUser || undefined,
+        categories:       category     ? [category] : undefined,
       };
       if (topTab === 'site-visit') {
         return { ...base, sourceTypes: ['SiteVisit'], status: undefined, statuses: undefined };
@@ -311,10 +314,17 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   // ── Tab navigation ───────────────────────────────────────────────────────
 
-  /** Switch the TOP tab (Email ↔ Site Visits). Resets page + closes all panels. */
+  get filterCategory(): string { return this.filterCategorySubject.value; }
+  setFilterCategory(cat: string): void {
+    this.filterCategorySubject.next(cat);
+    this.currentPageSubject.next(1);
+  }
+
+  /** Switch the TOP tab (Email ↔ Site Visits). Resets page, category, and closes all panels. */
   setTopTab(tab: TopTab): void {
     if (this.topTabSubject.value === tab) return;
     this.topTabSubject.next(tab);
+    this.filterCategorySubject.next('');
     this.currentPageSubject.next(1);
     this._closeAllPanels();
   }
@@ -541,11 +551,11 @@ export class TaskComponent implements OnInit, OnDestroy {
     const isStatusChange = this.selectedStatus && this.selectedStatus !== task.status;
     if (isSameUser && !this.selectedAction && !isStatusChange) { this.showToast('warning', `Task is already assigned to ${task.assignedToUserName ?? task.assignedTo ?? 'this user'}.`); return; }
     const promises: Promise<any>[] = [];
-    if (isAssigning)                    promises.push(this.emailTaskService.assignTask(task.taskId, this.selectedAssignee!).toPromise());
-    else if (isUnassigning)             promises.push(this.emailTaskService.unassignTask(task.taskId).toPromise());
-    if (isStatusChange && !isAssigning) promises.push(this.emailTaskService.updateTaskStatus(task.taskId, this.selectedStatus).toPromise());
+    if (isAssigning)                    promises.push(lastValueFrom(this.emailTaskService.assignTask(task.taskId, this.selectedAssignee!)));
+    else if (isUnassigning)             promises.push(lastValueFrom(this.emailTaskService.unassignTask(task.taskId)));
+    if (isStatusChange && !isAssigning) promises.push(lastValueFrom(this.emailTaskService.updateTaskStatus(task.taskId, this.selectedStatus)));
     const navActions = new Set(['generate_quote', 'generate_invoice', 'add_site_visit', 'create_workflow']);
-    if (this.selectedAction && !navActions.has(this.selectedAction)) promises.push(this.emailTaskService.executeAction(task.taskId, this.selectedAction).toPromise());
+    if (this.selectedAction && !navActions.has(this.selectedAction)) promises.push(lastValueFrom(this.emailTaskService.executeAction(task.taskId, this.selectedAction)));
     if (!promises.length) { this.closeEmailViewer(); return; }
     Promise.all(promises).then(() => {
       if (isAssigning) {

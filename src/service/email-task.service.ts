@@ -140,6 +140,10 @@ export interface TaskFilterParams {
    */
   sourceTypes?:        string[] | null;
 
+  // ── Category filters ──────────────────────────────────────────────────────
+  category?:           string | null;
+  categories?:         string[] | null;
+
   // ── Existing filters (unchanged) ──────────────────────────────────────────
   status?:             string | null;
   statuses?:           string[] | null;
@@ -229,9 +233,11 @@ export class EmailTaskService {
       dueDateTo:         filters.dueDateTo          ? filters.dueDateTo.toISOString()      : null,
       createdDateFrom:   filters.createdDateFrom    ? filters.createdDateFrom.toISOString(): null,
       createdDateTo:     filters.createdDateTo      ? filters.createdDateTo.toISOString()  : null,
-      // ── New source type fields ───────────────────────────────────────────
+      // ── Source type + category fields ───────────────────────────────────
       sourceType:        filters.sourceType        ?? null,
       sourceTypes:       filters.sourceTypes        ?? null,
+      category:          filters.category           ?? null,
+      categories:        filters.categories         ?? null,
     };
 
     return this.http.post<PaginatedResponse<AppTaskSummaryDto>>(

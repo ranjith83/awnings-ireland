@@ -48,6 +48,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
   
   private searchFiltersSubject = new BehaviorSubject({
     companyName: '',
+    lastName: '',
     mobile: '',
     email: '',
     siteAddress: '',
@@ -64,6 +65,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
       return customers.filter(customer => {
         return (
           customer.companyName.toLowerCase().includes(filters.companyName.toLowerCase()) &&
+          (customer.contactLastName || '').toLowerCase().includes(filters.lastName.toLowerCase()) &&
           (customer.mobilePhone || '').includes(filters.mobile) &&
           (customer.email || '').toLowerCase().includes(filters.email.toLowerCase()) &&
           customer.siteAddress.toLowerCase().includes(filters.siteAddress.toLowerCase()) &&
@@ -101,6 +103,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
   // Keep these for template two-way binding with ngModel
   searchFilters = {
     companyName: '',
+    lastName: '',
     mobile: '',
     email: '',
     siteAddress: '',
@@ -154,6 +157,16 @@ export class CustomerDetails implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadCustomers();
     this.loadSalespeople();
+
+    // Auto-populate First/Last Name from Customer Name when adding
+    this.customerForm.get('name')?.valueChanges.subscribe((value: string) => {
+      if (this.modalModeSubject.value !== 'add') return;
+      const parts = (value ?? '').trim().split(/\s+/);
+      this.customerForm.patchValue({
+        contactFirstName: parts[0] ?? '',
+        contactLastName:  parts.length > 1 ? parts.slice(1).join(' ') : ''
+      }, { emitEvent: false });
+    });
 
     this.route.queryParams.subscribe(params => {
       if (params['taskId']) {

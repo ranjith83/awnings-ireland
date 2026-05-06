@@ -130,7 +130,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   newComments       = '';
   newSignature      = '';
   newSigFontFamily  = 'georgia';   // ← tracks active font for add-form textarea
-  sendEmailOnAdd    = true;
+  sendEmailOnAdd    = false;
 
   // ── Delete enquiry modal ───────────────────────────────────────────────────
   showDeleteModal     = false;
@@ -144,7 +144,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   editComments      = '';
   editSignature     = '';
   editSigFontFamily = 'georgia';   // ← tracks active font for edit-modal textarea
-  sendEmailOnUpdate = true;
+  sendEmailOnUpdate = false;
 
   // ── Signature builder modal ────────────────────────────────────────────────
   showSigBuilder    = false;
@@ -518,7 +518,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.editComments      = enquiry.comments;
     this.editSignature     = enquiry.signature ?? this.defaultSignature?.signatureText ?? '';
     this.editSigFontFamily = this.defaultSignature?.fontFamily ?? 'georgia';
-    this.sendEmailOnUpdate = true;
+    this.sendEmailOnUpdate = false;
     this.editPendingAttachments = [];
     this.showEditModal     = true;
     this.notificationService.error('');

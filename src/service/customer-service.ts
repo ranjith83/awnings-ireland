@@ -12,6 +12,8 @@ export interface CustomerMainViewDto {
   email: string;
   phone: string;
   contactName: string;
+  contactFirstName?: string;
+  contactLastName?: string;
   contactEmail: string;
   mobilePhone: string;
   siteAddress: string;
