@@ -1130,11 +1130,11 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     const body = this.buildQuoteEmailBody(quote);
     const attachments: EmailAttachmentPayload[] = [];
     if (pdfBase64) {
-      attachments.push({ fileName: `FinalQuote-FINAL-${quote.quoteNumber}.pdf`, base64Content: pdfBase64, contentType: 'application/pdf' });
+      attachments.push({ fileName: `Quote_${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')}_${this.customerName.replace(/\s+/g, '_')}.pdf`, base64Content: pdfBase64, contentType: 'application/pdf' });
     }
     const payload: SendDirectEmailPayload = {
       toEmail, toName: this.customerName,
-      subject: `Your Final Quote FINAL-${quote.quoteNumber} from Awnings Ireland`,
+      subject: `Your Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
       body, attachments: attachments.length > 0 ? attachments : undefined
     };
     this.isSendingEmail$.next(true);
@@ -1186,7 +1186,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       ? totalTax * (1 - quoteLevelDiscount / (subtotal - itemLevelDiscount)) : totalTax;
 
     const pdfData: QuotePdfData = {
-      quoteNumber:        `FINAL-${quote.quoteNumber}`,
+      quoteNumber:        quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, ''),
+      fileNamePrefix:     'Quote',
       quoteDate:          typeof quote.quoteDate === 'string' ? quote.quoteDate : (quote.quoteDate as Date).toISOString(),
       expiryDate:         this.followUpDate,
       customerName:       this.customerName,

@@ -150,7 +150,7 @@
                   <input type="checkbox"
                     [checked]="isBracketSelected(bracket.bracketName)"
                     (change)="toggleBracket(bracket.bracketName)">
-                  <span>{{ bracket.bracketName }} — €{{ bracket.price | number:'1.2-2' }}</span>
+                  <span>{{ stripSurchargePrefix(bracket.bracketName) }} — €{{ bracket.price | number:'1.2-2' }}</span>
                 </label>
               </div>
             </div>
@@ -228,7 +228,7 @@
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
-            <span>Surcharge for non-standard RAL colors</span>
+            <span>Non-standard RAL colors</span>
           </label>
         </div>
 

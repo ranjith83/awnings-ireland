@@ -4,6 +4,9 @@ import autoTable from 'jspdf-autotable';
 
 export interface QuotePdfData {
   quoteNumber: string;
+  /** Controls the downloaded filename prefix. Defaults to 'Quote' if omitted.
+   *  Pass 'Initial_Quote' for draft quotes, 'Quote' for final quotes. */
+  fileNamePrefix?: string;
   quoteDate: string;
   expiryDate: string;
   customerName: string;
@@ -312,7 +315,8 @@ export class PdfGenerationService {
    */
   async generateQuotePdf(data: QuotePdfData): Promise<void> {
     const doc = await this.buildQuoteDoc(data);
-    const fileName = `Quote_${data.quoteNumber}_${data.customerName.replace(/\s+/g, '_')}.pdf`;
+    const prefix = data.fileNamePrefix ?? 'Quote';
+    const fileName = `${prefix}_${data.quoteNumber}_${data.customerName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
   }
 
@@ -327,7 +331,8 @@ export class PdfGenerationService {
    */
   async generateQuotePdfAsBase64(data: QuotePdfData): Promise<string> {
     const doc = await this.buildQuoteDoc(data);
-    const fileName = `Quote_${data.quoteNumber}_${data.customerName.replace(/\s+/g, '_')}.pdf`;
+    const prefix = data.fileNamePrefix ?? 'Quote';
+    const fileName = `${prefix}_${data.quoteNumber}_${data.customerName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
 
     const dataUri = doc.output('datauristring');
@@ -503,7 +508,7 @@ export class PdfGenerationService {
     doc.setTextColor(128, 128, 128);
     doc.text('Thank you for your business!', 105, 280, { align: 'center' });
 
-    doc.save(`Invoice-${data.invoiceNumber}.pdf`);
+    doc.save(`Invoice_${data.invoiceNumber}_${data.customerName.replace(/\s+/g, '_')}.pdf`);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

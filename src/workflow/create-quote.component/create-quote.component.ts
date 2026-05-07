@@ -145,8 +145,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   getBracketLabel(): string {
     if (!this.selectedBrackets.length) return 'Select brackets';
-    if (this.selectedBrackets.length === 1) return this.selectedBrackets[0];
+    if (this.selectedBrackets.length === 1) return this.stripSurchargePrefix(this.selectedBrackets[0]);
     return `${this.selectedBrackets.length} brackets selected`;
+  }
+
+  stripSurchargePrefix(name: string): string {
+    return name.replace(/^surcharge for\s*/i, '');
   }
 
   // ── Addon selections ───────────────────────────────────────────────────────
@@ -583,19 +587,19 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (this.includeWallSealing)  this.onWallSealingChange();
   }
 
-  /** Returns the largest standard width <= enteredWidthCm (floor/tier pricing).
-   *  e.g. entered 256 with standards [250,300,350] → 250 tier → price 4639.
-   *  Falls back to the smallest standard width if entered is below all standards. */
+  /** Returns the smallest standard width >= enteredWidthCm (ceiling/tier pricing).
+   *  e.g. entered 255 with standards [250,300,350] → 300 tier → price 4821.
+   *  Anything <= 250 uses the 250 tier. Anything above the largest clamps to the largest. */
   private resolveCeilingWidth(entered: number | null): number | null {
     if (!entered || entered <= 0) return null;
     const widths = this.widthsSubject$.value;
     if (!widths.length) return null;
     const sorted = [...widths].sort((a, b) => a - b);
-    // Find largest standard width that is <= entered
-    const floor = [...sorted].reverse().find(w => w <= entered);
-    if (floor != null) return floor;
-    // Entered is below all standard widths — use the smallest
-    return sorted[0];
+    // Find smallest standard width >= entered
+    const ceiling = sorted.find(w => w >= entered);
+    if (ceiling != null) return ceiling;
+    // Entered exceeds all standard widths — clamp to the largest
+    return sorted[sorted.length - 1];
   }
 
   onAwningChange() {
@@ -690,7 +694,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {
         this.addOrUpdateAddonLineItem('ral', {
-          description: 'Surcharge for non-standard RAL colors',
+          description: 'Non-standard RAL colors',
           quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
           amount: this.calculateAmount(1, price, this.vatRate, 0),
           id: this.getAddonItemId('ral')
@@ -1105,7 +1109,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const attachments: EmailAttachmentPayload[] = [];
     if (pdfBase64) {
       attachments.push({
-        fileName:      `DraftQuote-${quote.quoteNumber}.pdf`,
+        fileName:      `Draft_Quote_${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')}_${this.customerName.replace(/\s+/g, '_')}.pdf`,
         base64Content: pdfBase64,
         contentType:   'application/pdf'
       });
@@ -1121,7 +1125,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const payload: SendDirectEmailPayload = {
       toEmail,
       toName:      this.customerName,
-      subject:     `Your Draft Quote DRAFT-${quote.quoteNumber} from Awnings Ireland`,
+      subject:     `Your Draft Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
       body,
       attachments: attachments.length > 0 ? attachments : undefined
     };
@@ -1224,7 +1228,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     : totalTax;
 
   const pdfData: QuotePdfData = {
-    quoteNumber:        `DRAFT-${quote.quoteNumber}`,
+    quoteNumber:        quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, ''),
+    fileNamePrefix:     'Draft_Quote',
     quoteDate:          typeof quote.quoteDate === 'string'
                           ? quote.quoteDate
                           : (quote.quoteDate as Date).toISOString(),
