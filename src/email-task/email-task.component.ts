@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { environment } from '../app/environments/environment';
 import { isPlatformBrowser } from '@angular/common';
 import { AppTaskSummaryDto, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
@@ -412,21 +413,17 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
 
   private _loadEmailBody(task: EmailTaskExtended): void {
-    if (task.bodyBlobUrl) {
-      this.isLoadingEmailBody = true;
-      this.emailBodyHtml      = '';
-      this.cdr.markForCheck();
-      this.http.get(task.bodyBlobUrl, { responseType: 'text' })
-        .pipe(takeUntil(this.destroy$), catchError(() => of(task.emailBody ?? '')))
-        .subscribe(html => {
-          this.emailBodyHtml      = html;
-          this.isLoadingEmailBody = false;
-          this.cdr.markForCheck();
-        });
-    } else {
-      this.emailBodyHtml      = task.emailBody ?? '';
-      this.isLoadingEmailBody = false;
-    }
+    // Always proxy through the backend — the blob container is private, direct fetches fail.
+    this.isLoadingEmailBody = true;
+    this.emailBodyHtml      = '';
+    this.cdr.markForCheck();
+    this.http.get(`${environment.apiUrl}/api/EmailTask/${task.taskId}/body`, { responseType: 'text' })
+      .pipe(takeUntil(this.destroy$), catchError(() => of(task.emailBody ?? '')))
+      .subscribe(html => {
+        this.emailBodyHtml      = html;
+        this.isLoadingEmailBody = false;
+        this.cdr.markForCheck();
+      });
   }
 
   get downloadableAttachments(): EmailAttachment[] {
