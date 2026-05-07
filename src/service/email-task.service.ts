@@ -143,6 +143,7 @@ export interface TaskFilterParams {
   // ── Category filters ──────────────────────────────────────────────────────
   category?:           string | null;
   categories?:         string[] | null;
+  excludeCategories?:  string[] | null;
 
   // ── Existing filters (unchanged) ──────────────────────────────────────────
   status?:             string | null;
@@ -234,10 +235,11 @@ export class EmailTaskService {
       createdDateFrom:   filters.createdDateFrom    ? filters.createdDateFrom.toISOString(): null,
       createdDateTo:     filters.createdDateTo      ? filters.createdDateTo.toISOString()  : null,
       // ── Source type + category fields ───────────────────────────────────
-      sourceType:        filters.sourceType        ?? null,
-      sourceTypes:       filters.sourceTypes        ?? null,
-      category:          filters.category           ?? null,
-      categories:        filters.categories         ?? null,
+      sourceType:        filters.sourceType         ?? null,
+      sourceTypes:       filters.sourceTypes         ?? null,
+      category:          filters.category            ?? null,
+      categories:        filters.categories          ?? null,
+      excludeCategories: filters.excludeCategories   ?? null,
     };
 
     return this.http.post<PaginatedResponse<AppTaskSummaryDto>>(
@@ -409,6 +411,10 @@ export class EmailTaskService {
 
   getUsers(): Observable<User[]> {
     return this.http.get<User[]>(`${environment.apiUrl}/api/Auth/users`);
+  }
+
+  logEmailRead(taskId: number): Observable<void> {
+    return this.http.post<void>(`${this.apiUrl}/${taskId}/read`, {});
   }
 
   // ==================== HELPER METHODS ====================

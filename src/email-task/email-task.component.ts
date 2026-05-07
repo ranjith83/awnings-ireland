@@ -112,16 +112,20 @@ export class TaskComponent implements OnInit, OnDestroy {
         searchTerm:       searchTerm   || undefined,
         priority:         priority     || undefined,
         assignedToUserId: assignedUser || undefined,
-        categories:       category     ? [category] : undefined,
       };
       if (topTab === 'site-visit') {
         return { ...base, sourceTypes: ['SiteVisit'], status: undefined, statuses: undefined };
       }
+      if (activeTab === 'junk') {
+        return { ...base, sourceTypes: ['Email'], categories: ['junk', 'general'] };
+      }
       return {
         ...base,
-        sourceTypes: ['Email'],
-        status:      this.getStatusFromSubTab(activeTab),
-        statuses:    this.getStatusesFromSubTab(activeTab),
+        sourceTypes:       ['Email'],
+        status:            this.getStatusFromSubTab(activeTab),
+        statuses:          this.getStatusesFromSubTab(activeTab),
+        categories:        category ? [category] : undefined,
+        excludeCategories: activeTab === 'tasks' ? ['junk', 'general'] : undefined,
       };
     })
   );
@@ -132,6 +136,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   totalItems$!:  Observable<number>;
   totalPages$!:  Observable<number>;
   pageNumbers$!: Observable<number[]>;
+
 
   isLoading$    = new BehaviorSubject<boolean>(false);
   users$!:       Observable<User[]>;
@@ -299,6 +304,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     );
     this.users$       = this.emailTaskService.getUsers().pipe(catchError(() => of([])), shareReplay(1));
     this.currentUser$ = this.emailTaskService.getCurrentUser().pipe(catchError(() => of(null)), shareReplay(1));
+
     this.currentUser$.pipe(take(1)).subscribe(user => {
       if (user) {
         this.currentUserId = (user as any).userId ?? null;
@@ -387,6 +393,9 @@ export class TaskComponent implements OnInit, OnDestroy {
     else                 this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this.loadWorkflowStatus(task);
     this.cdr.markForCheck();
+
+    // Log that this email was read
+    this.emailTaskService.logEmailRead(task.taskId).pipe(take(1), catchError(() => of(null))).subscribe();
 
     // Phase 2: fetch full task (body, attachments, history)
     this.emailTaskService.getTaskById(task.taskId).pipe(
@@ -685,7 +694,7 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   private getStatusFromSubTab(tab: EmailSubTab): string | undefined {
-    return tab === 'tasks' ? 'New' : tab === 'junk' ? 'Junk' : undefined;
+    return tab === 'tasks' ? 'New' : undefined;
   }
   private getStatusesFromSubTab(tab: EmailSubTab): string[] | undefined {
     if (tab === 'in-progress') return ['In Progress', 'More Info', 'Reopened'];
