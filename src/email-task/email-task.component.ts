@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../app/environments/environment';
 import { isPlatformBrowser } from '@angular/common';
 import { AppTaskSummaryDto, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
@@ -144,15 +145,17 @@ export class TaskComponent implements OnInit, OnDestroy {
   currentUser$!: Observable<User | null>;
 
   // ── Email viewer state ───────────────────────────────────────────────────
-  selectedTask:       EmailTaskExtended | null = null;
-  showEmailViewer:    boolean = false;
-  activeEmailTab:     'email' | 'attachments' | 'send-email' = 'email';
-  selectedAssignee:   number | null = null;
-  selectedAction:     string = '';
-  selectedStatus:     string = '';
-  emailBodyHtml:      string = '';
-  isLoadingEmailBody: boolean = false;
-  isLoadingTask:      boolean = false;
+  selectedTask:        EmailTaskExtended | null = null;
+  showEmailViewer:     boolean = false;
+  activeEmailTab:      'email' | 'attachments' | 'send-email' = 'email';
+  selectedAssignee:    number | null = null;
+  selectedAction:      string = '';
+  selectedStatus:      string = '';
+  emailBodyHtml:       string = '';
+  emailBodySafeUrl:    SafeResourceUrl | null = null;
+  private _emailBodyBlobUrl: string | null = null;
+  isLoadingEmailBody:  boolean = false;
+  isLoadingTask:       boolean = false;
 
   readonly statusOptions = [
     { value: 'New',         label: 'New'         },
@@ -262,6 +265,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     private router:           Router,
     private cdr:              ChangeDetectorRef,
     private http:             HttpClient,
+    private sanitizer:        DomSanitizer,
     @Inject(PLATFORM_ID) platformId: Object
   ) { this.isBrowser = isPlatformBrowser(platformId); }
 
@@ -280,6 +284,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next(); this.destroy$.complete();
     if (this.toastTimer) clearTimeout(this.toastTimer);
+    this._revokeEmailBodyBlobUrl();
   }
 
   private initializeDataStreams(): void {
@@ -413,17 +418,31 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
 
   private _loadEmailBody(task: EmailTaskExtended): void {
-    // Always proxy through the backend — the blob container is private, direct fetches fail.
     this.isLoadingEmailBody = true;
     this.emailBodyHtml      = '';
+    this._revokeEmailBodyBlobUrl();
     this.cdr.markForCheck();
     this.http.get(`${environment.apiUrl}/api/EmailTask/${task.taskId}/body`, { responseType: 'text' })
       .pipe(takeUntil(this.destroy$), catchError(() => of(task.emailBody ?? '')))
       .subscribe(html => {
-        this.emailBodyHtml      = html;
+        this.emailBodyHtml = html;
+        if (this.isBrowser && html) {
+          // Render in a blob-URL iframe so data: URIs (inline images) are not stripped by Angular sanitizer
+          const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+          this._emailBodyBlobUrl = URL.createObjectURL(blob);
+          this.emailBodySafeUrl  = this.sanitizer.bypassSecurityTrustResourceUrl(this._emailBodyBlobUrl);
+        }
         this.isLoadingEmailBody = false;
         this.cdr.markForCheck();
       });
+  }
+
+  private _revokeEmailBodyBlobUrl(): void {
+    if (this._emailBodyBlobUrl) {
+      URL.revokeObjectURL(this._emailBodyBlobUrl);
+      this._emailBodyBlobUrl = null;
+    }
+    this.emailBodySafeUrl = null;
   }
 
   get downloadableAttachments(): EmailAttachment[] {
@@ -478,6 +497,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.selectedAssignee = null; this.selectedStatus = '';
     this.showNoWorkflowBanner = false; this.workflowMissingForAction = '';
     this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
+    this._revokeEmailBodyBlobUrl();
     this.clearSendEmail();
   }
 

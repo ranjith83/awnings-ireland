@@ -642,6 +642,13 @@
   line-height: 1.6;
 }
 
+.email-body-frame {
+  display: block;
+  width: 100%;
+  height: 450px;
+  border: none;
+}
+
 /* ==================== ATTACHMENTS ==================== */
 .attachments-content {
   flex: 1;

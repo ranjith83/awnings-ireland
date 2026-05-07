@@ -403,7 +403,7 @@
         <button class="email-tab-button" [class.active]="activeEmailTab === 'email'"       (click)="setEmailTab('email')">Email</button>
         <button class="email-tab-button" [class.active]="activeEmailTab === 'attachments'" (click)="setEmailTab('attachments')">
           Attachments
-          <span class="attachment-count" *ngIf="selectedTask.hasAttachments">({{ selectedTask.attachments?.length || 0 }})</span>
+          <span class="attachment-count" *ngIf="downloadableAttachments.length > 0">({{ downloadableAttachments.length }})</span>
         </button>
         <button class="email-tab-button email-tab-send" [class.active]="activeEmailTab === 'send-email'" (click)="setEmailTab('send-email')">
           ✉ Send Email
@@ -434,7 +434,11 @@
         <div class="email-body-box">
           <div class="email-body-title">Contents of Email</div>
           <div *ngIf="isLoadingEmailBody" class="email-body-loading">Loading…</div>
-          <div *ngIf="!isLoadingEmailBody" class="email-body-content" [innerHTML]="emailBodyHtml"></div>
+          <iframe *ngIf="!isLoadingEmailBody && emailBodySafeUrl"
+                  [src]="emailBodySafeUrl"
+                  sandbox="allow-same-origin allow-popups"
+                  class="email-body-frame"></iframe>
+          <div *ngIf="!isLoadingEmailBody && !emailBodySafeUrl" class="email-body-content" [innerHTML]="emailBodyHtml"></div>
         </div>
       </div>
 
