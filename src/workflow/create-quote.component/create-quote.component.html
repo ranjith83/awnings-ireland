@@ -296,11 +296,21 @@
       <div class="extras-addons-row" style="margin-top:20px;"
            *ngIf="hasValanceStyle || hasWallSealing">
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
-            <span>Valance Style</span>
-          </label>
+          <div class="shadeplus-multi-row">
+            <label class="checkbox-label shadeplus-checkbox">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+              <span>Valance Style</span>
+            </label>
+            <select class="form-select shadeplus-select"
+              [disabled]="!includeValanceStyle"
+              [(ngModel)]="selectedValanceType"
+              (change)="onValanceTypeChange()">
+              <option value="" disabled selected>Select</option>
+              <option value="Straight">Straight</option>
+              <option value="Wavey">Wavey</option>
+            </select>
+          </div>
         </div>
         <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
           <label class="checkbox-label">

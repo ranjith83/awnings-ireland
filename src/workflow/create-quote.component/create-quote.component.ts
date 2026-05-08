@@ -220,6 +220,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   // Valance Style — price fetched from API based on productId + ceiling width
   includeValanceStyle  = false;
+  selectedValanceType  = '';
 
   // Wall Sealing Profile — price fetched from API based on productId + ceiling width
   includeWallSealing  = false;
@@ -839,18 +840,22 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onValanceStyleChange() {
-    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); this.selectedValanceType = ''; return; }
+    if (!this.selectedValanceType || !this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {
         this.addOrUpdateAddonLineItem('valance', {
-          description: 'Valance Style',
+          description: 'Valance Style ' + this.selectedValanceType,
           quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
           amount: this.calculateAmount(1, price, this.vatRate, 0),
           id: this.getAddonItemId('valance')
         });
       });
+  }
+
+  onValanceTypeChange() {
+    if (this.includeValanceStyle && this.selectedValanceType) this.onValanceStyleChange();
   }
 
   onWallSealingChange() {
@@ -1362,6 +1367,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
+    this.selectedValanceType = '';
     this.includeWallSealing = false;
     this.extrasDescription = '';
     this.extrasPrice = 0;

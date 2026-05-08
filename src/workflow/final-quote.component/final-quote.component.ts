@@ -220,6 +220,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   selectedShadePlusDescription      = '';
 
   includeValanceStyle  = false;
+  selectedValanceType  = '';
   includeWallSealing   = false;
 
   frameColourOptions:    FrameColourOption[] = [];
@@ -543,7 +544,12 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       switch (qi.productItemId) {
         case ProductItemType.NonStandardRals:    this.includeRalSurcharge = true; break;
         case ProductItemType.ShadePlus:          this.includeShadeplus    = true; break;
-        case ProductItemType.Valance:            this.includeValanceStyle = true; break;
+        case ProductItemType.Valance: {
+          this.includeValanceStyle = true;
+          const m = qi.description.match(/Valance Style\s+(Straight|Wavey)/i);
+          this.selectedValanceType = m ? m[1] : 'Straight';
+          break;
+        }
         case ProductItemType.WallSealingProfile: this.includeWallSealing  = true; break;
       }
       if (!qi.productItemId && qi.description.toLowerCase().includes('electrician')) {
@@ -917,11 +923,15 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   onValanceStyleChange() {
-    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); this.selectedValanceType = ''; return; }
+    if (!this.selectedValanceType || !this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(price => { this.addOrUpdateAddonLineItem('valance', { description: 'Valance Style', quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('valance') }); });
+      .subscribe(price => { this.addOrUpdateAddonLineItem('valance', { description: 'Valance Style ' + this.selectedValanceType, quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('valance') }); });
+  }
+
+  onValanceTypeChange() {
+    if (this.includeValanceStyle && this.selectedValanceType) this.onValanceStyleChange();
   }
 
   onWallSealingChange() {
@@ -1344,6 +1354,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
+    this.selectedValanceType = '';
     this.includeWallSealing  = false;
     this.extrasDescription   = '';
     this.extrasPrice         = 0;
@@ -1434,6 +1445,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.includeRalSurcharge      = false;
     this.includeShadeplus         = false;
     this.includeValanceStyle      = false;
+    this.selectedValanceType      = 'Straight';
     this.includeWallSealing       = false;
   }
 }
