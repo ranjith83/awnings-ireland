@@ -257,48 +257,45 @@
   color: #e65100;
 }
 
-.frame-colour-picker {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
+.ral-block {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 
-.frame-colour-swatch {
+.frame-colour-section {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  width: 56px;
-  height: 56px;
-  border-radius: 6px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding-bottom: 4px;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  gap: 4px;
+  margin-top: 8px;
+  width: 100%;
 }
 
-.frame-colour-swatch:focus { outline: none; }
-
-.white-swatch {
-  background: #ffffff;
-  border-color: #ccc;
-}
-
-.black-swatch {
-  background: #1a1a1a;
-  border-color: #555;
-}
-
-.frame-colour-swatch.selected {
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.35);
-}
-
-.swatch-label {
-  font-size: 10px;
+.frame-colour-label {
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  color: #495057;
 }
 
-.white-swatch .swatch-label { color: #555; }
-.black-swatch .swatch-label { color: #ddd; }
+.frame-colour-select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: #fffde7;
+  border: 1px solid #f9a825;
+  border-radius: 4px;
+  color: #333;
+  cursor: pointer;
+}
+
+.frame-colour-select:focus {
+  outline: none;
+  border-color: #f57f17;
+  box-shadow: 0 0 0 2px rgba(249, 168, 37, 0.3);
+}
+
+.frame-colour-select option {
+  background-color: #fffde7;
+  font-weight: 500;
+}

@@ -274,13 +274,24 @@
             </div>
           </div>
 
-          <div class="form-group extras-addon-check" *ngIf="hasRalSurcharge">
+          <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge">
             <label class="form-label" style="visibility:hidden;">RAL</label>
             <label class="checkbox-label">
               <input type="checkbox" class="checkbox-input"
                 [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
               <span>Surcharge for non-standard RAL colors</span>
             </label>
+            <div class="frame-colour-section" *ngIf="includeRalSurcharge && hasFrameColour && frameColourOptions.length > 0">
+              <label class="frame-colour-label">Frame Colour</label>
+              <select class="frame-colour-select"
+                      [(ngModel)]="selectedFrameColourId"
+                      (ngModelChange)="onFrameColourChange()">
+                <option [ngValue]="null">-- Select frame colour --</option>
+                <option *ngFor="let opt of frameColourOptions" [ngValue]="opt.frameColourId">
+                  {{ opt.colorValue === 1 ? '■' : '□' }} {{ opt.description }}
+                </option>
+              </select>
+            </div>
           </div>
 
           <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
@@ -328,26 +339,6 @@
                 [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
               <span>Wall Sealing Profile</span>
             </label>
-          </div>
-
-          <div class="form-group" *ngIf="hasFrameColour">
-            <label class="form-label">Frame Colour</label>
-            <div class="frame-colour-picker">
-              <button type="button"
-                class="frame-colour-swatch white-swatch"
-                [class.selected]="selectedFrameColour === 0"
-                (click)="onFrameColourSelect(0)"
-                title="White (standard)">
-                <span class="swatch-label">White</span>
-              </button>
-              <button type="button"
-                class="frame-colour-swatch black-swatch"
-                [class.selected]="selectedFrameColour === 1"
-                (click)="onFrameColourSelect(1)"
-                title="Black (surcharge)">
-                <span class="swatch-label">Black</span>
-              </button>
-            </div>
           </div>
 
         </div>

@@ -143,6 +143,15 @@ export interface ControlDto {
   price: number;
 }
 
+export interface FrameColourOption {
+  frameColourId: number;
+  description:   string;
+  /** 0 = white/light (extra charge), 1 = black/dark (no charge) */
+  colorValue:    number;
+  price:         number;
+  sortOrder:     number;
+}
+
 export interface FixingPointDto {
   fixingPointId: number;
   description: string;
@@ -382,8 +391,8 @@ getWallSealingProfilePrice(productId: number, widthcm: number): Observable<numbe
     .pipe(catchError(this.handleError));
 }
 
-getFrameColourPrice(productId: number, widthcm: number): Observable<number> {
-  return this.http.get<number>(`${this.apiUrl}/GetFrameColourPriceForProduct`, { params: { ProductId: productId, widthcm } })
+getFrameColourOptions(): Observable<FrameColourOption[]> {
+  return this.http.get<FrameColourOption[]>(`${this.apiUrl}/GetFrameColourOptions`)
     .pipe(catchError(this.handleError));
 }
  

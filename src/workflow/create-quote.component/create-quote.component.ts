@@ -18,6 +18,7 @@ import {
 } from '../../service/create-quote.service';
 import {
   WorkflowService,
+  FrameColourOption,
   SupplierDto,
   WorkflowDto,
   MotorDto,
@@ -186,8 +187,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // Wall Sealing Profile — price fetched from API based on productId + ceiling width
   includeWallSealing  = false;
 
-  // Frame Colour — 0 = white (standard, no charge), 1 = black (surcharge), null = not selected
-  selectedFrameColour: number | null = null;
+  // Frame Colour — shown inside RAL section when RAL checkbox is ticked
+  frameColourOptions:    FrameColourOption[] = [];
+  selectedFrameColourId: number | null       = null;
 
   // ── Addon availability flags (set after workflow/product selected) ──────────
   hasRalSurcharge    = false;
@@ -429,8 +431,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.hasShadePlus       = false;
     this.hasValanceStyle    = false;
     this.hasWallSealing     = false;
-    this.hasFrameColour     = false;
-    this.selectedFrameColour = null;
+    this.hasFrameColour      = false;
+    this.frameColourOptions  = [];
+    this.selectedFrameColourId = null;
     this.removeAddonLineItem('framecolour');
     this.shadePlusOptions = [];
     this.shadePlusAllRows = [];
@@ -487,7 +490,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
-    this.workflowService.hasFrameColour(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasFrameColour = v);
+    this.workflowService.hasFrameColour(id).pipe(takeUntil(this.destroy$)).subscribe(v => {
+      this.hasFrameColour = v;
+      if (v && this.frameColourOptions.length === 0) {
+        this.workflowService.getFrameColourOptions()
+          .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+          .subscribe(opts => this.frameColourOptions = opts);
+      }
+    });
 
     // Brackets + motors both depend on armTypeId — load with default armTypeId 1 initially
     this.reloadArmTypeDependents();
@@ -593,7 +603,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (this.includeShadeplus) this.onShadeplusChange();
     if (this.includeValanceStyle) this.onValanceStyleChange();
     if (this.includeWallSealing)  this.onWallSealingChange();
-    if (this.selectedFrameColour === 1) this.onFrameColourSelect(1);
+    if (this.selectedFrameColourId !== null) this.onFrameColourChange();
   }
 
   /** Returns the smallest standard width >= enteredWidthCm (ceiling/tier pricing).
@@ -697,7 +707,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onRalSurchargeChange() {
-    if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
+    if (!this.includeRalSurcharge) {
+      this.removeAddonLineItem('ral');
+      this.selectedFrameColourId = null;
+      this.removeAddonLineItem('framecolour');
+      return;
+    }
     if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
@@ -816,22 +831,18 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
-  onFrameColourSelect(value: number) {
-    this.selectedFrameColour = value;
-    if (value === 0) { this.removeAddonLineItem('framecolour'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getFrameColourPrice(this.selectedModelId, this.selectedWidthCm)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        if (price > 0) {
-          this.addOrUpdateAddonLineItem('framecolour', {
-            description: 'Frame Colour - Black',
-            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-            amount: this.calculateAmount(1, price, this.vatRate, 0),
-            id: this.getAddonItemId('framecolour')
-          });
-        }
-      });
+  onFrameColourChange() {
+    const opt = this.frameColourOptions.find(o => o.frameColourId === this.selectedFrameColourId);
+    if (!opt || opt.colorValue === 1 || opt.price === 0) {
+      this.removeAddonLineItem('framecolour');
+      return;
+    }
+    this.addOrUpdateAddonLineItem('framecolour', {
+      description: `Frame Colour - ${opt.description}`,
+      quantity: 1, unitPrice: opt.price, taxRate: this.vatRate, discountPercentage: 0,
+      amount: this.calculateAmount(1, opt.price, this.vatRate, 0),
+      id: this.getAddonItemId('framecolour')
+    });
   }
 
   onMotorChange() {
