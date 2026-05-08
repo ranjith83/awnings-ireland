@@ -3,6 +3,15 @@
   <form [formGroup]="siteVisitForm" class="site-visit-form">
     <!-- Workflow + Product Model + Add New + Check Availability -->
     <div class="form-section">
+      <!-- Customer info banner -->
+      <div class="customer-info-bar" *ngIf="customerName">
+        <span class="customer-info-icon">👤</span>
+        <span class="customer-info-name">{{ customerName }}</span>
+        <span class="customer-info-sep" *ngIf="customerSiteAddress">·</span>
+        <span class="customer-info-address" *ngIf="customerSiteAddress">{{ customerSiteAddress }}</span>
+        <span class="customer-info-sep" *ngIf="customerEircode">·</span>
+        <span class="customer-info-eircode" *ngIf="customerEircode">{{ customerEircode }}</span>
+      </div>
       <div class="header-bar">
         <div class="header-field workflow-field">
           <label>Workflow</label>

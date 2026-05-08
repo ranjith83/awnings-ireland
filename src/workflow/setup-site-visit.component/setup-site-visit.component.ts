@@ -12,6 +12,7 @@ import {
 } from '../../service/setup-site-visit.service';
 import { WorkflowService, WorkflowDto } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
+import { CustomerService } from '../../service/customer-service';
 import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
 
 interface ProductModel {
@@ -83,6 +84,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   customerId: number | null = null;
   customerEmail: string | null = null;
   customerName: string | null = null;
+  customerSiteAddress = '';
+  customerEircode     = '';
   editMode = false;
   editingSiteVisitId: number | null = null;
   showForm = false;
@@ -163,7 +166,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     { name: 'standOfBracketDimension', label: 'Stand of Bracket Dimension', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'electrician', label: 'Electrician', type: 'dropdown', category: 'Electrician', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'electricalConnection', label: 'Electrical Connection', type: 'dropdown', category: 'ElectricalConnection', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'location', label: 'Location', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'address', label: 'Address', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'location', label: 'Location (Eircode)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'otherSiteSurveyNotes', label: 'Other Site Survey Notes', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] }
   ];
 
@@ -204,6 +208,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private siteVisitService: SetupSiteVisitService,
     private workflowService: WorkflowService,
+    private customerService: CustomerService,
     private route: ActivatedRoute,
     private router: Router,
     private workflowStateService: WorkflowStateService,
@@ -232,6 +237,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       standOfBracketDimension: [''],
       electrician: [''],
       electricalConnection: [''],
+      address: [''],
       location: [''],
       otherSiteSurveyNotes: [''],
       fixtureType: [''],
@@ -286,6 +292,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         this.selectedWorkflowId = selectedWorkflow?.id || paramWorkflowId || 0;
 
         this.loadWorkflows();
+        if (this.customerId) this.loadCustomerAddress(this.customerId);
 
         // If a workflowId came via query params, pre-select the workflow dropdown
         // and optionally open the matching site visit for editing
@@ -373,7 +380,18 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
 
- private loadWorkflows(): void {
+  private loadCustomerAddress(customerId: number): void {
+    this.customerService.getCustomerById(customerId)
+      .pipe(takeUntil(this.destroy$), catchError(() => of(null)))
+      .subscribe(customer => {
+        if (!customer) return;
+        this.customerSiteAddress = [customer.address1, customer.address2, customer.address3]
+          .filter(a => !!a).join(', ');
+        this.customerEircode = customer.eircode || '';
+      });
+  }
+
+  private loadWorkflows(): void {
   if (!this.customerId) {
     console.warn('No customerId provided');
     return;
@@ -691,7 +709,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       standOfBracketDimension: siteVisit.standOfBracketDimension,
       electrician: siteVisit.electrician,
       electricalConnection: siteVisit.electricalConnection,
-      location: siteVisit.location,
+      address: siteVisit.address || this.customerSiteAddress,
+      location: siteVisit.location || this.customerEircode,
       otherSiteSurveyNotes: siteVisit.otherSiteSurveyNotes,
       fixtureType: siteVisit.fixtureType,
       operation: siteVisit.operation,
@@ -791,6 +810,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         standOfBracketDimension: formValue.standOfBracketDimension,
         electrician: formValue.electrician,
         electricalConnection: formValue.electricalConnection,
+        address: formValue.address,
         location: formValue.location,
         otherSiteSurveyNotes: formValue.otherSiteSurveyNotes,
         fixtureType: formValue.fixtureType,
@@ -857,7 +877,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.editMode = false;
     this.editingSiteVisitId = null;
     this.showForm = true;
-    this.siteVisitForm.patchValue({ workflow: currentWorkflow, productModel: currentProductModel, model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
+    this.siteVisitForm.patchValue({ workflow: currentWorkflow, productModel: currentProductModel, model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', address: this.customerSiteAddress, location: this.customerEircode, otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
     Object.keys(this.siteVisitForm.controls).forEach(key => { if (key !== 'workflow' && key !== 'productModel') { const control = this.siteVisitForm.get(key); control?.markAsUntouched(); control?.markAsPristine(); } });
   }
 
@@ -869,7 +889,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.editMode = false;
     this.editingSiteVisitId = null;
     this.showForm = false;
-    this.siteVisitForm.patchValue({ productModel: '', model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
+    this.siteVisitForm.patchValue({ productModel: '', model: '', otherPleaseSpecify: '', siteLayout: '', structure: '', passageHeight: '', width: '', projection: '', heightAvailable: '', wallType: '', externalInsulation: '', wallFinish: '', wallThickness: '', specialBrackets: '', sideInfills: '', flashingRequired: '', flashingDimensions: '', standOfBrackets: '', standOfBracketDimension: '', electrician: '', electricalConnection: '', address: '', location: '', otherSiteSurveyNotes: '', fixtureType: '', operation: '', crankLength: '', operationSide: '', fabric: '', ral: '', valanceChoice: '', valance: '', windSensor: '', shadePlusRequired: '', shadeType: '', shadeplusFabric: '', shadePlusAnyOtherDetail: '', lights: '', lightsType: '', lightsAnyOtherDetails: '', heater: '', heaterManufacturer: '', numberRequired: '', heaterOutput: '', heaterColour: '', remoteControl: '', controllerBox: '', heaterAnyOtherDetails: '' }, { emitEvent: false });
     this.selectedProductModel = '';
     this.showFullTabs = false;
     this.activeTab = 'product-model';

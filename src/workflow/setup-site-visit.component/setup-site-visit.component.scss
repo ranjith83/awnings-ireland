@@ -102,6 +102,41 @@ $cal-select:  #1d4ed8;
   }
 }
 
+// ── Customer info banner ──────────────────────────────────────────────────────
+
+.customer-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 13px;
+  flex-wrap: wrap;
+
+  .customer-info-icon { font-style: normal; }
+
+  .customer-info-name {
+    font-weight: 600;
+    color: #1e40af;
+  }
+
+  .customer-info-sep {
+    color: #93c5fd;
+  }
+
+  .customer-info-address {
+    color: $text;
+  }
+
+  .customer-info-eircode {
+    font-weight: 500;
+    color: #1e40af;
+  }
+}
+
 // ── Add New button ────────────────────────────────────────────────────────────
 
 .btn-add-new {

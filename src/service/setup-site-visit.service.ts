@@ -31,9 +31,10 @@ export interface SiteVisitDto {
   standOfBracketDimension?: string;
   electrician?: string;
   electricalConnection?: string;
+  address?: string;
   location?: string;
   otherSiteSurveyNotes?: string;
-  
+
   // Model Details Section
   fixtureType?: string;
   operation?: string;
@@ -44,7 +45,7 @@ export interface SiteVisitDto {
   valanceChoice?: string;
   valance?: string;
   windSensor?: string;
-  
+
   // ShadePlus Section
   shadePlusRequired?: string;
   shadeType?: string;
@@ -102,6 +103,7 @@ export interface CreateSiteVisitDto {
   standOfBracketDimension?: string;
   electrician?: string;
   electricalConnection?: string;
+  address?: string;
   location?: string;
   otherSiteSurveyNotes?: string;
   fixtureType?: string;
