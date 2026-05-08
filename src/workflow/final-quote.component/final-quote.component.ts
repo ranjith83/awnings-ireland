@@ -142,10 +142,46 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   discountValue = 0;
 
   // ── Brackets dropdown ──────────────────────────────────────────────────────
-  bracketDropdownOpen = false;
+  bracketDropdownOpen     = false;
+  frameColourDropdownOpen = false;
 
   toggleBracketDropdown() { this.bracketDropdownOpen = !this.bracketDropdownOpen; }
   closeBracketDropdown()  { this.bracketDropdownOpen = false; }
+
+  toggleFrameColourDropdown() { this.frameColourDropdownOpen = !this.frameColourDropdownOpen; }
+  closeFrameColourDropdown()  { this.frameColourDropdownOpen = false; }
+
+  selectFrameColour(opt: FrameColourOption) {
+    this.selectedFrameColourId  = opt.frameColourId;
+    this.frameColourDropdownOpen = false;
+    this.onFrameColourChange();
+  }
+
+  getFrameColourLabel(): string {
+    if (!this.selectedFrameColourId) return 'Select colour';
+    return this.frameColourOptions.find(o => o.frameColourId === this.selectedFrameColourId)?.description ?? 'Select colour';
+  }
+
+  getFrameColourCss(description: string): string {
+    const n = description.toLowerCase();
+    if (n.includes('anthracite'))                             return '#383E42';
+    if (n.includes('black'))                                  return '#1C1C1C';
+    if (n.includes('dark grey') || n.includes('dark gray'))   return '#5A5A5A';
+    if (n.includes('light grey') || n.includes('light gray')) return '#D3D3D3';
+    if (n.includes('grey') || n.includes('gray'))             return '#9E9E9E';
+    if (n.includes('silver'))      return '#C0C0C0';
+    if (n.includes('white'))       return '#F2F2F2';
+    if (n.includes('cream') || n.includes('ivory')) return '#F5F0D0';
+    if (n.includes('beige'))       return '#C8B89A';
+    if (n.includes('sand'))        return '#D4BC8A';
+    if (n.includes('bronze'))      return '#8C6B3E';
+    if (n.includes('brown'))       return '#6B3A2A';
+    if (n.includes('terracotta'))  return '#C75B39';
+    if (n.includes('green'))       return '#3A5F3A';
+    if (n.includes('blue'))        return '#2B4F7A';
+    if (n.includes('red'))         return '#B22222';
+    return '#888888';
+  }
 
   isBracketSelected(bracketName: string): boolean {
     return this.selectedBrackets.includes(bracketName);
@@ -226,9 +262,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.custom-dropdown')) {
-      this.bracketDropdownOpen = false;
-    }
+    if (!target.closest('.custom-dropdown'))     this.bracketDropdownOpen = false;
+    if (!target.closest('.frame-colour-dropdown')) this.frameColourDropdownOpen = false;
   }
 
   // ── Observable setup ───────────────────────────────────────────────────────
@@ -833,7 +868,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   onRalSurchargeChange() {
     if (!this.includeRalSurcharge) {
       this.removeAddonLineItem('ral');
-      this.selectedFrameColourId = null;
+      this.selectedFrameColourId   = null;
+      this.frameColourDropdownOpen = false;
       this.removeAddonLineItem('framecolour');
       return;
     }

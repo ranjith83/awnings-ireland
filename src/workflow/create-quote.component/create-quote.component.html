@@ -178,7 +178,7 @@
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(lightingCassettes$ | async)?.length">
+        <div class="form-group lighting-group" *ngIf="(lightingCassettes$ | async)?.length">
           <label class="form-label">Lighting Cassette</label>
           <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
             <option value="" disabled selected>Select</option>
@@ -225,22 +225,34 @@
 
         <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge">
           <label class="form-label" style="visibility:hidden;">RAL</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
-            <span>Non-standard RAL colors</span>
-          </label>
-          <!-- Frame Colour dropdown — shown when RAL is checked and frame colours are available -->
-          <div class="frame-colour-section" *ngIf="includeRalSurcharge && hasFrameColour && frameColourOptions.length > 0">
-            <label class="frame-colour-label">Frame Colour</label>
-            <select class="frame-colour-select"
-                    [(ngModel)]="selectedFrameColourId"
-                    (ngModelChange)="onFrameColourChange()">
-              <option [ngValue]="null">-- Select frame colour --</option>
-              <option *ngFor="let opt of frameColourOptions" [ngValue]="opt.frameColourId">
-                {{ opt.colorValue === 1 ? '■' : '□' }} {{ opt.description }}
-              </option>
-            </select>
+          <div class="ral-frame-row">
+            <label class="checkbox-label">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
+              <span>Non-standard RAL colors</span>
+            </label>
+            <div class="frame-colour-section" *ngIf="hasFrameColour && frameColourOptions.length > 0">
+              <div class="custom-dropdown frame-colour-dropdown">
+                <button type="button" class="dropdown-trigger frame-colour-trigger"
+                        [disabled]="!includeRalSurcharge"
+                        (click)="toggleFrameColourDropdown()">
+                  <span class="colour-swatch-sm"
+                        [style.background]="selectedFrameColourId ? getFrameColourCss(getFrameColourLabel()) : '#ccc'">
+                  </span>
+                  <span class="colour-trigger-label">{{ getFrameColourLabel() }}</span>
+                  <span class="dropdown-arrow">▾</span>
+                </button>
+                <div class="dropdown-panel colour-panel" *ngIf="frameColourDropdownOpen">
+                  <div class="colour-option"
+                       *ngFor="let opt of frameColourOptions"
+                       [class.selected]="selectedFrameColourId === opt.frameColourId"
+                       (click)="selectFrameColour(opt)">
+                    <span class="colour-swatch-sm" [style.background]="getFrameColourCss(opt.description)"></span>
+                    <span>{{ opt.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -278,24 +290,25 @@
 
         </div>
 
+      </div>
+
+      <!-- Valance Style + Wall Sealing on their own row -->
+      <div class="extras-addons-row" style="margin-top:20px;"
+           *ngIf="hasValanceStyle || hasWallSealing">
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-          <label class="form-label" style="visibility:hidden;">Valance</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
             <span>Valance Style</span>
           </label>
         </div>
-
         <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
-          <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
           <label class="checkbox-label">
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
             <span>Wall Sealing Profile</span>
           </label>
         </div>
-
       </div>
     </div>
 
