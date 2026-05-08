@@ -14,7 +14,8 @@ export enum ProductItemType {
   LightingCassettes  = 6,
   WallSealingProfile = 7,
   Controls           = 8,
-  Heaters            = 9
+  Heaters            = 9,
+  FrameColour        = 10
 }
 
 // DTOs matching C# backend

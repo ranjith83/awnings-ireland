@@ -185,10 +185,13 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   includeValanceStyle  = false;
   includeWallSealing   = false;
 
+  selectedFrameColour: number | null = null;
+
   hasRalSurcharge  = false;
   hasShadePlus     = false;
   hasValanceStyle  = false;
   hasWallSealing   = false;
+  hasFrameColour   = false;
 
   extrasDescription = '';
   extrasPrice       = 0;
@@ -614,10 +617,13 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId) return;
     const id = this.selectedModelId;
 
-    this.hasRalSurcharge = false;
-    this.hasShadePlus    = false;
-    this.hasValanceStyle = false;
-    this.hasWallSealing  = false;
+    this.hasRalSurcharge     = false;
+    this.hasShadePlus        = false;
+    this.hasValanceStyle     = false;
+    this.hasWallSealing      = false;
+    this.hasFrameColour      = false;
+    this.selectedFrameColour = null;
+    this.removeAddonLineItem('framecolour');
     this.shadePlusOptions = [];
     this.shadePlusAllRows = [];
     this.shadePlusHasMultiple = false;
@@ -654,6 +660,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
+    this.workflowService.hasFrameColour(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasFrameColour = v);
     this.reloadArmTypeDependents();
     this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.heatersSubject$.next(v)), catchError(() => of([]))).subscribe();
     this.workflowService.getLightingCassettesForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.lightingCassettesSubject$.next(v)), catchError(() => of([]))).subscribe();
@@ -721,10 +728,11 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
-    if (this.includeRalSurcharge)  this.onRalSurchargeChange();
-    if (this.includeShadeplus)     this.onShadeplusChange();
-    if (this.includeValanceStyle)  this.onValanceStyleChange();
-    if (this.includeWallSealing)   this.onWallSealingChange();
+    if (this.includeRalSurcharge)   this.onRalSurchargeChange();
+    if (this.includeShadeplus)      this.onShadeplusChange();
+    if (this.includeValanceStyle)   this.onValanceStyleChange();
+    if (this.includeWallSealing)    this.onWallSealingChange();
+    if (this.selectedFrameColour === 1) this.onFrameColourSelect(1);
   }
 
   private resolveCeilingWidth(entered: number | null): number | null {
@@ -871,6 +879,24 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     this.workflowService.getWallSealingProfilePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => { this.addOrUpdateAddonLineItem('wallsealing', { description: 'Wall Sealing Profile', quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, price, this.vatRate, 0), id: this.getAddonItemId('wallsealing') }); });
+  }
+
+  onFrameColourSelect(value: number) {
+    this.selectedFrameColour = value;
+    if (value === 0) { this.removeAddonLineItem('framecolour'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getFrameColourPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        if (price > 0) {
+          this.addOrUpdateAddonLineItem('framecolour', {
+            description: 'Frame Colour - Black',
+            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+            amount: this.calculateAmount(1, price, this.vatRate, 0),
+            id: this.getAddonItemId('framecolour')
+          });
+        }
+      });
   }
 
   onMotorChange() {
@@ -1317,7 +1343,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   }
 
   private getAddonItemId(type: string): number {
-    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012 };
+    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012, framecolour: 100013 };
     return ids[type] || 0;
   }
 
@@ -1332,12 +1358,13 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       wallsealing: ProductItemType.WallSealingProfile,
       control:     ProductItemType.Controls,
       heater:      ProductItemType.Heaters,
+      framecolour: ProductItemType.FrameColour,
     };
     return map[type];
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control'];
+    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control', 'framecolour'];
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {

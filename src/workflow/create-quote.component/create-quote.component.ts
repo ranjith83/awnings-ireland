@@ -186,11 +186,15 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // Wall Sealing Profile — price fetched from API based on productId + ceiling width
   includeWallSealing  = false;
 
+  // Frame Colour — 0 = white (standard, no charge), 1 = black (surcharge), null = not selected
+  selectedFrameColour: number | null = null;
+
   // ── Addon availability flags (set after workflow/product selected) ──────────
   hasRalSurcharge    = false;
   hasShadePlus       = false;
   hasValanceStyle    = false;
   hasWallSealing     = false;
+  hasFrameColour     = false;
 
   // Extras (free-text line item)
   extrasDescription = '';
@@ -421,10 +425,13 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     const id = this.selectedModelId;
 
     // Reset availability flags so stale checkboxes from a prior product don't linger
-    this.hasRalSurcharge = false;
-    this.hasShadePlus    = false;
-    this.hasValanceStyle = false;
-    this.hasWallSealing  = false;
+    this.hasRalSurcharge    = false;
+    this.hasShadePlus       = false;
+    this.hasValanceStyle    = false;
+    this.hasWallSealing     = false;
+    this.hasFrameColour     = false;
+    this.selectedFrameColour = null;
+    this.removeAddonLineItem('framecolour');
     this.shadePlusOptions = [];
     this.shadePlusAllRows = [];
     this.shadePlusHasMultiple = false;
@@ -480,6 +487,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
     this.workflowService.hasWallSealingProfiles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
+    this.workflowService.hasFrameColour(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasFrameColour = v);
 
     // Brackets + motors both depend on armTypeId — load with default armTypeId 1 initially
     this.reloadArmTypeDependents();
@@ -585,6 +593,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     if (this.includeShadeplus) this.onShadeplusChange();
     if (this.includeValanceStyle) this.onValanceStyleChange();
     if (this.includeWallSealing)  this.onWallSealingChange();
+    if (this.selectedFrameColour === 1) this.onFrameColourSelect(1);
   }
 
   /** Returns the smallest standard width >= enteredWidthCm (ceiling/tier pricing).
@@ -804,6 +813,24 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           amount: this.calculateAmount(1, price, this.vatRate, 0),
           id: this.getAddonItemId('wallsealing')
         });
+      });
+  }
+
+  onFrameColourSelect(value: number) {
+    this.selectedFrameColour = value;
+    if (value === 0) { this.removeAddonLineItem('framecolour'); return; }
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getFrameColourPrice(this.selectedModelId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        if (price > 0) {
+          this.addOrUpdateAddonLineItem('framecolour', {
+            description: 'Frame Colour - Black',
+            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+            amount: this.calculateAmount(1, price, this.vatRate, 0),
+            id: this.getAddonItemId('framecolour')
+          });
+        }
       });
   }
 
@@ -1337,7 +1364,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   private getAddonItemId(type: string): number {
-    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012 };
+    const ids: { [k: string]: number } = { bracket: 100001, arm: 100002, motor: 100003, heater: 100004, electrician: 100005, installation: 100006, ral: 100007, shadeplus: 100008, valance: 100009, wallsealing: 100010, lighting: 100011, control: 100012, framecolour: 100013 };
     return ids[type] || 0;
   }
 
@@ -1353,12 +1380,13 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       wallsealing: ProductItemType.WallSealingProfile,
       control:     ProductItemType.Controls,
       heater:      ProductItemType.Heaters,
+      framecolour: ProductItemType.FrameColour,
     };
     return map[type];
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control'];
+    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control', 'framecolour'];
     const items = this.quoteItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {

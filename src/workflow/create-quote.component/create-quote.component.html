@@ -284,6 +284,26 @@
           </label>
         </div>
 
+        <div class="form-group" *ngIf="hasFrameColour">
+          <label class="form-label">Frame Colour</label>
+          <div class="frame-colour-picker">
+            <button type="button"
+              class="frame-colour-swatch white-swatch"
+              [class.selected]="selectedFrameColour === 0"
+              (click)="onFrameColourSelect(0)"
+              title="White (standard)">
+              <span class="swatch-label">White</span>
+            </button>
+            <button type="button"
+              class="frame-colour-swatch black-swatch"
+              [class.selected]="selectedFrameColour === 1"
+              (click)="onFrameColourSelect(1)"
+              title="Black (surcharge)">
+              <span class="swatch-label">Black</span>
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
 

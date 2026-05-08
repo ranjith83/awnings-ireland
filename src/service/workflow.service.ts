@@ -354,7 +354,12 @@ hasWallSealingProfiles(productId: number): Observable<boolean> {
   return this.http.get<boolean>(`${this.apiUrl}/HasWallSealingProfiles`, { params: { ProductId: productId } })
     .pipe(catchError(this.handleError));
 }
- 
+
+hasFrameColour(productId: number): Observable<boolean> {
+  return this.http.get<boolean>(`${this.apiUrl}/HasFrameColour`, { params: { ProductId: productId } })
+    .pipe(catchError(this.handleError));
+}
+
 // ── Addon price lookups ───────────────────────────────────────────────────────
  
 getNonStandardRALColourPrice(productId: number, widthcm: number): Observable<number> {
@@ -374,6 +379,11 @@ getValanceStylePrice(productId: number, widthcm: number): Observable<number> {
  
 getWallSealingProfilePrice(productId: number, widthcm: number): Observable<number> {
   return this.http.get<number>(`${this.apiUrl}/GeWallSealingProfilerPriceForProduct`, { params: { ProductId: productId, widthcm } })
+    .pipe(catchError(this.handleError));
+}
+
+getFrameColourPrice(productId: number, widthcm: number): Observable<number> {
+  return this.http.get<number>(`${this.apiUrl}/GetFrameColourPriceForProduct`, { params: { ProductId: productId, widthcm } })
     .pipe(catchError(this.handleError));
 }
  
