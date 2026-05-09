@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute } from '@angular/router';
 import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
 import { catchError, finalize, takeUntil, tap, take } from 'rxjs/operators';
-import { BehaviorSubject, Observable, of, Subject } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, Observable, of, Subject } from 'rxjs';
 import { WorkflowDto, WorkflowService } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 
@@ -225,7 +225,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       take(1), // ✅ Complete after first emission
       takeUntil(this.destroy$),
       tap((response: any) => {
-        const events = response.value || [];
+        const events: any[] = Array.isArray(response) ? response : (response?.value ?? []);
         console.log('✅ Loaded calendar events:', events.length, 'events');
         console.log('Events:', events);
         
@@ -240,7 +240,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       catchError(error => {
         console.error('❌ Error loading calendar events:', error);
         this.notificationService.error('Failed to load calendar events');
-        return of({ value: [] });
+        return of([]);
       })
     )
     .subscribe();
@@ -267,12 +267,10 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     try {
       console.log('🗑️ Starting delete operation for:', idToDelete);
       
-      await this.outlookService.deleteCalendarEvent(idToDelete)
-        .pipe(
-          take(1),
-          takeUntil(this.destroy$)
-        )
-        .toPromise();
+      await firstValueFrom(
+        this.outlookService.deleteCalendarEvent(idToDelete)
+          .pipe(takeUntil(this.destroy$))
+      );
       
       console.log('✅ Delete successful');
       

@@ -4,7 +4,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../app/environments/environment';
 
 export interface OutlookEvent {
+  id?: string;
   subject: string;
+  isAllDay?: boolean;
   body: {
     contentType: string;
     content: string;
@@ -54,8 +56,8 @@ export class OutlookCalendarService {
     return this.http.post(`${this.apiUrl}/create-showroom-invite`, invite);
   }
 
-  getCalendarEvents(startDate: string, endDate: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/events`, {
+  getCalendarEvents(startDate: string, endDate: string): Observable<OutlookEvent[]> {
+    return this.http.get<OutlookEvent[]>(`${this.apiUrl}/events`, {
       params: { startDate, endDate }
     });
   }

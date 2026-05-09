@@ -167,7 +167,7 @@
                 type="button" 
                 class="btn-delete"
                 (click)="confirmDeleteEvent(event.id, event.subject)"
-                [disabled]="isDeletingEvent(event.id) || (isLoading$ | async)"
+                [disabled]="isDeletingEvent(event.id) || !!(isLoading$ | async)"
                 title="Delete event">
                 <svg *ngIf="!isDeletingEvent(event.id)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>
@@ -242,7 +242,7 @@
 
       <!-- Action Buttons -->
       <div class="form-actions">
-        <button type="button" class="btn btn-secondary" (click)="onClose()" [disabled]="isLoading$ | async">
+        <button type="button" class="btn btn-secondary" (click)="onClose()" [disabled]="!!(isLoading$ | async)">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M4.646 4.646a.5.5 0 01.708 0L8 7.293l2.646-2.647a.5.5 0 01.708.708L8.707 8l2.647 2.646a.5.5 0 01-.708.708L8 8.707l-2.646 2.647a.5.5 0 01-.708-.708L7.293 8 4.646 5.354a.5.5 0 010-.708z"/>
           </svg>
@@ -252,7 +252,7 @@
           type="button" 
           class="btn btn-primary" 
           (click)="onSave()"
-          [disabled]="!bookingForm.valid || (isLoading$ | async)">
+          [disabled]="!bookingForm.valid || !!(isLoading$ | async)">
           <svg *ngIf="!(isLoading$ | async)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M13.854 3.646a.5.5 0 010 .708l-7 7a.5.5 0 01-.708 0l-3.5-3.5a.5.5 0 11.708-.708L6.5 10.293l6.646-6.647a.5.5 0 01.708 0z"/>
           </svg>
@@ -340,7 +340,7 @@
             type="button" 
             class="btn-delete"
             (click)="confirmDeleteEvent(event.id, event.subject)"
-            [disabled]="isDeletingEvent(event.id) || (isLoading$ | async)"
+            [disabled]="isDeletingEvent(event.id) || !!(isLoading$ | async)"
             title="Delete event">
             <svg *ngIf="!isDeletingEvent(event.id)" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"/>

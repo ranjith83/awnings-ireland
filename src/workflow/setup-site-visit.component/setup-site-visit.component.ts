@@ -506,7 +506,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           // Support both { value: [...] } and a direct array
-          const events: any[] = response?.value ?? (Array.isArray(response) ? response : []);
+          const raw = response as any;
+          const events: any[] = raw?.value ?? (Array.isArray(raw) ? raw : []);
 
           // Switch to streaming mode and push events one by one
           this.calendarLoading$.next(false);
