@@ -1,16 +1,19 @@
-name: Deploy Angular App
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  build_and_deploy:
+  # ── 1. Build ────────────────────────────────────────────────────────────────
+  build:
     runs-on: ubuntu-latest
-    name: Build and Deploy Job
+    name: Build
+
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: true
@@ -20,24 +23,77 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: Install and Build
-        run: |
-          npm install
-          npm run build --configuration=production
+      - name: Install dependencies
+        run: npm ci
 
-      #- name: Rename CSR to index.html
-      #  run: mv dist/awnings-ireland/browser/index.html dist/awnings-ireland/browser/index.html
+      - name: Build (production)
+        run: npm run build:client
 
-      - name: Build and Deploy
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: dist/awnings-ireland/browser
+          retention-days: 1
+
+  # ── 2. Deploy to Dev (automatic) ────────────────────────────────────────────
+  deploy-dev:
+    runs-on: ubuntu-latest
+    name: Deploy to Dev
+    needs: build
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/awnings-ireland/browser
+
+      - name: Deploy to Azure Static Web Apps (Dev)
         uses: Azure/static-web-apps-deploy@v1
         with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          #app_location: "/"
           api_location: "api"
-          # app_location is where the source code lives
-          # app_artifact_location is where the build results live
+          app_location: "dist/awnings-ireland/browser"
+          skip_app_build: true
+
+  # ── 3. Deploy to Production (requires approval) ─────────────────────────────
+  deploy-prod:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: deploy-dev
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          path: dist/awnings-ireland/browser
+
+      - name: Deploy to Azure Static Web Apps (Production)
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_PROD }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          api_location: "api"
           app_location: "dist/awnings-ireland/browser"
           skip_app_build: true
