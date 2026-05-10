@@ -7,10 +7,47 @@ on:
   workflow_dispatch:
 
 jobs:
-  # ── 1. Build ────────────────────────────────────────────────────────────────
-  build:
+  # ── 1. Deploy to Dev (automatic, dev environment build) ─────────────────────
+  deploy-dev:
     runs-on: ubuntu-latest
-    name: Build
+    name: Deploy to Dev
+    environment: dev
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (dev)
+        run: npm run build:dev
+
+      - name: Deploy to Azure Static Web Apps (Dev)
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          api_location: "api"
+          app_location: "dist/awnings-ireland/browser"
+          skip_app_build: true
+
+  # ── 2. Deploy to Production (requires approval, production build) ────────────
+  deploy-prod:
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    needs: deploy-dev
+    environment: production
 
     steps:
       - name: Checkout code
@@ -30,63 +67,6 @@ jobs:
 
       - name: Build (production)
         run: npm run build:client
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-output
-          path: dist/awnings-ireland/browser
-          retention-days: 1
-
-  # ── 2. Deploy to Dev (automatic) ────────────────────────────────────────────
-  deploy-dev:
-    runs-on: ubuntu-latest
-    name: Deploy to Dev
-    needs: build
-    environment: dev
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          persist-credentials: false
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: dist/awnings-ireland/browser
-
-      - name: Deploy to Azure Static Web Apps (Dev)
-        uses: Azure/static-web-apps-deploy@v1
-        with:
-          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_DEV }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: "upload"
-          api_location: "api"
-          app_location: "dist/awnings-ireland/browser"
-          skip_app_build: true
-
-  # ── 3. Deploy to Production (requires approval) ─────────────────────────────
-  deploy-prod:
-    runs-on: ubuntu-latest
-    name: Deploy to Production
-    needs: deploy-dev
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          persist-credentials: false
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: build-output
-          path: dist/awnings-ireland/browser
 
       - name: Deploy to Azure Static Web Apps (Production)
         uses: Azure/static-web-apps-deploy@v1
