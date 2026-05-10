@@ -448,7 +448,17 @@
         <input type="text" [value]="newEventForm.date" readonly class="form-control cal-modal-readonly">
       </div>
 
-      <!-- Description / Title -->
+      <!-- Customer Location (read-only info) -->
+      <div class="cal-modal-field" *ngIf="customerName || customerSiteAddress || customerEircode">
+        <label>Customer Location</label>
+        <div class="cal-modal-customer-info">
+          <span *ngIf="customerName" class="cal-modal-info-name">{{ customerName }}</span>
+          <span *ngIf="customerSiteAddress" class="cal-modal-info-address">{{ customerSiteAddress }}</span>
+          <span *ngIf="customerEircode" class="cal-modal-info-eircode">{{ customerEircode }}</span>
+        </div>
+      </div>
+
+      <!-- Description (pre-filled with customer name + address + Eircode) -->
       <div class="cal-modal-field">
         <label>Description <span class="required">*</span></label>
         <textarea

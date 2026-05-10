@@ -100,7 +100,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Route context ──────────────────────────────────────────────────────────
   workflowId: number | null = null;
   customerId: number | null = null;
-  customerName = ''; customerEmail = '';
+  customerName = ''; customerEmail = ''; productName = '';
   fromFollowUp: number | null = null;
   fromTask: number | null = null;
 
@@ -399,6 +399,16 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   loadAll() {
     if (this.workflowId) this.loadEnquiries(this.workflowId);
     if (this.customerId) this.loadCustomerEmails(this.customerId);
+    if (this.customerId && this.workflowId) this.loadProductName(this.customerId, this.workflowId);
+  }
+
+  loadProductName(customerId: number, workflowId: number): void {
+    this.workflowService.getWorkflowsForCustomer(customerId)
+      .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+      .subscribe(workflows => {
+        const match = workflows.find((w: any) => w.workflowId === workflowId) ?? workflows[0];
+        if (match?.productName) this.productName = match.productName;
+      });
   }
 
   loadEnquiries(workflowId: number) {
@@ -592,6 +602,40 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.sendModalTaskId = row.taskId; this.sendToEmail = row.fromEmail;
     this.sendSubject = `Re: ${row.subject}`; this.sendBody = '';
     this.showSendModal = true; this.notificationService.error('');
+  }
+
+  applyQuoteTemplate(): void {
+    const firstName     = (this.customerName || '').split(' ')[0].trim() || 'Customer';
+    const salesperson   = this.defaultSignature?.fullName?.trim() || '[Salesperson Name]';
+    const model         = this.productName || '[Model Name]';
+    this.sendSubject    = `Quote for ${model} – Awnings of Ireland`;
+    this.sendBody       = `Dear ${firstName},
+
+Thank you for reaching out to us at Awnings of Ireland.
+
+Please find attached a quote for the ${model}. Additionally, I've included some information about the ${model} and attached a brochure for your reference.
+
+These awnings are manufactured in Germany. The aluminium powder-coated cassette is designed to withstand rain without any risk of rust.
+
+The awning can endure winds of up to 40 km/h when fully extended. With our self-cleaning fabric, your new awning will require minimal maintenance.
+
+You can choose from a range of RAL colours for the frame, as well as over 250 fabric options. The awning also features an integrated drainage system to keep you dry and shaded underneath.
+
+Please note that all quotations are subject to a site visit. If you're ready to schedule a site survey, feel free to contact me.
+
+Alternatively, we have a showroom located in Sandyford, and I would be happy to assist you with our full range of products if you would like to visit.
+
+Kind regards,
+
+${salesperson}
+Awnings of Ireland.
+As featured on Room to Improve with Dermot Bannon.
+
+Watch the episode here https://www.rte.ie/player/series/room-to-improve
+
+Awnings of Ireland
+Tel:   +353 (0) 1 652 3014
+Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
   }
   closeSendModal() {
     this.showSendModal = false; this.sendModalTaskId = null;

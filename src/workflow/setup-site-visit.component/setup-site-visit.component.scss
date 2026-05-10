@@ -1059,6 +1059,22 @@ textarea.form-control {
   align-items: center;
 }
 
+.cal-modal-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: #f8f9fa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: $text;
+
+  .cal-modal-info-name    { font-weight: 600; }
+  .cal-modal-info-address { color: #555; }
+  .cal-modal-info-eircode { color: #777; font-size: 12px; }
+}
+
 .cal-modal-textarea {
   padding: 8px 10px;
   border: 1px solid #d1d5db;

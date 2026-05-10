@@ -38,6 +38,7 @@ export interface ShowroomInvite {
   customerName: string;
   eventName: string;
   description: string;
+  location?: string;
   eventDate: Date;
   endDate?: Date;
   timeSlot: string;

@@ -135,14 +135,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   closeFrameColourDropdown() { this.frameColourDropdownOpen = false; }
 
   selectFrameColour(opt: FrameColourOption) {
-    this.selectedFrameColourId = opt.frameColourId;
+    this.selectedFrameColourId = opt.frameColourOptionId;
     this.frameColourDropdownOpen = false;
     this.onFrameColourChange();
   }
 
   getFrameColourLabel(): string {
     if (!this.selectedFrameColourId) return 'Select colour';
-    return this.frameColourOptions.find(o => o.frameColourId === this.selectedFrameColourId)?.description ?? 'Select colour';
+    return this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId)?.description ?? 'Select colour';
   }
 
   getFrameColourCss(description: string): string {
@@ -530,7 +530,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
     this.workflowService.hasFrameColour(id).pipe(takeUntil(this.destroy$)).subscribe(v => {
       this.hasFrameColour = v;
       if (v && this.frameColourOptions.length === 0) {
-        this.workflowService.getFrameColourOptions()
+        this.workflowService.getFrameColourOptions(id)
           .pipe(takeUntil(this.destroy$), catchError(() => of([])))
           .subscribe(opts => this.frameColourOptions = opts);
       }
@@ -611,11 +611,10 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
           tap(motors => {
             this.motorsSubject$.next(motors);
             if (!this.selectedMotor) {
-              const defaultMotor = motors.find(m =>
-                m.description.toLowerCase().includes('radio') &&
-                m.description.toLowerCase().includes('rts') &&
-                m.description.toLowerCase().includes('1 ch')
-              );
+              const defaultMotor = motors.find(m => {
+                const d = m.description.toLowerCase();
+                return d.includes('radio-contr') && d.includes('1 ch') && !d.includes('manual override');
+              });
               if (defaultMotor) {
                 this.selectedMotor = defaultMotor.motorId.toString();
                 this.onMotorChange();
@@ -874,17 +873,23 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   }
 
   onFrameColourChange() {
-    const opt = this.frameColourOptions.find(o => o.frameColourId === this.selectedFrameColourId);
-    if (!opt || opt.colorValue === 1 || opt.price === 0) {
+    const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
+    if (!opt) { this.removeAddonLineItem('framecolour'); return; }
+    if (!opt.isNonStandardRAL) {
       this.removeAddonLineItem('framecolour');
       return;
     }
-    this.addOrUpdateAddonLineItem('framecolour', {
-      description: `Frame Colour - ${opt.description}`,
-      quantity: 1, unitPrice: opt.price, taxRate: this.vatRate, discountPercentage: 0,
-      amount: this.calculateAmount(1, opt.price, this.vatRate, 0),
-      id: this.getAddonItemId('framecolour')
-    });
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => {
+        this.addOrUpdateAddonLineItem('framecolour', {
+          description: `Frame Colour - ${opt.description}`,
+          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          amount: this.calculateAmount(1, price, this.vatRate, 0),
+          id: this.getAddonItemId('framecolour')
+        });
+      });
   }
 
   onMotorChange() {

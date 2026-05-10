@@ -245,7 +245,7 @@
                 <div class="dropdown-panel colour-panel" *ngIf="frameColourDropdownOpen">
                   <div class="colour-option"
                        *ngFor="let opt of frameColourOptions"
-                       [class.selected]="selectedFrameColourId === opt.frameColourId"
+                       [class.selected]="selectedFrameColourId === opt.frameColourOptionId"
                        (click)="selectFrameColour(opt)">
                     <span class="colour-swatch-sm" [style.background]="getFrameColourCss(opt.description)"></span>
                     <span>{{ opt.description }}</span>

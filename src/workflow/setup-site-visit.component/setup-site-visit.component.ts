@@ -111,7 +111,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   // ── Calendar event creation modal ──────────────────────────────────────────
   showAddEventModal = false;
-  newEventForm = { subject: '', date: '', startTime: '', endTime: '' };
+  newEventForm = { subject: '', date: '', startTime: '', endTime: '', location: '', description: '' };
   isCreatingEvent$ = new BehaviorSubject<boolean>(false);
   createEventError$ = new BehaviorSubject<string>('');
   createEventSuccess$ = new BehaviorSubject<string>('');
@@ -902,7 +902,15 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     if (day.isPast && !day.isToday) return;
     this.selectDay(day);
     const dateKey = this.toDateKey(day.date);
-    this.newEventForm = { subject: '', date: dateKey, startTime: '', endTime: '' };
+    const addressParts = [this.customerSiteAddress, this.customerEircode].filter(Boolean);
+    this.newEventForm = {
+      subject: '',
+      date: dateKey,
+      startTime: '',
+      endTime: '',
+      location: this.customerEircode || '',
+      description: addressParts.join(', ')
+    };
     this.createEventError$.next('');
     this.createEventSuccess$.next('');
     this.buildModalTimeSlots(dateKey);
@@ -923,7 +931,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const { date, startTime, endTime, subject } = this.newEventForm;
+    const { date, startTime, endTime, subject, location, description } = this.newEventForm;
     const baseDate = this.parseDateKey(date);
     const startDateTime = this.parseTimeSlot(baseDate, startTime);
     const endDateTime   = this.parseTimeSlot(baseDate, endTime);
@@ -934,7 +942,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       customerEmail: this.customerEmail || '',
       customerName:  this.customerName || '',
       eventName:     subject,
-      description:   subject,
+      description:   description || subject,
+      location:      location || undefined,
       eventDate:     startDateTime,
       endDate:       endDateTime,
       timeSlot:      startTime,

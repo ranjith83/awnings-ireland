@@ -497,7 +497,15 @@
     <div class="modal-body">
       <div class="modal-field"><label class="modal-label">To</label><input type="email" class="modal-input" [(ngModel)]="sendToEmail" placeholder="recipient@example.com" [disabled]="(isSendingEmail$ | async) === true" /></div>
       <div class="modal-field"><label class="modal-label">Subject</label><input type="text" class="modal-input" [(ngModel)]="sendSubject" placeholder="Subject…" [disabled]="(isSendingEmail$ | async) === true" /></div>
-      <div class="modal-field"><label class="modal-label">Message <span class="required">*</span></label><textarea class="modal-input modal-textarea" [(ngModel)]="sendBody" placeholder="Type your message…" rows="6" [disabled]="(isSendingEmail$ | async) === true"></textarea></div>
+      <div class="modal-field">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <label class="modal-label" style="margin-bottom:0">Message <span class="required">*</span></label>
+          <button type="button" class="btn-icon btn-reply" style="font-size:12px;padding:4px 10px;" (click)="applyQuoteTemplate()" [disabled]="(isSendingEmail$ | async) === true">
+            📋 Quote Template
+          </button>
+        </div>
+        <textarea class="modal-input modal-textarea" [(ngModel)]="sendBody" placeholder="Type your message…" rows="10" [disabled]="(isSendingEmail$ | async) === true"></textarea>
+      </div>
     </div>
     <div class="modal-field">
       <label class="modal-label">Attachments</label>
