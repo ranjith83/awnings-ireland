@@ -408,7 +408,50 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       .subscribe(workflows => {
         const match = workflows.find((w: any) => w.workflowId === workflowId) ?? workflows[0];
         if (match?.productName) this.productName = match.productName;
+        this.applyTemplateToEnquiryForm();
       });
+  }
+
+  private buildQuoteBodyText(model: string, firstName: string): string {
+    return `Dear ${firstName},
+
+Thank you for reaching out to us at Awnings of Ireland.
+
+Please find attached a quote for the ${model}. Additionally, I've included some information about the ${model} and attached a brochure for your reference.
+
+These awnings are manufactured in Germany. The aluminium powder-coated cassette is designed to withstand rain without any risk of rust.
+
+The awning can endure winds of up to 40 km/h when fully extended. With our self-cleaning fabric, your new awning will require minimal maintenance.
+
+You can choose from a range of RAL colours for the frame, as well as over 250 fabric options. The awning also features an integrated drainage system to keep you dry and shaded underneath.
+
+Please note that all quotations are subject to a site visit. If you're ready to schedule a site survey, feel free to contact me.
+
+Alternatively, we have a showroom located in Sandyford, and I would be happy to assist you with our full range of products if you would like to visit.`;
+  }
+
+  private buildQuoteSignatureText(salesperson: string): string {
+    return `Kind regards,
+
+${salesperson}
+Awnings of Ireland.
+As featured on Room to Improve with Dermot Bannon.
+
+Watch the episode here https://www.rte.ie/player/series/room-to-improve
+
+Awnings of Ireland
+Tel:   +353 (0) 1 652 3014
+Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
+  }
+
+  private applyTemplateToEnquiryForm(): void {
+    const firstName   = (this.customerName || '').split(' ')[0].trim() || 'Customer';
+    const model       = this.productName || '[Model Name]';
+    const salesperson = this.userSignatures.find(s => s.isDefault)?.fullName?.trim()
+                     || this.userSignatures[0]?.fullName?.trim()
+                     || '[Salesperson Name]';
+    this.newComments  = this.buildQuoteBodyText(model, firstName);
+    this.newSignature = this.buildQuoteSignatureText(salesperson);
   }
 
   loadEnquiries(workflowId: number) {
@@ -605,37 +648,15 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   }
 
   applyQuoteTemplate(): void {
-    const firstName     = (this.customerName || '').split(' ')[0].trim() || 'Customer';
-    const salesperson   = this.defaultSignature?.fullName?.trim() || '[Salesperson Name]';
-    const model         = this.productName || '[Model Name]';
-    this.sendSubject    = `Quote for ${model} – Awnings of Ireland`;
-    this.sendBody       = `Dear ${firstName},
-
-Thank you for reaching out to us at Awnings of Ireland.
-
-Please find attached a quote for the ${model}. Additionally, I've included some information about the ${model} and attached a brochure for your reference.
-
-These awnings are manufactured in Germany. The aluminium powder-coated cassette is designed to withstand rain without any risk of rust.
-
-The awning can endure winds of up to 40 km/h when fully extended. With our self-cleaning fabric, your new awning will require minimal maintenance.
-
-You can choose from a range of RAL colours for the frame, as well as over 250 fabric options. The awning also features an integrated drainage system to keep you dry and shaded underneath.
-
-Please note that all quotations are subject to a site visit. If you're ready to schedule a site survey, feel free to contact me.
-
-Alternatively, we have a showroom located in Sandyford, and I would be happy to assist you with our full range of products if you would like to visit.
-
-Kind regards,
-
-${salesperson}
-Awnings of Ireland.
-As featured on Room to Improve with Dermot Bannon.
-
-Watch the episode here https://www.rte.ie/player/series/room-to-improve
-
-Awnings of Ireland
-Tel:   +353 (0) 1 652 3014
-Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
+    const firstName   = (this.customerName || '').split(' ')[0].trim() || 'Customer';
+    const model       = this.productName || '[Model Name]';
+    const salesperson = this.userSignatures.find(s => s.isDefault)?.fullName?.trim()
+                     || this.userSignatures[0]?.fullName?.trim()
+                     || '[Salesperson Name]';
+    this.sendSubject  = `Quote for ${model} – Awnings of Ireland`;
+    this.sendBody     = this.buildQuoteBodyText(model, firstName)
+                      + '\n\n'
+                      + this.buildQuoteSignatureText(salesperson);
   }
   closeSendModal() {
     this.showSendModal = false; this.sendModalTaskId = null;

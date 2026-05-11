@@ -629,11 +629,14 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
   // ── Dimension / addon handlers ─────────────────────────────────────────────
 
   onWidthInput() {
+    if (!this.enteredWidthCm || String(Math.floor(Math.abs(this.enteredWidthCm))).length < 3) {
+      this.selectedWidthCm = null;
+      return;
+    }
     // Resolve the entered value to the floor standard-width tier
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
-    if (this.includeRalSurcharge) this.onRalSurchargeChange();
     // ShadePlus: options are already loaded at product level — no re-fetch needed.
     // If ShadePlus is already checked, refresh the line item price for the new width.
     if (this.includeShadeplus) this.onShadeplusChange();
@@ -748,19 +751,8 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       this.selectedFrameColourId   = null;
       this.frameColourDropdownOpen = false;
       this.removeAddonLineItem('framecolour');
-      return;
     }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        this.addOrUpdateAddonLineItem('ral', {
-          description: 'Non-standard RAL colors',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          amount: this.calculateAmount(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('ral')
-        });
-      });
+    // Line item is only added when the user selects a colour from the frame colour dropdown
   }
 
   onShadeplusChange() {
@@ -874,21 +866,23 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
   onFrameColourChange() {
     const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
-    if (!opt) { this.removeAddonLineItem('framecolour'); return; }
-    if (!opt.isNonStandardRAL) {
+    if (!opt || !this.selectedModelId || !this.selectedWidthCm) {
       this.removeAddonLineItem('framecolour');
       return;
     }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {
-        this.addOrUpdateAddonLineItem('framecolour', {
-          description: `Frame Colour - ${opt.description}`,
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-          amount: this.calculateAmount(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('framecolour')
-        });
+        if (price > 0) {
+          this.addOrUpdateAddonLineItem('framecolour', {
+            description: `Frame Colour - ${opt.description}`,
+            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+            amount: this.calculateAmount(1, price, this.vatRate, 0),
+            id: this.getAddonItemId('framecolour')
+          });
+        } else {
+          this.removeAddonLineItem('framecolour');
+        }
       });
   }
 
