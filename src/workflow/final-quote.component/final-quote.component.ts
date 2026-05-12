@@ -709,7 +709,9 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
       if (v && this.frameColourOptions.length === 0) {
         this.workflowService.getFrameColourOptions(id)
           .pipe(takeUntil(this.destroy$), catchError(() => of([])))
-          .subscribe(opts => this.frameColourOptions = opts);
+          .subscribe(opts => {
+            this.frameColourOptions = opts;
+          });
       }
     });
     this.reloadArmTypeDependents();
@@ -735,7 +737,18 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           takeUntil(this.destroy$),
           tap(armTypeId => {
             this.workflowService.getBracketsForProduct(productId, armTypeId)
-              .pipe(takeUntil(this.destroy$), tap(brackets => { this.bracketsSubject$.next(brackets); this.onBracketChange(); }), catchError(() => of([]))).subscribe();
+              .pipe(
+                takeUntil(this.destroy$),
+                tap(brackets => {
+                  this.bracketsSubject$.next(brackets);
+                  if (this.selectedBrackets.length === 0) {
+                    const defaultBracket = brackets.find(b => b.isDefault);
+                    if (defaultBracket) { this.selectedBrackets = [defaultBracket.bracketName]; }
+                  }
+                  this.onBracketChange();
+                }),
+                catchError(() => of([]))
+              ).subscribe();
             this.workflowService.getMotorsForProduct(productId, armTypeId)
               .pipe(takeUntil(this.destroy$), tap(motors => {
                 this.motorsSubject$.next(motors);
@@ -751,7 +764,7 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
           tap(brackets => {
             this.bracketsSubject$.next(brackets);
             if (this.selectedBrackets.length === 0) {
-              const def = brackets.find(b => b.bracketName.toLowerCase().includes('surcharge for face fixture') && !b.bracketName.toLowerCase().includes('spreader'));
+              const def = brackets.find(b => b.isDefault);
               if (def) { this.selectedBrackets = [def.bracketName]; this.onBracketChange(); }
             } else { this.onBracketChange(); }
           }),
@@ -850,10 +863,11 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     const items = this.quoteItemsSubject$.value;
     let insertIdx = 1;
     selected.forEach(b => {
+      const price = b.isPriceIgnored ? 0 : b.price;
       const lineItem: QuoteItemDisplay = {
-        description: b.bracketName, quantity: 1, unitPrice: b.price,
+        description: b.bracketName, quantity: 1, unitPrice: price,
         taxRate: this.vatRate, discountPercentage: 0,
-        amount: this.calculateAmount(1, b.price, this.vatRate, 0),
+        amount: this.calculateAmount(1, price, this.vatRate, 0),
         id: 200000 + b.bracketId,
         productItemId: this.getAddonProductItemId('bracket')
       };
@@ -943,10 +957,9 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
 
   onFrameColourChange() {
     const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
-    if (!opt || !this.selectedModelId || !this.selectedWidthCm) {
-      this.removeAddonLineItem('framecolour');
-      return;
-    }
+    if (!opt) { this.removeAddonLineItem('framecolour'); return; }
+
+    if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {

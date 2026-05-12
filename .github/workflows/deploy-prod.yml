@@ -1,7 +1,13 @@
 name: Deploy Frontend – Production
+run-name: "${{ github.event.inputs.deployment_note || 'Manual deploy' }} · ${{ github.sha }}"
 
 on:
   workflow_dispatch:
+    inputs:
+      deployment_note:
+        description: 'Deployment note (paste your commit message here)'
+        required: false
+        default: ''
 
 jobs:
   deploy-prod:

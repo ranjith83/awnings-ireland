@@ -140,7 +140,7 @@
         </div>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Part No.</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Part No.</th><th>Price</th><th class="center-cell">Defaulted</th><th class="center-cell">Price Included</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let b of filteredBrackets$ | async">
                 <td class="id-cell">{{ b.bracketId }}</td>
@@ -148,12 +148,18 @@
                 <td>{{ b.bracketName }}</td>
                 <td class="mono-cell">{{ b.partNumber || '—' }}</td>
                 <td class="price-cell">€{{ b.price | number:'1.2-2' }}</td>
+                <td class="center-cell">
+                  <input type="checkbox" [checked]="b.isDefault" (change)="toggleBracketFlag(b, 'isDefault')" class="config-checkbox" title="Pre-select this bracket by default in quote screens" />
+                </td>
+                <td class="center-cell">
+                  <input type="checkbox" [checked]="b.isPriceIgnored" (change)="toggleBracketFlag(b, 'isPriceIgnored')" class="config-checkbox" title="Add line item at €0 (price included)" />
+                </td>
                 <td class="actions-cell">
                   <button class="btn-row btn-edit" (click)="openEditBracket(b)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
                   <button class="btn-row btn-delete" (click)="confirmDeleteBracket(b)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredBrackets$ | async)?.length === 0"><td colspan="6" class="empty-cell">No brackets found.</td></tr>
+              <tr *ngIf="(filteredBrackets$ | async)?.length === 0"><td colspan="8" class="empty-cell">No brackets found.</td></tr>
             </tbody>
           </table>
         </div>
@@ -697,6 +703,50 @@
       </div>
     </ng-container>
 
+    <!-- ═══════════════  FRAME COLOURS  ══════════════════════════════════════ -->
+    <ng-container *ngIf="activeTab === 'frameColours'">
+      <div class="config-card">
+        <div class="table-toolbar">
+          <h3 class="config-card-title">Frame Colours</h3>
+          <div class="filter-group">
+            <label class="form-label">Filter by Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="frameColourFilterProduct">
+              <option value="">All products</option>
+              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
+          <table class="config-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Colour Description</th>
+                <th>Non-Standard RAL</th>
+                <th class="actions-th">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of filteredFrameColours$ | async">
+                <td><span class="badge-category">{{ c.productName }}</span></td>
+                <td>{{ c.description }}</td>
+                <td class="center-cell">
+                  <span class="badge" [class.badge--active]="c.isNonStandardRAL" [class.badge--inactive]="!c.isNonStandardRAL">
+                    {{ c.isNonStandardRAL ? 'Yes' : 'No' }}
+                  </span>
+                </td>
+                <td class="actions-cell">
+                  <button class="btn-row btn-edit" (click)="openEditFrameColour(c)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11.5 2.5a1.414 1.414 0 012 2L5 13H2v-3L11.5 2.5z"/></svg>Edit</button>
+                  <button class="btn-row btn-delete" (click)="confirmDeleteFrameColour(c)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="(filteredFrameColours$ | async)?.length === 0"><td colspan="4" class="empty-cell">No frame colours found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </ng-container>
+
   </div><!-- /tab-content -->
 
 </div><!-- /config-page -->
@@ -817,6 +867,16 @@
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Width (cm)</label><input class="modal-input" type="number" [(ngModel)]="editingRadioMotor.widthCm" min="0" /></div>
           <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingRadioMotor.price" min="0" step="0.01" /></div>
+        </div>
+      </ng-container>
+
+      <!-- Frame Colours edit -->
+      <ng-container *ngIf="activeTab === 'frameColours' && editingFrameColour">
+        <div class="modal-field"><label class="modal-label">Product</label><input class="modal-input" type="text" [value]="editingFrameColour.productName" disabled /></div>
+        <div class="modal-field"><label class="modal-label">Colour Description</label><input class="modal-input" type="text" [value]="editingFrameColour.description" disabled /></div>
+        <div class="modal-field">
+          <label class="modal-label">Non-Standard RAL</label>
+          <label class="toggle-switch"><input type="checkbox" [(ngModel)]="editingFrameColour.isNonStandardRAL" /><span class="toggle-slider"></span></label>
         </div>
       </ng-container>
 

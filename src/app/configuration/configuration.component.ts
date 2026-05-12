@@ -16,12 +16,14 @@ import {
   HeaterConfig,
   NonStandardRALColourConfig,
   ProjectionConfig,
-  RadioControlledMotorConfig
+  RadioControlledMotorConfig,
+  FrameColourConfig
 } from '../../service/configuration.service';
 
 export type ConfigTab =
   | 'siteVisit' | 'brackets' | 'suppliers' | 'productTypes' | 'products'
-  | 'arms' | 'motors' | 'heaters' | 'ralColours' | 'projections' | 'radioMotors';
+  | 'arms' | 'motors' | 'heaters' | 'ralColours' | 'projections' | 'radioMotors'
+  | 'frameColours';
 
 interface DeleteTarget {
   type: ConfigTab;
@@ -54,6 +56,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     { id: 'ralColours',   label: 'Non-Standard RAL Colours',icon: '🎨' },
     { id: 'projections',  label: 'Projections',             icon: '📐' },
     { id: 'radioMotors',  label: 'Radio Motors',            icon: '📡' },
+    { id: 'frameColours', label: 'Frame Colours',           icon: '🎨' },
   ];
 
   // ── UI state subjects ─────────────────────────────────────────────────────────
@@ -112,6 +115,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   private radioMotorsSubject$      = new BehaviorSubject<RadioControlledMotorConfig[]>([]);
   private radioMotorFilterSubject$ = new BehaviorSubject<number | ''>('');
+
+  private frameColoursSubject$      = new BehaviorSubject<FrameColourConfig[]>([]);
+  private frameColourFilterSubject$ = new BehaviorSubject<number | ''>('');
 
   // Shared product list for all product-scoped tabs
   private allProductsSubject$ = new BehaviorSubject<{ productId: number; label: string }[]>([]);
@@ -209,6 +215,13 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     shareReplay(1)
   );
 
+  filteredFrameColours$: Observable<FrameColourConfig[]> = combineLatest([
+    this.frameColoursSubject$, this.frameColourFilterSubject$
+  ]).pipe(
+    map(([colours, pid]) => pid === '' ? colours : colours.filter(c => c.productId === pid)),
+    shareReplay(1)
+  );
+
   // ── Form models ───────────────────────────────────────────────────────────────
   newSv: Partial<SiteVisitValue>   = { category: '', value: '', displayOrder: 1, isActive: true };
   editingSv: SiteVisitValue | null = null;
@@ -243,6 +256,8 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   newRadioMotor: Partial<RadioControlledMotorConfig>   = { productId: 0, description: '', widthCm: 0, price: 0 };
   editingRadioMotor: RadioControlledMotorConfig | null = null;
 
+  editingFrameColour: FrameColourConfig | null = null;
+
   // ── Filter getters/setters ────────────────────────────────────────────────────
   get svFilterCategory(): string           { return this.svFilterSubject$.value; }
   set svFilterCategory(v: string)          { this.svFilterSubject$.next(v); }
@@ -273,6 +288,9 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   get radioMotorFilterProduct(): number | ''  { return this.radioMotorFilterSubject$.value; }
   set radioMotorFilterProduct(v: number | '') { this.radioMotorFilterSubject$.next(v); }
+
+  get frameColourFilterProduct(): number | ''  { return this.frameColourFilterSubject$.value; }
+  set frameColourFilterProduct(v: number | '') { this.frameColourFilterSubject$.next(v); }
 
   get activeTab(): ConfigTab { return this.activeTabSubject.value; }
 
@@ -314,6 +332,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       case 'ralColours':   this.loadRalColoursAndProducts();    break;
       case 'projections':  this.loadProjectionsAndProducts();   break;
       case 'radioMotors':  this.loadRadioMotorsAndProducts();   break;
+      case 'frameColours': this.loadFrameColoursAndProducts(); break;
     }
   }
 
@@ -895,6 +914,60 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   // ═════════════════════════════════════════════════════════════════════════════
+  //  FRAME COLOURS
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  loadFrameColoursAndProducts(): void {
+    this.isLoadingSubject.next(true);
+    forkJoin({
+      colours:  this.configService.getFrameColours().pipe(catchError(() => of([] as FrameColourConfig[]))),
+      products: this.configService.getProducts().pipe(catchError(() => of([] as ProductConfig[])))
+    }).pipe(
+      takeUntil(this.destroy$),
+      tap(({ colours, products }) => {
+        this.frameColoursSubject$.next(colours);
+        this.allProductsSubject$.next(products.map(p => ({ productId: p.productId, label: p.description })).sort((a, b) => a.label.localeCompare(b.label)));
+        this.isLoadingSubject.next(false);
+      }),
+      catchError(() => { this.errorMessageSubject.next('Failed to load frame colours.'); this.isLoadingSubject.next(false); return of(null); })
+    ).subscribe();
+  }
+
+  openEditFrameColour(c: FrameColourConfig): void { this.editingFrameColour = { ...c }; this.showEditModal = true; }
+
+  saveEditFrameColour(): void {
+    if (!this.editingFrameColour) return;
+    this.isSavingSubject.next(true);
+    this.configService.updateFrameColour(this.editingFrameColour.frameColourId, { isNonStandardRAL: this.editingFrameColour.isNonStandardRAL }).pipe(
+      takeUntil(this.destroy$),
+      tap(() => { this.showSuccess('Frame colour updated.'); this.closeEditModal(); this.loadFrameColoursAndProducts(); }),
+      catchError(() => { this.errorMessageSubject.next('Failed to update frame colour.'); return of(null); }),
+      finalize(() => this.isSavingSubject.next(false))
+    ).subscribe();
+  }
+
+  confirmDeleteFrameColour(c: FrameColourConfig): void {
+    this.deleteTarget = { type: 'frameColours', id: c.frameColourId, label: `${c.productName} — ${c.description}` };
+    this.showDeleteModal = true;
+  }
+
+  toggleBracketFlag(row: BracketConfig, flag: 'isDefault' | 'isPriceIgnored'): void {
+    const updated = { isDefault: row.isDefault, isPriceIgnored: row.isPriceIgnored };
+    updated[flag] = !updated[flag];
+    this.configService.updateBracketFlags(row.bracketId, updated).pipe(
+      takeUntil(this.destroy$),
+      tap(saved => {
+        const list = this.bracketsSubject$.value.map(b =>
+          b.bracketId === saved.bracketId ? saved : b
+        );
+        this.bracketsSubject$.next(list);
+        this.showSuccess('Bracket updated.');
+      }),
+      catchError(() => { this.errorMessageSubject.next('Failed to update bracket.'); return of(null); })
+    ).subscribe();
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
   //  SHARED — DELETE CONFIRM
   // ═════════════════════════════════════════════════════════════════════════════
 
@@ -916,7 +989,8 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     : type === 'heaters'      ? this.configService.deleteHeater(id)
     : type === 'ralColours'   ? this.configService.deleteNonStandardRALColour(id)
     : type === 'projections'  ? this.configService.deleteProjection(id)
-    :                           this.configService.deleteRadioControlledMotor(id);
+    : type === 'radioMotors'  ? this.configService.deleteRadioControlledMotor(id)
+    :                           this.configService.deleteFrameColour(id);
 
     call$.pipe(
       takeUntil(this.destroy$),
@@ -941,6 +1015,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
       case 'ralColours':   this.saveEditRalColour();    break;
       case 'projections':  this.saveEditProjection();   break;
       case 'radioMotors':  this.saveEditRadioMotor();   break;
+      case 'frameColours': this.saveEditFrameColour();  break;
     }
   }
 
@@ -957,6 +1032,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.editingRalColour   = null;
     this.editingProjection  = null;
     this.editingRadioMotor  = null;
+    this.editingFrameColour = null;
   }
 
   // ── Messages ──────────────────────────────────────────────────────────────────

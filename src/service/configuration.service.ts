@@ -21,6 +21,8 @@ export interface BracketConfig {
   bracketName: string;
   partNumber: string;
   price: number;
+  isDefault: boolean;
+  isPriceIgnored: boolean;
   dateCreated?: string;
   createdBy?: string;
 }
@@ -109,6 +111,15 @@ export interface RadioControlledMotorConfig {
   createdBy?: string;
 }
 
+export interface FrameColourConfig {
+  frameColourId: number;
+  productId: number;
+  productName: string;
+  frameColourOptionId: number;
+  description: string;
+  isNonStandardRAL: boolean;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable({ providedIn: 'root' })
@@ -152,6 +163,10 @@ export class ConfigurationService {
 
   deleteBracket(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/configuration/brackets/${id}`);
+  }
+
+  updateBracketFlags(id: number, dto: { isDefault: boolean; isPriceIgnored: boolean }): Observable<BracketConfig> {
+    return this.http.put<BracketConfig>(`${this.base}/api/configuration/brackets/${id}/flags`, dto);
   }
 
   // ── Suppliers ─────────────────────────────────────────────────────────────
@@ -314,5 +329,23 @@ export class ConfigurationService {
 
   deleteRadioControlledMotor(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/api/configuration/radio-motors/${id}`);
+  }
+
+  // ── Frame Colours ─────────────────────────────────────────────────────────
+
+  getFrameColours(): Observable<FrameColourConfig[]> {
+    return this.http.get<FrameColourConfig[]>(`${this.base}/api/configuration/frame-colours`);
+  }
+
+  getFrameColoursByProduct(productId: number): Observable<FrameColourConfig[]> {
+    return this.http.get<FrameColourConfig[]>(`${this.base}/api/configuration/frame-colours/product/${productId}`);
+  }
+
+  updateFrameColour(id: number, dto: { isNonStandardRAL: boolean }): Observable<FrameColourConfig> {
+    return this.http.put<FrameColourConfig>(`${this.base}/api/configuration/frame-colours/${id}`, dto);
+  }
+
+  deleteFrameColour(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/configuration/frame-colours/${id}`);
   }
 }

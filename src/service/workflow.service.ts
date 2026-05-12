@@ -106,7 +106,9 @@ export interface BracketDto {
   bracketId: number;
   bracketName: string;
   price: number;
-  armTypeId: number | null;   // <-- ADD THIS
+  armTypeId: number | null;
+  isDefault: boolean;
+  isPriceIgnored: boolean;
 }
 export interface ArmDto {
   armId: number;
@@ -146,7 +148,6 @@ export interface ControlDto {
 export interface FrameColourOption {
   frameColourOptionId: number;
   description:         string;
-  /** true = price fetched from NonStandardRALColours, false = included (no charge) */
   isNonStandardRAL:    boolean;
 }
 
