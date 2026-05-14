@@ -695,7 +695,8 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       toEmail, subject, body,
       attachments: attachments.length
         ? attachments.map(a => ({ fileName: a.fileName, base64Content: a.base64Content, contentType: a.contentType }))
-        : undefined
+        : undefined,
+      attachBrochure: false
     };
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendDirectEmail(payload)

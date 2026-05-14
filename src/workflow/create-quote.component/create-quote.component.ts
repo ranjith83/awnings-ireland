@@ -245,8 +245,7 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
    * The email is sent using the linked task's send-email endpoint.
    */
   emailToCustomer  = false;
-  brochureFile:    File | null       = null;
-  brochureBase64:  string | null     = null;
+  includeBrochure  = false;
 
   calculatedPrice = 0;
   pageSize        = 10;
@@ -1192,19 +1191,12 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
 
     const body = this.buildQuoteEmailBody(quote);
 
-    // Build attachment list — quote PDF first, then brochure if checked
+    // Build attachment list — quote PDF
     const attachments: EmailAttachmentPayload[] = [];
     if (pdfBase64) {
       attachments.push({
         fileName:      `DraftQuote_${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')}_${this.customerName.replace(/\s+/g, '_')}.pdf`,
         base64Content: pdfBase64,
-        contentType:   'application/pdf'
-      });
-    }
-    if (this.brochureBase64 && this.brochureFile) {
-      attachments.push({
-        fileName:      this.brochureFile.name,
-        base64Content: this.brochureBase64,
         contentType:   'application/pdf'
       });
     }
@@ -1214,7 +1206,9 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       toName:      this.customerName,
       subject:     `Your Draft Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
       body,
-      attachments: attachments.length > 0 ? attachments : undefined
+      attachments:    attachments.length > 0 ? attachments : undefined,
+      attachBrochure: this.includeBrochure,
+      productIds:     this.includeBrochure && this.selectedModelId ? [this.selectedModelId] : undefined
     };
 
     this.isSendingEmail$.next(true);
@@ -1232,29 +1226,6 @@ export class CreateQuoteComponent implements OnInit, OnDestroy {
       });
   }
 
-  onBrochureSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    input.value = '';          // reset so same file can be re-selected
-    if (!file) return;
-    if (file.type !== 'application/pdf') {
-      this.notificationService.error('Only PDF files can be attached as a brochure.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // result is "data:application/pdf;base64,<data>" — strip the prefix
-      this.brochureBase64 = result.split(',')[1];
-      this.brochureFile   = file;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  removeBrochure(): void {
-    this.brochureFile   = null;
-    this.brochureBase64 = null;
-  }
 
   private buildQuoteEmailBody(quote: QuoteDto): string {
     const items = this.quoteItemsSubject$.value;

@@ -111,11 +111,13 @@ export interface SendTaskEmailPayload {
 }
 
 export interface SendDirectEmailPayload {
-  toEmail:       string;
-  toName?:       string;
-  subject:       string;
-  body:          string;
-  attachments?:  EmailAttachmentPayload[];
+  toEmail:         string;
+  toName?:         string;
+  subject:         string;
+  body:            string;
+  attachments?:    EmailAttachmentPayload[];
+  attachBrochure?: boolean;
+  productIds?:     number[];
 }
 
 // ==================== PAGINATION INTERFACES ====================

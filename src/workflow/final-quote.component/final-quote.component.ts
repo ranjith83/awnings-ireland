@@ -235,7 +235,8 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
   extrasDescription = '';
   extrasPrice       = 0;
 
-  emailToCustomer = false;
+  emailToCustomer  = false;
+  includeBrochure  = false;
   calculatedPrice = 0;
 
   private destroy$ = new Subject<void>();
@@ -1238,7 +1239,10 @@ export class FinalQuoteComponent implements OnInit, OnDestroy {
     const payload: SendDirectEmailPayload = {
       toEmail, toName: this.customerName,
       subject: `Your Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
-      body, attachments: attachments.length > 0 ? attachments : undefined
+      body,
+      attachments:    attachments.length > 0 ? attachments : undefined,
+      attachBrochure: this.includeBrochure,
+      productIds:     this.includeBrochure && this.selectedModelId ? [this.selectedModelId] : undefined
     };
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendDirectEmail(payload)

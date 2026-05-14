@@ -510,6 +510,19 @@
               </span>
             </div>
           </div>
+
+          <!-- Brochure attachment -->
+          <div class="brochure-attach-block" style="margin-top:10px">
+            <label class="checkbox-label" [class.disabled]="!emailToCustomer">
+              <input type="checkbox" class="checkbox-input"
+                     [(ngModel)]="includeBrochure"
+                     [disabled]="!emailToCustomer">
+              <span>Include product brochure</span>
+            </label>
+            <p *ngIf="!emailToCustomer" style="font-size:11px;color:#94a3b8;margin:4px 0 0">
+              Enable "Email Final Quote to customer" first.
+            </p>
+          </div>
         </div>
 
         <div class="summary-right">
