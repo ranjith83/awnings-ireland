@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -93,7 +93,8 @@ import { WorkflowStateService } from '../../service/workflow-state.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './initial-enquiry.component.html',
-  styleUrl: './initial-enquiry.component.css'
+  styleUrl: './initial-enquiry.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InitialEnquiryComponent implements OnInit, OnDestroy {
 
@@ -178,7 +179,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     private notificationService: NotificationService,
     private workflowStateService: WorkflowStateService,
-    private http: HttpClient) {}
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.loadUserSignatures();
@@ -191,6 +193,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
       this.newEmail      = this.customerEmail;
       this.loadAll();
+      this.cdr.markForCheck();
     });
   }
 
@@ -225,6 +228,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
               this.newSigFontFamily = def.fontFamily ?? 'georgia';
             }
           }
+          this.cdr.markForCheck();
         },
         error: () => { /* non-fatal */ }
       });
@@ -368,6 +372,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
             this.userSignatures = [...this.userSignatures, saved];
           }
           this.userSignatures = [...this.userSignatures];
+          this.cdr.markForCheck();
           this.showSuccess(this.editingSigId ? 'Signature updated.' : 'Signature saved.');
           this.closeSigBuilder();
         },
@@ -380,6 +385,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     this.signatureService.setDefault(sig.signatureId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.userSignatures = this.userSignatures.map(s => ({ ...s, isDefault: s.signatureId === sig.signatureId }));
+        this.cdr.markForCheck();
         this.showSuccess(`"${sig.label}" set as default.`);
       },
       error: () => this.showError('Failed to set default.')
@@ -389,7 +395,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   deleteSig(sig: UserSignatureDto): void {
     if (!sig.signatureId) return;
     this.signatureService.deleteSignature(sig.signatureId).pipe(takeUntil(this.destroy$)).subscribe({
-      next: () => { this.userSignatures = this.userSignatures.filter(s => s.signatureId !== sig.signatureId); this.showSuccess('Signature deleted.'); },
+      next: () => { this.userSignatures = this.userSignatures.filter(s => s.signatureId !== sig.signatureId); this.cdr.markForCheck(); this.showSuccess('Signature deleted.'); },
       error: () => this.showError('Failed to delete signature.')
     });
   }
@@ -409,6 +415,7 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
         const match = workflows.find((w: any) => w.workflowId === workflowId) ?? workflows[0];
         if (match?.productName) this.productName = match.productName;
         this.applyTemplateToEnquiryForm();
+        this.cdr.markForCheck();
       });
   }
 
@@ -465,6 +472,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
             const first = data.find(e => e.email);
             if (first) { this.newEmail = first.email; this.customerEmail = first.email; }
           }
+          this.cdr.markForCheck();
         },
         error: () => this.showError('Failed to load initial enquiries.')
       });
@@ -486,6 +494,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
             const first = tasks.find(t => t.fromEmail);
             if (first) { this.newEmail = first.fromEmail ?? ''; this.customerEmail = first.fromEmail ?? ''; }
           }
+          this.cdr.markForCheck();
         },
         error: () => this.showError('Failed to load customer emails.')
       });
@@ -525,6 +534,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
           this.newSignature     = def?.signatureText  ?? '';
           this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
           this.pendingAttachments = [];
+          this.cdr.markForCheck();
           this.showSuccess('Enquiry added successfully!');
           this.workflowStateService.notifyStepCompleted('initial-enquiry');
           if (shouldSend && emailToSend)
@@ -556,6 +566,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .subscribe({
         next: () => {
           this.enquiries = this.enquiries.filter(e => e.enquiryId !== id);
+          this.cdr.markForCheck();
           this.showSuccess('Enquiry deleted.');
           this.closeDeleteModal();
         },
@@ -607,6 +618,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
           const idx = this.enquiries.findIndex(e => e.enquiryId === updated.enquiryId);
           if (idx !== -1) this.enquiries[idx] = updated;
           this.enquiries = [...this.enquiries];
+          this.cdr.markForCheck();
           if (this.sendEmailOnUpdate && this.editEmail.trim())
             this.dispatchDirectEmail(this.editEmail.trim(), `Enquiry Update – ${this.customerName}`,
               this.buildEmailBody(this.editComments.trim(), this.editSignature.trim()),
@@ -631,6 +643,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
         .subscribe(html => {
           this.emailModalBodyHtml = html ? this.sanitizer.bypassSecurityTrustHtml(html) : null;
           this.isLoadingEmailBody = false;
+          this.cdr.markForCheck();
         });
     } else {
       this.emailModalBodyHtml = row.emailBody ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody) : null;

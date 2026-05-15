@@ -64,6 +64,14 @@
 
 @keyframes spin { to{transform:rotate(360deg)} }
 
+.sig-loading {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:12px; color:#6b7280;
+}
+.sig-loading .spinner-inline {
+  border-color:rgba(100,116,139,.3); border-top-color:#64748b;
+}
+
 /* ── Table ───────────────────────────────────────────────────────── */
 .table-wrapper { overflow-x:auto; }
 

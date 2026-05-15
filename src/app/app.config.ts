@@ -3,7 +3,6 @@ import { provideRouter } from '@angular/router';
 
 import { routes } from './app.routes';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
-import { LoadingInterceptor } from './interceptors/loading-interceptor';
 import { AuthInterceptor } from './interceptors/auth-interceptor';
 
 export const appConfig: ApplicationConfig = {
@@ -14,16 +13,11 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptorsFromDi()
     ),
- 
-    // Class-based interceptors — order matters: AuthInterceptor runs first
+
+    // AuthInterceptor attaches the JWT token to every outgoing request
     {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthInterceptor,
-      multi: true
-    },
-    {
-      provide: HTTP_INTERCEPTORS,
-      useClass: LoadingInterceptor,
       multi: true
     }
   ]

@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { filter, catchError, switchMap } from 'rxjs/operators';
@@ -39,7 +39,8 @@ const STEP_CHAIN: StepDef[] = [
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './workflow.component.html',
-  styleUrls: ['./workflow.component.css']
+  styleUrls: ['./workflow.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkflowComponent implements OnInit, OnDestroy {
   activeTab     = 'list';
@@ -67,7 +68,8 @@ export class WorkflowComponent implements OnInit, OnDestroy {
     private route:                ActivatedRoute,
     private workflowService:      WorkflowService,
     private workflowStateService: WorkflowStateService,
-    private notificationService:  NotificationService
+    private notificationService:  NotificationService,
+    private cdr:                  ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -81,6 +83,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
     ).subscribe(workflows => {
       const id = this.loadTrigger$.value?.workflowId;
       this.currentWorkflow = id ? (workflows.find(w => w.workflowId === id) ?? null) : null;
+      this.cdr.markForCheck();
     });
 
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
@@ -88,6 +91,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
       this.customerId   = params['customerId']   ? +params['customerId']   : this.customerId;
       this.customerName = params['customerName'] || this.customerName || 'Customers';
       this.triggerWorkflowLoad();
+      this.cdr.markForCheck();
     });
 
     this.router.events.pipe(
@@ -102,6 +106,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
         this.triggerWorkflowLoad();
       }
       this.updateActiveTab();
+      this.cdr.markForCheck();
     });
 
     // After any step is saved, reload workflow status and advance to next tab
@@ -118,6 +123,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
       const id = this.loadTrigger$.value?.workflowId;
       if (id) this.currentWorkflow = workflows.find(w => w.workflowId === id) ?? null;
       this.navigateToNextAvailableTab();
+      this.cdr.markForCheck();
     });
 
     // After any record is deleted, reload workflow status (no auto-navigate)
@@ -133,6 +139,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
     ).subscribe(workflows => {
       const id = this.loadTrigger$.value?.workflowId;
       if (id) this.currentWorkflow = workflows.find(w => w.workflowId === id) ?? null;
+      this.cdr.markForCheck();
     });
 
     this.updateActiveTab();

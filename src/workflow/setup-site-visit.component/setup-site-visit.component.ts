@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
@@ -56,7 +56,8 @@ import { NotificationService } from '../../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './setup-site-visit.component.html',
-  styleUrl: './setup-site-visit.component.scss'
+  styleUrl: './setup-site-visit.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   siteVisitForm: FormGroup;
@@ -213,7 +214,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private router: Router,
     private workflowStateService: WorkflowStateService,
     private outlookCalendarService: OutlookCalendarService,
-    private notificationService: NotificationService) {
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {
     this.siteVisitForm = this.fb.group({
       workflow: ['', Validators.required],
       productModel: [''],
@@ -306,10 +308,12 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
               if (paramSiteVisitId) {
                 this.loadSiteVisitById(paramWorkflowId, paramSiteVisitId);
               }
+              this.cdr.markForCheck();
               wfSub.unsubscribe();
             }
           });
         }
+        this.cdr.markForCheck();
       });
     this.loadDropdownValues();
     this.setupFormSubscriptions();
@@ -361,6 +365,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
           this.currentWorkflowId = null;
           this.siteVisitsSubject$.next([]);
         }
+        this.cdr.markForCheck();
       });
 
     // Product model change subscription
@@ -376,6 +381,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
           this.selectedProductModel = '';
           this.showFullTabs = false;
         }
+        this.cdr.markForCheck();
       });
   }
 
@@ -388,6 +394,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         this.customerSiteAddress = [customer.address1, customer.address2, customer.address3]
           .filter(a => !!a).join(', ');
         this.customerEircode = customer.eircode || '';
+        this.cdr.markForCheck();
       });
   }
 
