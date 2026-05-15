@@ -99,6 +99,8 @@ export abstract class QuoteFormBase implements OnDestroy {
   selectedAwning: number | null     = null;
   selectedProductName               = '';
   calculatedPrice                   = 0;
+  dimensionError                    = '';
+  widthError                        = '';
 
   // ── Quote metadata ─────────────────────────────────────────────────────────
   quoteDate    = new Date().toISOString().split('T')[0];
@@ -473,8 +475,37 @@ export abstract class QuoteFormBase implements OnDestroy {
   onWidthInput() {
     if (!this.enteredWidthCm || String(Math.floor(Math.abs(this.enteredWidthCm))).length < 3) {
       this.selectedWidthCm = null;
+      this.widthError = '';
+      this.cdr.markForCheck();
       return;
     }
+
+    const widths = this.widthsSubject$.value;
+    if (widths.length) {
+      const sorted = [...widths].sort((a, b) => a - b);
+      const minW = sorted[0];
+      const maxW = sorted[sorted.length - 1];
+
+      if (this.enteredWidthCm > maxW) {
+        this.widthError = `Width ${this.enteredWidthCm}cm exceeds the maximum of ${maxW}cm (${(maxW / 100).toFixed(0)}m).`;
+        this.selectedWidthCm = null;
+        this.dimensionError = '';
+        this.removeFirstDimensionLineItem();
+        this.cdr.markForCheck();
+        return;
+      }
+
+      if (this.enteredWidthCm < minW) {
+        this.widthError = `Width ${this.enteredWidthCm}cm is below the minimum of ${minW}cm (${(minW / 100).toFixed(0)}m).`;
+        this.selectedWidthCm = null;
+        this.dimensionError = '';
+        this.removeFirstDimensionLineItem();
+        this.cdr.markForCheck();
+        return;
+      }
+    }
+
+    this.widthError = '';
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
@@ -482,6 +513,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     if (this.includeValanceStyle)            this.onValanceStyleChange();
     if (this.includeWallSealing)             this.onWallSealingChange();
     if (this.selectedFrameColourId !== null) this.onFrameColourChange();
+    this.cdr.markForCheck();
   }
 
   protected resolveCeilingWidth(entered: number | null): number | null {
@@ -490,8 +522,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     if (!widths.length) return null;
     const sorted = [...widths].sort((a, b) => a - b);
     const ceiling = sorted.find(w => w >= entered);
-    if (ceiling != null) return ceiling;
-    return sorted[sorted.length - 1];
+    return ceiling ?? null;
   }
 
   onAwningChange() {
@@ -508,10 +539,31 @@ export abstract class QuoteFormBase implements OnDestroy {
     this.workflowService.getProjectionPriceForProduct(productId, widthcm, projcm)
       .pipe(
         takeUntil(this.destroy$),
-        tap(price => { this.calculatedPrice = price; this.generateFirstLineItem(); }),
-        catchError(() => { this.notificationService.error('Failed to get price'); return of(0); })
+        catchError(() => { this.notificationService.error('Failed to retrieve pricing. Please try again.'); return of(0); })
       )
-      .subscribe();
+      .subscribe(price => {
+        if (!price || price <= 0) {
+          const wm = (this.enteredWidthCm! / 100).toFixed(2).replace(/\.?0+$/, '');
+          const pm = (projcm / 100).toFixed(0);
+          this.dimensionError =
+            `No pricing found for ${wm}m wide × ${pm}m projection. ` +
+            `This combination is not available — please choose a different width or projection.`;
+          this.calculatedPrice = 0;
+          this.removeFirstDimensionLineItem();
+        } else {
+          this.dimensionError = '';
+          this.calculatedPrice = price;
+          this.generateFirstLineItem();
+        }
+        this.cdr.markForCheck();
+      });
+  }
+
+  protected removeFirstDimensionLineItem() {
+    const current = this.quoteItemsSubject$.value;
+    if (current.length > 0 && current[0].description.includes('wide x')) {
+      this.quoteItemsSubject$.next(current.slice(1));
+    }
   }
 
   protected generateFirstLineItem() {

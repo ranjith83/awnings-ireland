@@ -80,6 +80,8 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   selectedWidthCm: number | null = null;   // floor-tier resolved for pricing
   selectedAwning:  number | null = null;
   calculatedPrice: number = 0;
+  dimensionError  = '';
+  widthError      = '';
   private _standardWidths: number[] = [];
 
   // ── Brackets (multi-select) ───────────────────────────────────────────────
@@ -276,8 +278,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     if (!widths.length) return null;
     const sorted = [...widths].sort((a, b) => a - b);
     const floor = [...sorted].reverse().find(w => w <= entered);
-    if (floor != null) return floor;
-    return sorted[0];
+    return floor ?? null;
   }
 
   private loadProductAddons() {
@@ -404,6 +405,36 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   // ── Dimension handlers ────────────────────────────────────────────────────
 
   onWidthInput() {
+    if (!this.enteredWidthCm || this.enteredWidthCm <= 0) {
+      this.selectedWidthCm = null;
+      this.widthError = '';
+      return;
+    }
+
+    const widths = this._standardWidths;
+    if (widths.length) {
+      const sorted = [...widths].sort((a, b) => a - b);
+      const minW = sorted[0];
+      const maxW = sorted[sorted.length - 1];
+
+      if (this.enteredWidthCm > maxW) {
+        this.widthError = `Width ${this.enteredWidthCm}cm exceeds the maximum of ${maxW}cm (${(maxW / 100).toFixed(0)}m).`;
+        this.selectedWidthCm = null;
+        this.dimensionError = '';
+        this.removeFirstDimensionLineItem();
+        return;
+      }
+
+      if (this.enteredWidthCm < minW) {
+        this.widthError = `Width ${this.enteredWidthCm}cm is below the minimum of ${minW}cm (${(minW / 100).toFixed(0)}m).`;
+        this.selectedWidthCm = null;
+        this.dimensionError = '';
+        this.removeFirstDimensionLineItem();
+        return;
+      }
+    }
+
+    this.widthError = '';
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
@@ -420,9 +451,31 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
 
   private checkAndGenerateFirstLineItem() {
     if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedProductId) return;
-    this.workflowService.getProjectionPriceForProduct(this.selectedProductId, this.selectedWidthCm, this.selectedAwning)
+    const projcm = this.selectedAwning;
+    this.workflowService.getProjectionPriceForProduct(this.selectedProductId, this.selectedWidthCm, projcm)
       .pipe(takeUntil(this.destroy$), catchError(() => of(0)))
-      .subscribe(price => { this.calculatedPrice = price; this.generateFirstLineItem(); });
+      .subscribe(price => {
+        if (!price || price <= 0) {
+          const wm = (this.enteredWidthCm! / 100).toFixed(2).replace(/\.?0+$/, '');
+          const pm = (projcm / 100).toFixed(0);
+          this.dimensionError =
+            `No pricing found for ${wm}m wide × ${pm}m projection. ` +
+            `This combination is not available — please choose a different width or projection.`;
+          this.calculatedPrice = 0;
+          this.removeFirstDimensionLineItem();
+        } else {
+          this.dimensionError = '';
+          this.calculatedPrice = price;
+          this.generateFirstLineItem();
+        }
+      });
+  }
+
+  private removeFirstDimensionLineItem() {
+    const current = this.calculatorItemsSubject$.value;
+    if (current.length > 0 && current[0].description.includes('wide x')) {
+      this.calculatorItemsSubject$.next(current.slice(1));
+    }
   }
 
   private generateFirstLineItem() {

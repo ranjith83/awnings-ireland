@@ -103,14 +103,13 @@
           <input
             type="number"
             class="form-input"
+            [class.input-error]="widthError"
             [(ngModel)]="enteredWidthCm"
             (ngModelChange)="onWidthInput()"
             placeholder="e.g. 255"
             min="1"
             step="1">
-         <!-- <span class="width-hint" *ngIf="enteredWidthCm && selectedWidthCm">
-            Priced at standard width tier: {{ selectedWidthCm }} cm
-          </span> -->
+          <span class="field-error" *ngIf="widthError">{{ widthError }}</span>
         </div>
 
         <div class="form-group">
@@ -130,6 +129,14 @@
           </label>
         </div>
 
+      </div>
+
+      <!-- Dimension not-found warning -->
+      <div class="dimension-error" *ngIf="dimensionError">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16" style="flex-shrink:0">
+          <circle cx="10" cy="10" r="9"/><line x1="10" y1="6" x2="10" y2="10.5"/><circle cx="10" cy="14" r="0.8" fill="currentColor" stroke="none"/>
+        </svg>
+        {{ dimensionError }}
       </div>
     </div>
 

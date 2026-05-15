@@ -299,3 +299,22 @@
   background-color: #fffde7;
   font-weight: 500;
 }
+
+/* ── Dimension not-found warning ──────────────────────────────────────────── */
+.dimension-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 6px;
+  color: #9a3412;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+/* ── Field validation ─────────────────────────────────────────────────────── */
+.input-error { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important; }
+.field-error { font-size: 12px; color: #dc2626; margin-top: 4px; }
