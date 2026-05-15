@@ -202,6 +202,12 @@
   font-size: 13px;
 }
 
+.form-input--xs {
+  width: 90px;
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
 /* ─── Toggle Switch ───────────────────────────────────────────────────────── */
 .toggle-switch {
   position: relative;
@@ -675,6 +681,62 @@
   .form-grid-5 .form-group--end,
   .form-grid-4 .form-group--end,
   .form-grid-3 .form-group--end { grid-column: 1 / -1; }
+}
+
+/* ─── Filter Row ──────────────────────────────────────────────────────────── */
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.range-sep {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.result-count {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6b7280;
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 4px 0;
+}
+
+.btn-page {
+  padding: 6px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.page-info {
+  font-size: 13px;
+  color: #6b7280;
 }
 
 @media (max-width: 768px) {

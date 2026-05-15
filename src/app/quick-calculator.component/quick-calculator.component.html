@@ -114,7 +114,7 @@
                     <input type="checkbox"
                            [checked]="isBracketSelected(bracket.bracketName)"
                            (change)="toggleBracket(bracket.bracketName)">
-                    <span>{{ bracket.bracketName }} — €{{ bracket.price | number:'1.2-2' }}</span>
+                    <span>{{ stripSurchargePrefix(bracket.bracketName) }} — {{ bracket.isPriceIgnored ? 'Included' : '€' + (bracket.price | number:'1.2-2') }}</span>
                   </label>
                   <div class="dropdown-empty" *ngIf="bracketList.length === 0">No brackets available</div>
                 </div>

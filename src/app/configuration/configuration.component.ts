@@ -2,12 +2,14 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, of } from 'rxjs';
-import { takeUntil, finalize, catchError, map, shareReplay, tap } from 'rxjs/operators';
+import { takeUntil, finalize, catchError, map, shareReplay, tap, debounceTime } from 'rxjs/operators';
 
 import {
   ConfigurationService,
   SiteVisitValue,
+  ArmTypeConfig,
   BracketConfig,
+  BracketPagedResult,
   SupplierConfig,
   ProductTypeConfig,
   ProductConfig,
@@ -86,7 +88,20 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
 
   private bracketsSubject$        = new BehaviorSubject<BracketConfig[]>([]);
   private bracketProductsSubject$ = new BehaviorSubject<{ productId: number; label: string }[]>([]);
-  private bracketFilterSubject$   = new BehaviorSubject<number | ''>('');
+  private armTypesSubject$        = new BehaviorSubject<ArmTypeConfig[]>([]);
+  private bracketSearchTrigger$   = new Subject<void>();
+
+  armTypes$: Observable<ArmTypeConfig[]> = this.armTypesSubject$.asObservable();
+
+  // Bracket filter & pagination state
+  bracketFilterProduct: number | '' = '';
+  bracketNameFilter = '';
+  bracketMinPrice: number | '' = '';
+  bracketMaxPrice: number | '' = '';
+  bracketCurrentPage = 1;
+  bracketTotalCount = 0;
+  bracketTotalPages = 0;
+  readonly bracketPageSize = 20;
 
   private suppliersSubject$    = new BehaviorSubject<SupplierConfig[]>([]);
   private productTypesSubject$ = new BehaviorSubject<ProductTypeConfig[]>([]);
@@ -133,12 +148,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     shareReplay(1)
   );
 
-  filteredBrackets$: Observable<BracketConfig[]> = combineLatest([
-    this.bracketsSubject$, this.bracketFilterSubject$
-  ]).pipe(
-    map(([brackets, pid]) => pid === '' ? brackets : brackets.filter(b => b.productId === pid)),
-    shareReplay(1)
-  );
+  filteredBrackets$: Observable<BracketConfig[]> = this.bracketsSubject$.asObservable();
 
   bracketProducts$: Observable<{ productId: number; label: string }[]> =
     this.bracketProductsSubject$.asObservable();
@@ -226,7 +236,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   newSv: Partial<SiteVisitValue>   = { category: '', value: '', displayOrder: 1, isActive: true };
   editingSv: SiteVisitValue | null = null;
 
-  newBracket: Partial<BracketConfig>   = { productId: 0, bracketName: '', partNumber: '', price: 0 };
+  newBracket: Partial<BracketConfig>   = { productId: 0, bracketName: '', partNumber: '', price: 0, armTypeId: null };
   editingBracket: BracketConfig | null = null;
 
   newSupplier: Partial<SupplierConfig>     = { supplierName: '' };
@@ -261,9 +271,6 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   // ── Filter getters/setters ────────────────────────────────────────────────────
   get svFilterCategory(): string           { return this.svFilterSubject$.value; }
   set svFilterCategory(v: string)          { this.svFilterSubject$.next(v); }
-
-  get bracketFilterProduct(): number | ''  { return this.bracketFilterSubject$.value; }
-  set bracketFilterProduct(v: number | '') { this.bracketFilterSubject$.next(v); }
 
   get ptFilterSupplier(): number | ''      { return this.ptFilterSubject$.value; }
   set ptFilterSupplier(v: number | '')     { this.ptFilterSubject$.next(v); }
@@ -302,6 +309,10 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     private notificationService: NotificationService) {}
 
   ngOnInit(): void {
+    this.bracketSearchTrigger$.pipe(
+      debounceTime(300),
+      takeUntil(this.destroy$)
+    ).subscribe(() => this.loadBrackets());
     this.loadActiveTab();
   }
 
@@ -409,19 +420,75 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   // ═════════════════════════════════════════════════════════════════════════════
 
   loadBracketsAndProducts(): void {
+    const needsProducts  = this.bracketProductsSubject$.value.length === 0;
+    const needsArmTypes  = this.armTypesSubject$.value.length === 0;
+
+    const deps: Observable<unknown>[] = [];
+    if (needsProducts) {
+      deps.push(this.configService.getProducts().pipe(
+        catchError(() => of([] as ProductConfig[])),
+        tap((products: ProductConfig[]) =>
+          this.bracketProductsSubject$.next(products.map(p => ({ productId: p.productId, label: p.description })))
+        )
+      ));
+    }
+    if (needsArmTypes) {
+      deps.push(this.configService.getArmTypes().pipe(
+        catchError(() => of([] as ArmTypeConfig[])),
+        tap((types: ArmTypeConfig[]) => this.armTypesSubject$.next(types))
+      ));
+    }
+
+    if (deps.length > 0) {
+      forkJoin(deps).pipe(takeUntil(this.destroy$)).subscribe(() => this.loadBrackets());
+    } else {
+      this.loadBrackets();
+    }
+  }
+
+  loadBrackets(): void {
     this.isLoadingSubject.next(true);
-    forkJoin({
-      brackets: this.configService.getBrackets().pipe(catchError(() => of([] as BracketConfig[]))),
-      products: this.configService.getProducts().pipe(catchError(() => of([] as ProductConfig[])))
-    }).pipe(
+    const filter = {
+      productId: this.bracketFilterProduct !== '' ? this.bracketFilterProduct : undefined,
+      bracketName: this.bracketNameFilter || undefined,
+      minPrice: this.bracketMinPrice !== '' ? this.bracketMinPrice : undefined,
+      maxPrice: this.bracketMaxPrice !== '' ? this.bracketMaxPrice : undefined,
+      page: this.bracketCurrentPage,
+      pageSize: this.bracketPageSize
+    };
+    this.configService.getBrackets(filter).pipe(
       takeUntil(this.destroy$),
-      tap(({ brackets, products }) => {
-        this.bracketsSubject$.next([...brackets].sort((a, b) => a.productId - b.productId || a.bracketName.localeCompare(b.bracketName)));
-        this.bracketProductsSubject$.next(products.map(p => ({ productId: p.productId, label: p.description })));
+      tap((result: BracketPagedResult) => {
+        this.bracketsSubject$.next(result.items);
+        this.bracketTotalCount = result.totalCount;
+        this.bracketTotalPages = result.totalPages;
         this.isLoadingSubject.next(false);
       }),
-      catchError(() => { this.errorMessageSubject.next('Failed to load brackets.'); this.isLoadingSubject.next(false); return of(null); })
+      catchError(() => {
+        this.errorMessageSubject.next('Failed to load brackets.');
+        this.isLoadingSubject.next(false);
+        return of(null);
+      })
     ).subscribe();
+  }
+
+  applyBracketFilters(): void {
+    this.bracketCurrentPage = 1;
+    this.bracketSearchTrigger$.next();
+  }
+
+  bracketNextPage(): void {
+    if (this.bracketCurrentPage < this.bracketTotalPages) {
+      this.bracketCurrentPage++;
+      this.loadBrackets();
+    }
+  }
+
+  bracketPrevPage(): void {
+    if (this.bracketCurrentPage > 1) {
+      this.bracketCurrentPage--;
+      this.loadBrackets();
+    }
   }
 
   getProductLabel(productId: number): string {
@@ -437,7 +504,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.isSavingSubject.next(true);
     this.configService.createBracket(this.newBracket as Omit<BracketConfig, 'bracketId'>).pipe(
       takeUntil(this.destroy$),
-      tap(() => { this.showSuccess('Bracket added.'); this.newBracket = { productId: 0, bracketName: '', partNumber: '', price: 0 }; this.loadBracketsAndProducts(); }),
+      tap(() => { this.showSuccess('Bracket added.'); this.newBracket = { productId: 0, bracketName: '', partNumber: '', price: 0, armTypeId: null }; this.loadBrackets(); }),
       catchError(() => { this.errorMessageSubject.next('Failed to add bracket.'); return of(null); }),
       finalize(() => this.isSavingSubject.next(false))
     ).subscribe();
@@ -450,7 +517,7 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
     this.isSavingSubject.next(true);
     this.configService.updateBracket(this.editingBracket.bracketId, this.editingBracket).pipe(
       takeUntil(this.destroy$),
-      tap(() => { this.showSuccess('Bracket updated.'); this.closeEditModal(); this.loadBracketsAndProducts(); }),
+      tap(() => { this.showSuccess('Bracket updated.'); this.closeEditModal(); this.loadBrackets(); }),
       catchError(() => { this.errorMessageSubject.next('Failed to update bracket.'); return of(null); }),
       finalize(() => this.isSavingSubject.next(false))
     ).subscribe();

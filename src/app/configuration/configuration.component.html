@@ -99,7 +99,7 @@
     <ng-container *ngIf="activeTab === 'brackets'">
       <div class="config-card">
         <h3 class="config-card-title">Add Bracket</h3>
-        <div class="form-grid form-grid-5">
+        <div class="form-grid form-grid-3">
           <div class="form-group">
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newBracket.productId">
@@ -110,6 +110,13 @@
           <div class="form-group">
             <label class="form-label">Bracket Name <span class="req">*</span></label>
             <input class="form-input" type="text" [(ngModel)]="newBracket.bracketName" placeholder="e.g. Face fixture bracket 150mm" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Arm Type</label>
+            <select class="form-input" [(ngModel)]="newBracket.armTypeId">
+              <option [ngValue]="null">Universal (all arm types)</option>
+              <option *ngFor="let at of armTypes$ | async" [ngValue]="at.armTypeId">{{ at.description }}</option>
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Part Number</label>
@@ -129,23 +136,36 @@
       </div>
       <div class="config-card">
         <div class="table-toolbar">
-          <h3 class="config-card-title">Brackets</h3>
+          <h3 class="config-card-title">Brackets <span class="result-count" *ngIf="bracketTotalCount > 0">({{ bracketTotalCount }})</span></h3>
+        </div>
+        <div class="filter-row">
           <div class="filter-group">
-            <label class="form-label">Filter by Product:</label>
-            <select class="form-input form-input--sm" [(ngModel)]="bracketFilterProduct">
+            <label class="form-label">Product:</label>
+            <select class="form-input form-input--sm" [(ngModel)]="bracketFilterProduct" (ngModelChange)="applyBracketFilters()">
               <option value="">All products</option>
               <option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
+          <div class="filter-group">
+            <label class="form-label">Name:</label>
+            <input class="form-input form-input--sm" type="text" [(ngModel)]="bracketNameFilter" (ngModelChange)="applyBracketFilters()" placeholder="Search name…" />
+          </div>
+          <div class="filter-group">
+            <label class="form-label">Price (€):</label>
+            <input class="form-input form-input--xs" type="number" [(ngModel)]="bracketMinPrice" (ngModelChange)="applyBracketFilters()" placeholder="Min" min="0" step="0.01" />
+            <span class="range-sep">—</span>
+            <input class="form-input form-input--xs" type="number" [(ngModel)]="bracketMaxPrice" (ngModelChange)="applyBracketFilters()" placeholder="Max" min="0" step="0.01" />
+          </div>
         </div>
         <div class="table-wrap" *ngIf="(isLoading$ | async) === false; else loadingTpl">
           <table class="config-table">
-            <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Part No.</th><th>Price</th><th class="center-cell">Defaulted</th><th class="center-cell">Price Included</th><th class="actions-th">Actions</th></tr></thead>
+            <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Arm Type</th><th>Part No.</th><th>Price</th><th class="center-cell">Defaulted</th><th class="center-cell">Price Included</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
               <tr *ngFor="let b of filteredBrackets$ | async">
                 <td class="id-cell">{{ b.bracketId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(b.productId) }}</span></td>
                 <td>{{ b.bracketName }}</td>
+                <td>{{ b.armTypeDescription || '—' }}</td>
                 <td class="mono-cell">{{ b.partNumber || '—' }}</td>
                 <td class="price-cell">€{{ b.price | number:'1.2-2' }}</td>
                 <td class="center-cell">
@@ -159,9 +179,14 @@
                   <button class="btn-row btn-delete" (click)="confirmDeleteBracket(b)"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><rect x="3" y="4" width="10" height="10" rx="1"/></svg>Delete</button>
                 </td>
               </tr>
-              <tr *ngIf="(filteredBrackets$ | async)?.length === 0"><td colspan="8" class="empty-cell">No brackets found.</td></tr>
+              <tr *ngIf="(filteredBrackets$ | async)?.length === 0"><td colspan="9" class="empty-cell">No brackets found.</td></tr>
             </tbody>
           </table>
+          <div class="pagination-bar" *ngIf="bracketTotalPages > 1">
+            <button class="btn-page" (click)="bracketPrevPage()" [disabled]="bracketCurrentPage === 1">‹ Prev</button>
+            <span class="page-info">Page {{ bracketCurrentPage }} of {{ bracketTotalPages }}</span>
+            <button class="btn-page" (click)="bracketNextPage()" [disabled]="bracketCurrentPage === bracketTotalPages">Next ›</button>
+          </div>
         </div>
       </div>
     </ng-container>
@@ -785,7 +810,10 @@
 
       <!-- Brackets edit -->
       <ng-container *ngIf="activeTab === 'brackets' && editingBracket">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingBracket.productId"><option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-row">
+          <div class="modal-field modal-field--half"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingBracket.productId"><option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Arm Type</label><select class="modal-input" [(ngModel)]="editingBracket.armTypeId"><option [ngValue]="null">Universal (all arm types)</option><option *ngFor="let at of armTypes$ | async" [ngValue]="at.armTypeId">{{ at.description }}</option></select></div>
+        </div>
         <div class="modal-field"><label class="modal-label">Bracket Name <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingBracket.bracketName" /></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Part Number</label><input class="modal-input" type="text" [(ngModel)]="editingBracket.partNumber" /></div>

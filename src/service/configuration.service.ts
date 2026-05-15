@@ -15,16 +15,40 @@ export interface SiteVisitValue {
   createdBy?: string;
 }
 
+export interface ArmTypeConfig {
+  armTypeId: number;
+  description: string;
+}
+
 export interface BracketConfig {
   bracketId: number;
   productId: number;
   bracketName: string;
   partNumber: string;
   price: number;
+  armTypeId: number | null;
+  armTypeDescription: string | null;
   isDefault: boolean;
   isPriceIgnored: boolean;
   dateCreated?: string;
   createdBy?: string;
+}
+
+export interface BracketPagedResult {
+  items: BracketConfig[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface BracketFilter {
+  productId?: number;
+  bracketName?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface SupplierConfig {
@@ -147,10 +171,23 @@ export class ConfigurationService {
     return this.http.delete<void>(`${this.base}/api/configuration/site-visit-values/${id}`);
   }
 
+  // ── Arm Types ────────────────────────────────────────────────────────────
+
+  getArmTypes(): Observable<ArmTypeConfig[]> {
+    return this.http.get<ArmTypeConfig[]>(`${this.base}/api/configuration/arm-types`);
+  }
+
   // ── Brackets ─────────────────────────────────────────────────────────────
 
-  getBrackets(): Observable<BracketConfig[]> {
-    return this.http.get<BracketConfig[]>(`${this.base}/api/configuration/brackets`);
+  getBrackets(filter?: BracketFilter): Observable<BracketPagedResult> {
+    const params: Record<string, string> = {};
+    if (filter?.productId) params['productId'] = String(filter.productId);
+    if (filter?.bracketName?.trim()) params['bracketName'] = filter.bracketName.trim();
+    if (filter?.minPrice != null) params['minPrice'] = String(filter.minPrice);
+    if (filter?.maxPrice != null) params['maxPrice'] = String(filter.maxPrice);
+    params['page'] = String(filter?.page ?? 1);
+    params['pageSize'] = String(filter?.pageSize ?? 20);
+    return this.http.get<BracketPagedResult>(`${this.base}/api/configuration/brackets`, { params });
   }
 
   createBracket(dto: Omit<BracketConfig, 'bracketId'>): Observable<BracketConfig> {

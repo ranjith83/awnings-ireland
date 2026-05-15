@@ -353,7 +353,16 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
           if (armTypeId == null) return;
           this.workflowService.getBracketsForProduct(productId, armTypeId)
             .pipe(takeUntil(this.destroy$), catchError(() => of([])))
-            .subscribe(brackets => { this.bracketsSubject$.next(brackets); this.onBracketChange(); });
+            .subscribe(brackets => {
+              this.bracketsSubject$.next(brackets);
+              if (this.selectedBrackets.length === 0) {
+                const defaultBracket = brackets.find(b => b.isDefault);
+                if (defaultBracket) {
+                  this.selectedBrackets = [defaultBracket.bracketName];
+                }
+              }
+              this.onBracketChange();
+            });
           this.workflowService.getMotorsForProduct(productId, armTypeId)
             .pipe(takeUntil(this.destroy$), catchError(() => of([])))
             .subscribe(motors => {
@@ -370,12 +379,9 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
         .subscribe(brackets => {
           this.bracketsSubject$.next(brackets);
           if (this.selectedBrackets.length === 0) {
-            const def = brackets.find(b =>
-              b.bracketName.toLowerCase().includes('surcharge for face fixture') &&
-              !b.bracketName.toLowerCase().includes('spreader')
-            );
-            if (def) {
-              this.selectedBrackets = [def.bracketName];
+            const defaultBracket = brackets.find(b => b.isDefault);
+            if (defaultBracket) {
+              this.selectedBrackets = [defaultBracket.bracketName];
               this.onBracketChange();
             }
           } else {
@@ -388,13 +394,12 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
         .subscribe(motors => {
           this.motorsSubject$.next(motors);
           if (!this.selectedMotor) {
-            const def = motors.find(m =>
-              m.description.toLowerCase().includes('radio') &&
-              m.description.toLowerCase().includes('rts') &&
-              m.description.toLowerCase().includes('1 ch')
-            );
-            if (def) {
-              this.selectedMotor = def.motorId.toString();
+            const defaultMotor = motors.find(m => {
+              const d = m.description.toLowerCase();
+              return d.includes('radio-contr') && d.includes('1 ch') && !d.includes('manual override');
+            });
+            if (defaultMotor) {
+              this.selectedMotor = defaultMotor.motorId.toString();
               this.onMotorChange();
             }
           }
@@ -511,8 +516,12 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
 
   getBracketLabel(): string {
     if (!this.selectedBrackets.length) return 'Select brackets';
-    if (this.selectedBrackets.length === 1) return this.selectedBrackets[0];
+    if (this.selectedBrackets.length === 1) return this.stripSurchargePrefix(this.selectedBrackets[0]);
     return `${this.selectedBrackets.length} brackets selected`;
+  }
+
+  stripSurchargePrefix(name: string): string {
+    return name.replace(/^surcharge for\s*/i, '');
   }
 
   // ── Addon handlers ────────────────────────────────────────────────────────
@@ -532,7 +541,8 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     const items = this.calculatorItemsSubject$.value;
     let insertIdx = 1;
     selected.forEach(b => {
-      const item = this.makeItem(b.bracketName, 1, b.price, 200000 + b.bracketId);
+      const price = b.isPriceIgnored ? 0 : b.price;
+      const item = this.makeItem(b.bracketName, 1, price, 200000 + b.bracketId);
       items.splice(insertIdx, 0, item);
       insertIdx++;
     });
