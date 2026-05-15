@@ -1,17 +1,19 @@
 // task-detail.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { TaskService } from '../service/task.service';
-import { 
-  Task, 
-  TaskStatus, 
-  TaskPriority, 
-  TaskComment, 
-  TaskAttachment, 
+import {
+  Task,
+  TaskStatus,
+  TaskPriority,
+  TaskComment,
+  TaskAttachment,
   TaskAudit,
-  AuditAction 
+  AuditAction
 } from '../service/task.service';
 
 import { NotificationService } from '../service/notification.service';
@@ -20,9 +22,11 @@ import { NotificationService } from '../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './task-detail.component.html',
-  styleUrls: ['./task-detail.component.css']
+  styleUrls: ['./task-detail.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TaskDetailComponent implements OnInit {
+export class TaskDetailComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
   task: Task | null = null;
   auditTrail: TaskAudit[] = [];
   comments: TaskComment[] = [];
@@ -54,7 +58,8 @@ export class TaskDetailComponent implements OnInit {
     private taskService: TaskService,
     private route: ActivatedRoute,
     private router: Router,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     const taskId = Number(this.route.snapshot.paramMap.get('id'));
@@ -66,51 +71,54 @@ export class TaskDetailComponent implements OnInit {
     }
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   loadTask(taskId: number): void {
     this.isLoading = true;
-    this.taskService.getTaskById(taskId).subscribe({
+    this.taskService.getTaskById(taskId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.task = data;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error loading task:', error);
+      error: () => {
         this.errorMessage = 'Failed to load task details';
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
   loadAuditTrail(taskId: number): void {
-    this.taskService.getAuditTrail(taskId).subscribe({
+    this.taskService.getAuditTrail(taskId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.auditTrail = data;
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error loading audit trail:', error);
-      }
+      error: () => {}
     });
   }
 
   loadComments(taskId: number): void {
-    this.taskService.getComments(taskId).subscribe({
+    this.taskService.getComments(taskId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.comments = data;
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error loading comments:', error);
-      }
+      error: () => {}
     });
   }
 
   loadAttachments(taskId: number): void {
-    this.taskService.getAttachments(taskId).subscribe({
+    this.taskService.getAttachments(taskId).pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.attachments = data;
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error loading attachments:', error);
-      }
+      error: () => {}
     });
   }
 
@@ -120,51 +128,48 @@ export class TaskDetailComponent implements OnInit {
 
   updateTaskStatus(status: TaskStatus): void {
     if (!this.task) return;
-    
-    this.taskService.updateTaskStatus(this.task.taskId, status).subscribe({
+
+    this.taskService.updateTaskStatus(this.task.taskId, status).pipe(takeUntil(this.destroy$)).subscribe({
       next: (updatedTask) => {
         this.task = updatedTask;
         this.loadAuditTrail(this.task.taskId);
-        alert('Task status updated successfully');
+        this.notificationService.success('Task status updated successfully');
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error updating status:', error);
-        alert('Failed to update task status');
-      }
+      error: () => this.notificationService.error('Failed to update task status')
     });
   }
 
   addComment(): void {
     if (!this.task || !this.newCommentText.trim()) return;
-    
+
     this.isAddingComment = true;
-    this.taskService.addComment(this.task.taskId, this.newCommentText).subscribe({
+    this.taskService.addComment(this.task.taskId, this.newCommentText).pipe(takeUntil(this.destroy$)).subscribe({
       next: (comment) => {
         this.comments.unshift(comment);
         this.newCommentText = '';
         this.isAddingComment = false;
         this.loadAuditTrail(this.task!.taskId);
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error adding comment:', error);
-        alert('Failed to add comment');
+      error: () => {
+        this.notificationService.error('Failed to add comment');
         this.isAddingComment = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
   deleteComment(comment: TaskComment): void {
     if (!this.task || !confirm('Are you sure you want to delete this comment?')) return;
-    
-    this.taskService.deleteComment(this.task.taskId, comment.commentId).subscribe({
+
+    this.taskService.deleteComment(this.task.taskId, comment.commentId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.comments = this.comments.filter(c => c.commentId !== comment.commentId);
         this.loadAuditTrail(this.task!.taskId);
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error deleting comment:', error);
-        alert('Failed to delete comment');
-      }
+      error: () => this.notificationService.error('Failed to delete comment')
     });
   }
 
@@ -178,35 +183,34 @@ export class TaskDetailComponent implements OnInit {
 
   uploadFile(): void {
     if (!this.task || !this.selectedFile) return;
-    
+
     this.isUploadingFile = true;
-    this.taskService.uploadAttachment(this.task.taskId, this.selectedFile).subscribe({
+    this.taskService.uploadAttachment(this.task.taskId, this.selectedFile).pipe(takeUntil(this.destroy$)).subscribe({
       next: (attachment) => {
         this.attachments.push(attachment);
         this.selectedFile = null;
         this.isUploadingFile = false;
         this.loadAuditTrail(this.task!.taskId);
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error uploading file:', error);
-        alert('Failed to upload file');
+      error: () => {
+        this.notificationService.error('Failed to upload file');
         this.isUploadingFile = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
   deleteAttachment(attachment: TaskAttachment): void {
     if (!this.task || !confirm('Are you sure you want to delete this attachment?')) return;
-    
-    this.taskService.deleteAttachment(this.task.taskId, attachment.attachmentId).subscribe({
+
+    this.taskService.deleteAttachment(this.task.taskId, attachment.attachmentId).pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.attachments = this.attachments.filter(a => a.attachmentId !== attachment.attachmentId);
         this.loadAuditTrail(this.task!.taskId);
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error deleting attachment:', error);
-        alert('Failed to delete attachment');
-      }
+      error: () => this.notificationService.error('Failed to delete attachment')
     });
   }
 

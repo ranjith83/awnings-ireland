@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -31,7 +31,8 @@ import { NotificationService } from '../service/notification.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
   templateUrl: './user-management.component.html',
-  styleUrl: './user-management.component.scss'
+  styleUrl: './user-management.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserManagementComponent implements OnInit, OnDestroy {
   private usersSubject = new BehaviorSubject<User[]>([]);

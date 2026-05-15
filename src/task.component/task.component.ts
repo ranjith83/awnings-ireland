@@ -1,104 +1,114 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
-import { 
-  Task, 
-  CreateTaskDto, 
-  UpdateTaskDto, 
-  TaskFilterDto, 
-  TaskComment, 
-  TaskAttachment, 
-  TaskAudit,
-  TaskStatistics, 
+import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import {
+  Task,
   TaskStatus,
-  AuditAction,
   TaskPriority,
   TaskService
 } from '../service/task.service';
-
 import { NotificationService } from '../service/notification.service';
+
+interface TaskDisplay extends Task {
+  overdueState: boolean;
+  formattedDueDate: string;
+  statusCssClass: string;
+  priorityCssClass: string;
+}
+
 @Component({
   selector: 'app-task.component',
-   imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './task.component.html',
-  styleUrl: './task.component.css'
+  styleUrl: './task.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TaskComponent implements OnInit  {
-/** */
- tasks: Task[] = [];
-  filteredTasks: Task[] = [];
-  
+export class TaskComponent implements OnInit, OnDestroy {
+  tasks: Task[] = [];
+  filteredTasks: TaskDisplay[] = [];
+
   isLoading = false;
   errorMessage = '';
-  
-  // Current user (should come from auth service)
+
   currentUserId = 1;
-  
-  // Filter options
+
   filterForm: FormGroup;
   showFilters = false;
-  
-  // Tab selection
+
   activeTab: 'all' | 'my-tasks' | 'created-by-me' | 'overdue' = 'all';
-  
-  // Enums for template
+
   TaskStatus = TaskStatus;
   TaskPriority = TaskPriority;
-  
-  // Search
+
   searchText = '';
+
+  private destroy$     = new Subject<void>();
+  private searchSubject = new Subject<string>();
+
+  trackByTaskId = (_: number, task: Task)  => task.taskId;
+  trackByValue  = (_: number, v: any)      => v;
 
   constructor(
     private taskService: TaskService,
     private router: Router,
     private fb: FormBuilder,
-    private notificationService: NotificationService) {
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.filterForm = this.fb.group({
-      status: [[]],
-      priority: [[]],
-      assignedTo: [[]],
+      status:      [[]],
+      priority:    [[]],
+      assignedTo:  [[]],
       dueDateFrom: [''],
-      dueDateTo: [''],
-      searchText: ['']
+      dueDateTo:   [''],
+      searchText:  ['']
     });
   }
 
   ngOnInit(): void {
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.applyFilters();
+      this.cdr.markForCheck();
+    });
+
     this.loadTasks();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadTasks(): void {
     this.isLoading = true;
     this.errorMessage = '';
-    
+
     let request;
-    
     switch (this.activeTab) {
-      case 'my-tasks':
-        request = this.taskService.getMyTasks(this.currentUserId);
-        break;
-      case 'created-by-me':
-        request = this.taskService.getTasksCreatedByMe(this.currentUserId);
-        break;
-      case 'overdue':
-        request = this.taskService.getOverdueTasks();
-        break;
-      default:
-        request = this.taskService.getAllTasks();
+      case 'my-tasks':       request = this.taskService.getMyTasks(this.currentUserId); break;
+      case 'created-by-me':  request = this.taskService.getTasksCreatedByMe(this.currentUserId); break;
+      case 'overdue':        request = this.taskService.getOverdueTasks(); break;
+      default:               request = this.taskService.getAllTasks();
     }
-    
-    request.subscribe({
+
+    request.pipe(takeUntil(this.destroy$)).subscribe({
       next: (data) => {
         this.tasks = data;
-        this.filteredTasks = [...this.tasks];
         this.applyFilters();
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
-      error: (error) => {
-        console.error('Error loading tasks:', error);
+      error: () => {
         this.errorMessage = 'Failed to load tasks. Please try again.';
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -110,35 +120,36 @@ export class TaskComponent implements OnInit  {
 
   applyFilters(): void {
     const filters = this.filterForm.value;
-    
-    this.filteredTasks = this.tasks.filter(task => {
-      // Status filter
-      if (filters.status?.length && !filters.status.includes(task.status)) {
-        return false;
-      }
-      
-      // Priority filter
-      if (filters.priority?.length && !filters.priority.includes(task.priority)) {
-        return false;
-      }
-      
-      // Search text
-      if (this.searchText) {
-        const searchLower = this.searchText.toLowerCase();
-        const matchesSearch = 
-          task.title.toLowerCase().includes(searchLower) ||
-          task.description.toLowerCase().includes(searchLower) ||
-          task.assignedToName.toLowerCase().includes(searchLower);
-        
-        if (!matchesSearch) return false;
-      }
-      
-      return true;
-    });
+    const now = new Date();
+
+    this.filteredTasks = this.tasks
+      .filter(task => {
+        if (filters.status?.length   && !filters.status.includes(task.status))     return false;
+        if (filters.priority?.length && !filters.priority.includes(task.priority)) return false;
+        if (this.searchText) {
+          const q = this.searchText.toLowerCase();
+          if (!task.title.toLowerCase().includes(q) &&
+              !task.description.toLowerCase().includes(q) &&
+              !task.assignedToName.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      })
+      .map(task => {
+        const overdueState = !!(task.dueDate && task.status !== TaskStatus.COMPLETED && new Date(task.dueDate) < now);
+        return {
+          ...task,
+          overdueState,
+          formattedDueDate: task.dueDate
+            ? new Date(task.dueDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'N/A',
+          statusCssClass:   this.getStatusClass(task.status),
+          priorityCssClass: this.getPriorityClass(task.priority),
+        } as TaskDisplay;
+      });
   }
 
   onSearchChange(): void {
-    this.applyFilters();
+    this.searchSubject.next(this.searchText);
   }
 
   toggleFilters(): void {
@@ -146,16 +157,10 @@ export class TaskComponent implements OnInit  {
   }
 
   clearFilters(): void {
-    this.filterForm.reset({
-      status: [],
-      priority: [],
-      assignedTo: [],
-      dueDateFrom: '',
-      dueDateTo: '',
-      searchText: ''
-    });
+    this.filterForm.reset({ status: [], priority: [], assignedTo: [], dueDateFrom: '', dueDateTo: '', searchText: '' });
     this.searchText = '';
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   openCreateTaskModal(): void {
@@ -167,72 +172,49 @@ export class TaskComponent implements OnInit  {
   }
 
   updateTaskStatus(task: Task, newStatus: TaskStatus): void {
-    this.taskService.updateTaskStatus(task.taskId, newStatus).subscribe({
-      next: () => {
-        task.status = newStatus;
-        alert('Task status updated successfully');
-      },
-      error: (error) => {
-        console.error('Error updating task status:', error);
-        alert('Failed to update task status');
-      }
-    });
+    this.taskService.updateTaskStatus(task.taskId, newStatus)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          task.status = newStatus;
+          this.applyFilters();
+          this.cdr.markForCheck();
+        },
+        error: () => this.notificationService.error('Failed to update task status')
+      });
   }
 
   deleteTask(task: Task, event: Event): void {
     event.stopPropagation();
-    
-    if (!confirm(`Are you sure you want to delete the task "${task.title}"?`)) {
-      return;
-    }
-    
-    this.taskService.deleteTask(task.taskId).subscribe({
-      next: () => {
-        alert('Task deleted successfully');
-        this.loadTasks();
-      },
-      error: (error) => {
-        console.error('Error deleting task:', error);
-        alert('Failed to delete task');
-      }
-    });
+    if (!confirm(`Are you sure you want to delete the task "${task.title}"?`)) return;
+
+    this.taskService.deleteTask(task.taskId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next:  () => this.loadTasks(),
+        error: () => this.notificationService.error('Failed to delete task')
+      });
   }
 
   getStatusClass(status: TaskStatus): string {
-    const statusClasses = {
-      [TaskStatus.TODO]: 'status-todo',
-      [TaskStatus.IN_PROGRESS]: 'status-in-progress',
+    const map: Record<TaskStatus, string> = {
+      [TaskStatus.TODO]:         'status-todo',
+      [TaskStatus.IN_PROGRESS]:  'status-in-progress',
       [TaskStatus.UNDER_REVIEW]: 'status-under-review',
-      [TaskStatus.COMPLETED]: 'status-completed',
-      [TaskStatus.CANCELLED]: 'status-cancelled',
-      [TaskStatus.ON_HOLD]: 'status-on-hold'
+      [TaskStatus.COMPLETED]:    'status-completed',
+      [TaskStatus.CANCELLED]:    'status-cancelled',
+      [TaskStatus.ON_HOLD]:      'status-on-hold'
     };
-    return statusClasses[status] || '';
+    return map[status] || '';
   }
 
   getPriorityClass(priority: TaskPriority): string {
-    const priorityClasses = {
-      [TaskPriority.LOW]: 'priority-low',
+    const map: Record<TaskPriority, string> = {
+      [TaskPriority.LOW]:    'priority-low',
       [TaskPriority.MEDIUM]: 'priority-medium',
-      [TaskPriority.HIGH]: 'priority-high',
+      [TaskPriority.HIGH]:   'priority-high',
       [TaskPriority.URGENT]: 'priority-urgent'
     };
-    return priorityClasses[priority] || '';
-  }
-
-  isOverdue(task: Task): boolean {
-    if (!task.dueDate || task.status === TaskStatus.COMPLETED) {
-      return false;
-    }
-    return new Date(task.dueDate) < new Date();
-  }
-
-  formatDate(date: Date | undefined): string {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return map[priority] || '';
   }
 }

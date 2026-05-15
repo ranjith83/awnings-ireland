@@ -1,5 +1,5 @@
 // audit-history.component.ts
-import { Component, OnInit, PLATFORM_ID, Inject, signal, computed } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, OnDestroy, PLATFORM_ID, Inject, signal, computed } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -35,9 +35,10 @@ import { NotificationService } from '../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './audit-history.component.html',
-  styleUrls: ['./audit-history.component.scss']
+  styleUrls: ['./audit-history.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AuditHistoryComponent implements OnInit {
+export class AuditHistoryComponent implements OnInit, OnDestroy {
   // Signals for reactive state management
   auditLogs = signal<AuditLogDto[]>([]);
   isLoading = signal(false);
@@ -138,6 +139,10 @@ export class AuditHistoryComponent implements OnInit {
     
     // Load initial data
     await this.loadAuditLogs();
+  }
+
+  ngOnDestroy(): void {
+    this.searchSubject.complete();
   }
 
   async loadCustomers(): Promise<void> {

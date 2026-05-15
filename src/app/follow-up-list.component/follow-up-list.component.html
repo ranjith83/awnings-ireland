@@ -88,7 +88,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let f of followUps"
+          <tr *ngFor="let f of followUps; trackBy: trackByFollowUpId"
               class="followup-row"
               [class.dismissed-row]="f.isDismissed"
               [class.active-row]="!f.isDismissed"

@@ -1,9 +1,9 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest } from 'rxjs';
-import { takeUntil, tap, catchError, finalize, map, switchMap } from 'rxjs/operators';
+import { takeUntil, catchError, finalize, map, switchMap } from 'rxjs/operators';
 import {
   WorkflowService,
   WorkflowDto,
@@ -32,7 +32,8 @@ import { NotificationService } from '../../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './workflow-list.component.html',
-  styleUrl: './workflow-list.component.css'
+  styleUrl: './workflow-list.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WorkflowListComponent implements OnInit, OnDestroy {
 
@@ -96,7 +97,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     private router: Router,
     private workflowStateService: WorkflowStateService,
     private workflowService: WorkflowService,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
@@ -108,6 +110,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
       this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
       if (this.customerId) this.loadWorkflows(this.customerId);
+      this.cdr.markForCheck();
     });
 
     this.loadSuppliers();
@@ -130,9 +133,9 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       })
     );
 
-    this.suppliers$.pipe(takeUntil(this.destroy$)).subscribe(s => this.currentSuppliers = s);
-    this.productTypes$.pipe(takeUntil(this.destroy$)).subscribe(pt => this.currentProductTypes = pt);
-    this.products$.pipe(takeUntil(this.destroy$)).subscribe(p => this.currentProducts = p);
+    this.suppliers$.pipe(takeUntil(this.destroy$)).subscribe(s => { this.currentSuppliers = s; this.cdr.markForCheck(); });
+    this.productTypes$.pipe(takeUntil(this.destroy$)).subscribe(pt => { this.currentProductTypes = pt; this.cdr.markForCheck(); });
+    this.products$.pipe(takeUntil(this.destroy$)).subscribe(p => { this.currentProducts = p; this.cdr.markForCheck(); });
 
     this.workflows$ = this.workflowsSubject$.asObservable();
 
@@ -275,6 +278,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         this.selectedSupplier = null; this.selectedProductType = null; this.selectedProduct = null;
         this.selectedSupplierSubject$.next(null); this.selectedProductTypeSubject$.next(null); this.selectedProductSubject$.next(null);
         this.clearMessagesAfterDelay();
+        this.cdr.markForCheck();
       },
       error: () => this.notificationService.error('Failed to create workflow. Please try again.')
     });
@@ -308,6 +312,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         if (idx !== -1) { current[idx] = updated; this.workflowsSubject$.next([...current]); }
         this.notificationService.success('Workflow updated successfully!');
         this.closeEditModal(); this.clearMessagesAfterDelay();
+        this.cdr.markForCheck();
       },
       error: () => this.notificationService.error('Failed to update workflow. Please try again.')
     });
@@ -360,17 +365,16 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
           this.blockingDependencies = [];
           this.notificationService.success(`Workflow "${name}" deleted successfully!`);
           this.clearMessagesAfterDelay();
+          this.cdr.markForCheck();
         } else {
-          // Blocked — update the workflow in the local list so the icon refreshes,
-          // and show the dependency list inside the still-open modal.
           this.blockingDependencies = result.blockingDependencies;
-          // Mark hasDependencies = true so the button stays locked on the list
           const cw = this.workflowsSubject$.value;
           const idx = cw.findIndex(w => w.workflowId === id);
           if (idx !== -1) {
             cw[idx] = { ...cw[idx], hasDependencies: true };
             this.workflowsSubject$.next([...cw]);
           }
+          this.cdr.markForCheck();
         }
       },
       error: () => {
@@ -378,6 +382,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
         this.showDeleteConfirm = false;
         this.deletingWorkflow  = null;
         this.clearMessagesAfterDelay();
+        this.cdr.markForCheck();
       }
     });
   }

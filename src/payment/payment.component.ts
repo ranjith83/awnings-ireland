@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -29,7 +29,8 @@ import { NotificationService } from '../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './payment.component.html',
-  styleUrls: ['./payment.component.css']
+  styleUrls: ['./payment.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PaymentComponent implements OnInit, OnDestroy {
   // Observables
@@ -97,7 +98,8 @@ export class PaymentComponent implements OnInit, OnDestroy {
     private router: Router,
     private invoiceService: InvoiceService,
     private paymentScheduleService: PaymentScheduleService,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.setupObservables();
@@ -140,6 +142,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
           this.selectedInvoiceId = this.invoiceId;
           this.loadExistingPaymentSchedule();
         }
+        this.cdr.markForCheck();
       });
   }
 
@@ -157,6 +160,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
             this.selectedInvoiceId = invoices[0].id;
             this.onInvoiceChange();
           }
+          this.cdr.markForCheck();
         }),
         catchError(error => {
           console.error('Error loading invoices:', error);
@@ -181,6 +185,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
         tap(invoice => {
           this.loadInvoiceDetails(invoice);
           this.loadExistingPaymentSchedule();
+          this.cdr.markForCheck();
         }),
         catchError(error => {
           console.error('Error loading invoice details:', error);
@@ -316,7 +321,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
           this.notificationService.success(`Payment of €${this.paymentAmount.toFixed(2)} recorded successfully`);
           this.closePaymentModal();
           this.loadExistingPaymentSchedule();
-          
+          this.cdr.markForCheck();
         }),
         catchError(error => {
           console.error('Error recording payment:', error);

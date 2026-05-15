@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import {
@@ -25,13 +27,16 @@ interface MenuItem {
 }
 
 @Component({
-  selector: 'app-layout', // Fixed: removed .component from selector
+  selector: 'app-layout',
   standalone: true,
   imports: [CommonModule, RouterModule, FontAwesomeModule],
   templateUrl: './app-layout.component.html',
-  styleUrl: './app-layout.component.css'
+  styleUrl: './app-layout.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppLayoutComponent {
+export class AppLayoutComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   isSidebarCollapsed = false;
   activeRoute = '';
   currentUser: User | null = null;
@@ -52,23 +57,27 @@ export class AppLayoutComponent {
   
   constructor(
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {
     this.activeRoute = this.router.url;
   }
 
   ngOnInit(): void {
     this.loadCurrentUser();
-    //this.subscribeToRouteChanges();
-  } 
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   loadCurrentUser(): void {
-    // Get user data from AuthService (already handles platform checks)
     this.currentUser = this.authService.getCurrentUser();
-    
-    // Optional: Subscribe to user changes
-    this.authService.currentUser.subscribe(user => {
+
+    this.authService.currentUser.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUser = user;
+      this.cdr.markForCheck();
     });
   }
 

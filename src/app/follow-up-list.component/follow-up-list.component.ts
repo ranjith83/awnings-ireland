@@ -48,6 +48,8 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
   showEmailPreviewModal = false;
   emailPreviewFollowUp: FollowUpDto | null = null;
 
+  trackByFollowUpId = (_: number, f: FollowUpDto) => f.followUpId;
+
   constructor(
     private followUpService: FollowUpService,
     private router: Router,

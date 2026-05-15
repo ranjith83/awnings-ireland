@@ -59,7 +59,7 @@
         <div class="filter-group">
           <label>Status</label>
           <div class="checkbox-group">
-            <label class="checkbox-label" *ngFor="let status of [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.UNDER_REVIEW, TaskStatus.COMPLETED]">
+            <label class="checkbox-label" *ngFor="let status of [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.UNDER_REVIEW, TaskStatus.COMPLETED]; trackBy: trackByValue">
               <input type="checkbox" [value]="status" (change)="applyFilters()">
               <span>{{ status | titlecase }}</span>
             </label>
@@ -69,7 +69,7 @@
         <div class="filter-group">
           <label>Priority</label>
           <div class="checkbox-group">
-            <label class="checkbox-label" *ngFor="let priority of [TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT]">
+            <label class="checkbox-label" *ngFor="let priority of [TaskPriority.LOW, TaskPriority.MEDIUM, TaskPriority.HIGH, TaskPriority.URGENT]; trackBy: trackByValue">
               <input type="checkbox" [value]="priority" (change)="applyFilters()">
               <span>{{ priority | titlecase }}</span>
             </label>
@@ -99,9 +99,9 @@
   <!-- Task Grid -->
   <div class="task-grid" *ngIf="!isLoading">
     <div 
-      *ngFor="let task of filteredTasks" 
+      *ngFor="let task of filteredTasks; trackBy: trackByTaskId"
       class="task-card"
-      [class.overdue]="isOverdue(task)"
+      [class.overdue]="task.overdueState"
       (click)="viewTaskDetails(task)">
       
       <!-- Task Header -->
@@ -126,18 +126,18 @@
         </div>
         <div class="task-meta-row">
           <span class="task-label">Due Date:</span>
-          <span class="task-value" [class.overdue-text]="isOverdue(task)">
-            {{ formatDate(task.dueDate) }}
+          <span class="task-value" [class.overdue-text]="task.overdueState">
+            {{ task.formattedDueDate }}
           </span>
         </div>
       </div>
 
       <!-- Task Footer -->
       <div class="task-footer">
-        <span class="badge" [ngClass]="getStatusClass(task.status)">
+        <span class="badge" [ngClass]="task.statusCssClass">
           {{ task.status | titlecase }}
         </span>
-        <span class="badge" [ngClass]="getPriorityClass(task.priority)">
+        <span class="badge" [ngClass]="task.priorityCssClass">
           {{ task.priority | titlecase }}
         </span>
       </div>

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, of } from 'rxjs';
@@ -21,7 +21,8 @@ import { NotificationService } from '../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './reports.component.html',
-  styleUrls: ['./reports.component.scss']
+  styleUrls: ['./reports.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ReportsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

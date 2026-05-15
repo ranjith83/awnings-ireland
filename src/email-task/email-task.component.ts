@@ -65,6 +65,8 @@ type EmailSubTab = 'tasks' | 'in-progress' | 'completed' | 'junk';
 export class TaskComponent implements OnInit, OnDestroy {
   private isBrowser: boolean;
   private destroy$ = new Subject<void>();
+  private customerNameCache = new Map<number, string | null>();
+  private workflowNameCache = new Map<number, string>();
 
   private pendingRefreshOnReturn = false;
   private _pendingWorkflowLinkTask: {
@@ -451,33 +453,37 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
 
   private enrichWithCustomerNames(tasks: EmailTaskExtended[]): Observable<EmailTaskExtended[]> {
-    const customerIds = [...new Set(tasks.filter(t => t.customerId).map(t => t.customerId as number))];
-    if (customerIds.length === 0) return of(tasks);
+    const allIds = [...new Set(tasks.filter(t => t.customerId).map(t => t.customerId as number))];
+    if (allIds.length === 0) return of(tasks);
 
-    const customerFetches$ = customerIds.map(id =>
-      this.customerService.getCustomerById(id).pipe(
-        map(c => ({ id, name: c.name })),
-        catchError(() => of({ id, name: null as string | null }))
-      )
-    );
-    const workflowFetches$ = customerIds.map(id =>
-      this.workflowService.getWorkflowsForCustomer(id).pipe(
-        map(wfs => ({ customerId: id, workflows: wfs })),
-        catchError(() => of({ customerId: id, workflows: [] as WorkflowDto[] }))
-      )
-    );
+    const applyCache = () => tasks.map(t => {
+      const enriched = { ...t };
+      if (t.customerId && !t.customerName) enriched.customerName = this.customerNameCache.get(t.customerId) ?? t.customerName;
+      if (t.workflowId && !t.workflowName) enriched.workflowName = this.workflowNameCache.get(t.workflowId) ?? null;
+      return enriched;
+    });
 
-    return forkJoin([forkJoin(customerFetches$), forkJoin(workflowFetches$)]).pipe(
+    const uncachedIds = allIds.filter(id => !this.customerNameCache.has(id));
+    if (uncachedIds.length === 0) return of(applyCache());
+
+    return forkJoin([
+      forkJoin(uncachedIds.map(id =>
+        this.customerService.getCustomerById(id).pipe(
+          map(c => ({ id, name: c.name as string | null })),
+          catchError(() => of({ id, name: null as string | null }))
+        )
+      )),
+      forkJoin(uncachedIds.map(id =>
+        this.workflowService.getWorkflowsForCustomer(id).pipe(
+          map(wfs => ({ customerId: id, workflows: wfs })),
+          catchError(() => of({ customerId: id, workflows: [] as WorkflowDto[] }))
+        )
+      ))
+    ]).pipe(
       map(([customerResults, workflowResults]) => {
-        const customerMap = new Map(customerResults.map(r => [r.id, r.name]));
-        const workflowMap = new Map<number, string>();
-        workflowResults.forEach(r => r.workflows.forEach(w => workflowMap.set(w.workflowId, w.workflowName)));
-        return tasks.map(t => {
-          const enriched = { ...t };
-          if (t.customerId && !t.customerName) enriched.customerName = customerMap.get(t.customerId) ?? t.customerName;
-          if (t.workflowId && !t.workflowName) enriched.workflowName = workflowMap.get(t.workflowId) ?? null;
-          return enriched;
-        });
+        customerResults.forEach(r => this.customerNameCache.set(r.id, r.name));
+        workflowResults.forEach(r => r.workflows.forEach((w: WorkflowDto) => this.workflowNameCache.set(w.workflowId, w.workflowName)));
+        return applyCache();
       })
     );
   }

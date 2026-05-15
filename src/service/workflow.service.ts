@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, shareReplay } from 'rxjs/operators';
 import { Workflow } from '../model/workflow.model';
 import { environment } from '../app/environments/environment';
 import { map } from 'rxjs/operators';
@@ -179,6 +179,15 @@ export class WorkflowService {
   private apiUrl = `${environment.apiUrl}/api/workflow`;
   private supplierApiUrl = `${environment.apiUrl}/api/suppliers`;
 
+  // ── Per-product cache: key is productId (or "productId-armTypeId") ──────────
+  private widthsCache      = new Map<number, Observable<number[]>>();
+  private projectionsCache = new Map<number, Observable<number[]>>();
+  private heatersCache     = new Map<number, Observable<HeaterDto[]>>();
+  private lightingCache    = new Map<number, Observable<LightingCassetteDto[]>>();
+  private controlsCache    = new Map<number, Observable<ControlDto[]>>();
+  private bracketsCache    = new Map<string, Observable<BracketDto[]>>();
+  private motorsCache      = new Map<string, Observable<MotorDto[]>>();
+
   constructor(private http: HttpClient) {}
 
   /** GET /api/workflow/GetAllWorfflowsForCustomer */
@@ -236,9 +245,14 @@ export class WorkflowService {
 
   /** GET /api/workflow/GetStandardWidthsForProduct */
   getStandardWidthsForProduct(productId: number): Observable<number[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<number[]>(`${this.apiUrl}/GetStandardWidthsForProduct`, { params })
-      .pipe(catchError(this.handleError));
+    if (!this.widthsCache.has(productId)) {
+      const params = new HttpParams().set('ProductId', productId.toString());
+      this.widthsCache.set(productId,
+        this.http.get<number[]>(`${this.apiUrl}/GetStandardWidthsForProduct`, { params })
+          .pipe(catchError(this.handleError), shareReplay(1))
+      );
+    }
+    return this.widthsCache.get(productId)!;
   }
 
   /** GET /api/workflow/GeArmsForProduct */
@@ -250,38 +264,64 @@ export class WorkflowService {
 
   /** GET /api/workflow/GeMotorsForProduct */
   getMotorsForProduct(productId: number, armTypeId?: number | null): Observable<MotorDto[]> {
-    let params: any = { ProductId: productId };
-    if (armTypeId != null) params['armTypeId'] = armTypeId;
-    return this.http.get<MotorDto[]>(`${this.apiUrl}/GeMotorsForProduct`, { params })
-      .pipe(catchError(this.handleError));
+    const key = `${productId}-${armTypeId ?? ''}`;
+    if (!this.motorsCache.has(key)) {
+      let params: any = { ProductId: productId };
+      if (armTypeId != null) params['armTypeId'] = armTypeId;
+      this.motorsCache.set(key,
+        this.http.get<MotorDto[]>(`${this.apiUrl}/GeMotorsForProduct`, { params })
+          .pipe(catchError(this.handleError), shareReplay(1))
+      );
+    }
+    return this.motorsCache.get(key)!;
   }
 
   /** GET /api/workflow/GeHeatersForProduct */
   getHeatersForProduct(productId: number): Observable<HeaterDto[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<HeaterDto[]>(`${this.apiUrl}/GeHeatersForProduct`, { params })
-      .pipe(catchError(this.handleError));
+    if (!this.heatersCache.has(productId)) {
+      const params = new HttpParams().set('ProductId', productId.toString());
+      this.heatersCache.set(productId,
+        this.http.get<HeaterDto[]>(`${this.apiUrl}/GeHeatersForProduct`, { params })
+          .pipe(catchError(this.handleError), shareReplay(1))
+      );
+    }
+    return this.heatersCache.get(productId)!;
   }
 
   /** GET /api/workflow/GeLightingCassettesForProduct */
   getLightingCassettesForProduct(productId: number): Observable<LightingCassetteDto[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<LightingCassetteDto[]>(`${this.apiUrl}/GeLightingCassettesForProduct`, { params })
-      .pipe(catchError(() => of([])));
+    if (!this.lightingCache.has(productId)) {
+      const params = new HttpParams().set('ProductId', productId.toString());
+      this.lightingCache.set(productId,
+        this.http.get<LightingCassetteDto[]>(`${this.apiUrl}/GeLightingCassettesForProduct`, { params })
+          .pipe(catchError(() => of([])), shareReplay(1))
+      );
+    }
+    return this.lightingCache.get(productId)!;
   }
 
   /** GET /api/workflow/GeControlsForProduct */
   getControlsForProduct(productId: number): Observable<ControlDto[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<ControlDto[]>(`${this.apiUrl}/GeControlsForProduct`, { params })
-      .pipe(catchError(() => of([])));
+    if (!this.controlsCache.has(productId)) {
+      const params = new HttpParams().set('ProductId', productId.toString());
+      this.controlsCache.set(productId,
+        this.http.get<ControlDto[]>(`${this.apiUrl}/GeControlsForProduct`, { params })
+          .pipe(catchError(() => of([])), shareReplay(1))
+      );
+    }
+    return this.controlsCache.get(productId)!;
   }
 
   /** GET /api/workflow/GetProjectionWidthsForProduct */
   getProjectionWidthsForProduct(productId: number): Observable<number[]> {
-    const params = new HttpParams().set('ProductId', productId.toString());
-    return this.http.get<number[]>(`${this.apiUrl}/GetProjectionWidthsForProduct`, { params })
-      .pipe(catchError(this.handleError));
+    if (!this.projectionsCache.has(productId)) {
+      const params = new HttpParams().set('ProductId', productId.toString());
+      this.projectionsCache.set(productId,
+        this.http.get<number[]>(`${this.apiUrl}/GetProjectionWidthsForProduct`, { params })
+          .pipe(catchError(this.handleError), shareReplay(1))
+      );
+    }
+    return this.projectionsCache.get(productId)!;
   }
 
   /** GET /api/workflow/GetProjectionPriceForProduct */
@@ -295,12 +335,18 @@ export class WorkflowService {
   }
 
   /** GET /api/workflow/GeBracketsForProduct */
-getBracketsForProduct(productId: number, armTypeId?: number | null): Observable<BracketDto[]> {
-  let params: any = { ProductId: productId };
-  if (armTypeId != null) params['armTypeId'] = armTypeId;
-  return this.http.get<BracketDto[]>(`${this.apiUrl}/GeBracketsForProduct`, { params })
-    .pipe(catchError(this.handleError));
-}
+  getBracketsForProduct(productId: number, armTypeId?: number | null): Observable<BracketDto[]> {
+    const key = `${productId}-${armTypeId ?? ''}`;
+    if (!this.bracketsCache.has(key)) {
+      let params: any = { ProductId: productId };
+      if (armTypeId != null) params['armTypeId'] = armTypeId;
+      this.bracketsCache.set(key,
+        this.http.get<BracketDto[]>(`${this.apiUrl}/GeBracketsForProduct`, { params })
+          .pipe(catchError(this.handleError), shareReplay(1))
+      );
+    }
+    return this.bracketsCache.get(key)!;
+  }
 
   /** GET /api/workflow/GeFixingPointsForProduct */
   getFixingPointsForProduct(productId: number): Observable<FixingPointDto[]> {

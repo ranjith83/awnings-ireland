@@ -1,5 +1,5 @@
 // dashboard.component.ts
-import { AfterViewInit, Component, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, ViewChild, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, ChartConfiguration } from 'chart.js/auto';
 import { BehaviorSubject, forkJoin, Observable, of, Subject } from 'rxjs';
@@ -19,7 +19,8 @@ import { NotificationService } from '../../service/notification.service';
   standalone: true,
   imports: [CommonModule, QuickCalculatorComponent],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css'
+  styleUrl: './dashboard.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('salesChart') salesChartRef!: ElementRef<HTMLCanvasElement>;
