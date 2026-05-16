@@ -260,7 +260,7 @@
     <div class="modal-body">
       <p class="delete-confirm-text">Are you sure you want to delete this enquiry?</p>
       <p class="delete-confirm-preview" *ngIf="deletingEnquiry?.comments">
-        "{{ deletingEnquiry!.comments | slice:0:120 }}{{ (deletingEnquiry!.comments.length ?? 0) > 120 ? '…' : ''  }}"
+        "{{ deletingEnquiry!.comments | slice:0:120 }}{{ deletingEnquiry!.comments.length > 120 ? '…' : '' }}"
       </p>
       <p class="delete-confirm-warning">This action cannot be undone.</p>
     </div>
