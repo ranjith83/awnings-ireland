@@ -1,7 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
+import { Subject } from 'rxjs';
 import { AuthService, RegisterRequest } from '../service/auth.service';
 
 @Component({
@@ -9,9 +10,12 @@ import { AuthService, RegisterRequest } from '../service/auth.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './register.component.html',
-  styleUrl: './register.component.css'
+  styleUrl: './register.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RegisterComponent implements OnInit {
+export class RegisterComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   registerForm!: FormGroup;
   isLoading = false;
   errorMessage = '';
@@ -32,8 +36,14 @@ export class RegisterComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   ngOnInit(): void {
     this.initializeForm();
@@ -131,16 +141,14 @@ export class RegisterComponent implements OnInit {
           console.log('✅ Registration successful:', response);
           this.successMessage = 'Registration successful! Redirecting to dashboard...';
           this.isLoading = false;
-          
-          // Redirect to dashboard after 2 seconds
-          setTimeout(() => {
-            this.router.navigate(['/dashboard']);
-          }, 2000);
+          this.cdr.markForCheck();
+          setTimeout(() => this.router.navigate(['/dashboard']), 2000);
         },
         error: (error) => {
           console.error('❌ Registration error:', error);
           this.errorMessage = error.message || 'Registration failed. Please try again.';
           this.isLoading = false;
+          this.cdr.markForCheck();
         }
       });
     } else {

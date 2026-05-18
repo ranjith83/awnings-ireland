@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
@@ -40,7 +40,8 @@ import { NotificationService } from '../../service/notification.service';
   selector: 'app-invite-showroom',
   imports: [ReactiveFormsModule, CommonModule],
   templateUrl: './invite-showroom.component.html',
-  styleUrl: './invite-showroom.component.scss'
+  styleUrl: './invite-showroom.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InviteShowroomComponent implements OnInit, OnDestroy {
   bookingForm: FormGroup;
@@ -102,7 +103,8 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private workflowStateService: WorkflowStateService,
     private workflowService: WorkflowService,
-    private notificationService: NotificationService) {
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {
     this.bookingForm = this.fb.group({
       workflow: ['', Validators.required],
       eventName: ['', Validators.required],
@@ -128,6 +130,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         if (this.selectedDate) {
           this.loadEventsForSelectedDate();
         }
+        this.cdr.markForCheck();
       });
     
     this.route.queryParams
@@ -155,6 +158,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         }
 
         this.loadWorkflowsForCustomer(workflowId);
+        this.cdr.markForCheck();
       });
 
     // ✅ Generate calendar first
@@ -192,6 +196,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
             this.bookingForm.patchValue({ workflow: this.workflowId.toString() });
             this.onWorkflowChange(workflows[0]);
           }
+          this.cdr.markForCheck();
         }),
         catchError(error => {
           console.error('Error loading workflows:', error);

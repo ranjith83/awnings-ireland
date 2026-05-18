@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { NotificationService, Notification } from '../../../service/notification.service';
@@ -8,6 +8,7 @@ import { NotificationService, Notification } from '../../../service/notification
   standalone: true,
   imports: [CommonModule],
   encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="toast-container">
       <div
@@ -95,12 +96,19 @@ export class NotificationComponent implements OnInit, OnDestroy {
   notifications: Notification[] = [];
   private sub?: Subscription;
 
-  constructor(private notificationService: NotificationService) {}
+  constructor(
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.sub = this.notificationService.notification$.subscribe(n => {
       this.notifications.push(n);
-      setTimeout(() => this.remove(this.notifications.indexOf(n)), n.duration ?? 3000);
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.remove(this.notifications.indexOf(n));
+        this.cdr.markForCheck();
+      }, n.duration ?? 3000);
     });
   }
 
@@ -109,6 +117,9 @@ export class NotificationComponent implements OnInit, OnDestroy {
   }
 
   remove(index: number) {
-    if (index >= 0) this.notifications.splice(index, 1);
+    if (index >= 0) {
+      this.notifications.splice(index, 1);
+      this.cdr.markForCheck();
+    }
   }
 }

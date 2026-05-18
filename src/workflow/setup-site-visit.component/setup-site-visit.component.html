@@ -203,7 +203,7 @@
             <tr *ngFor="let siteVisit of siteVisits$ | async"
                 [class.editing-row]="editingSiteVisitId === siteVisit.siteVisitId">
               <td>{{ siteVisit.siteVisitId }}</td>
-              <td>{{ getProductModelName(siteVisit.productModelType) }}</td>
+              <td>{{ productModelNameMap[siteVisit.productModelType] ?? siteVisit.productModelType }}</td>
               <td>{{ siteVisit.model || '-' }}</td>
               <td>{{ siteVisit.structure || '-' }}</td>
               <td>{{ siteVisit.width ? siteVisit.width + 'm' : '-' }}</td>
@@ -228,7 +228,7 @@
         <div class="form-header-bar">
           <span class="form-title">{{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}</span>
           <span class="model-badge" *ngIf="selectedProductModel">
-            {{ getProductModelName(selectedProductModel) }}
+            {{ productModelNameMap[selectedProductModel] ?? selectedProductModel }}
           </span>
         </div>
         <div class="form-row">
@@ -236,7 +236,7 @@
             <label>Model</label>
             <select formControlName="model" class="form-control">
               <option value="">Select Model</option>
-              <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
+              <option *ngFor="let value of fieldValuesCache['model']" [value]="value">
                 {{ value }}
               </option>
             </select>
@@ -253,7 +253,7 @@
         <div class="form-header-bar">
           <span class="form-title">{{ editMode ? 'Edit Site Visit' : 'Add New Site Visit' }}</span>
           <span class="model-badge" *ngIf="selectedProductModel">
-            {{ getProductModelName(selectedProductModel) }}
+            {{ productModelNameMap[selectedProductModel] ?? selectedProductModel }}
           </span>
         </div>
         <div class="form-row two-columns other-specify-section">
@@ -261,7 +261,7 @@
             <label>Model</label>
             <select formControlName="model" class="form-control">
               <option value="">Select Model</option>
-              <option *ngFor="let value of getFieldValues({ name: 'model', label: 'Model', type: 'dropdown', category: 'Model', visibleFor: [] })" [value]="value">
+              <option *ngFor="let value of fieldValuesCache['model']" [value]="value">
                 {{ value }}
               </option>
             </select>
@@ -290,7 +290,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -312,7 +312,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -330,7 +330,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -348,7 +348,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">

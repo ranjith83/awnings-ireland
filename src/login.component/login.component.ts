@@ -1,8 +1,10 @@
 // login.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../service/auth.service';
 
 @Component({
@@ -10,20 +12,24 @@ import { AuthService } from '../service/auth.service';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './login.component.html',
-  styleUrls: ['./login.component.css']
+  styleUrls: ['./login.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   loginForm: FormGroup;
   isLoading = false;
   errorMessage = '';
-  sessionExpiredMessage = '';  // NEW: shown when redirected due to expiry
+  sessionExpiredMessage = '';
   showPassword = false;
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
     private router: Router,
-    private route: ActivatedRoute   // NEW: to read query params
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
   ) {
     if (this.authService.isAuthenticated) {
       this.router.navigate(['/']);
@@ -37,12 +43,17 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // NEW: Check if the user was redirected here because their session expired
-    this.route.queryParams.subscribe(params => {
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
       if (params['sessionExpired'] === 'true') {
         this.sessionExpiredMessage = 'Your session has expired. Please sign in again.';
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   get username() {
@@ -79,12 +90,14 @@ export class LoginComponent implements OnInit {
       next: (response) => {
         console.log('Login successful', response);
         this.isLoading = false;
+        this.cdr.markForCheck();
         this.router.navigate(['/']);
       },
       error: (error) => {
         console.error('Login error', error);
         this.errorMessage = error.message || 'Invalid username or password';
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }

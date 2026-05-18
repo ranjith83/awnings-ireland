@@ -81,32 +81,27 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     });
   }
 
- getUserDisplayName(): string {
+  get userDisplayName(): string {
     if (!this.currentUser) return 'User';
-    
-    // Priority: firstName + lastName > username
     if (this.currentUser.firstName && this.currentUser.lastName) {
       return `${this.currentUser.firstName} ${this.currentUser.lastName}`;
     } else if (this.currentUser.firstName) {
       return this.currentUser.firstName;
     }
-    
     return this.currentUser.username;
   }
 
-  getUserInitials(): string {
+  get userInitials(): string {
     if (!this.currentUser) return 'U';
-    
     if (this.currentUser.firstName && this.currentUser.lastName) {
       return `${this.currentUser.firstName.charAt(0)}${this.currentUser.lastName.charAt(0)}`.toUpperCase();
     } else if (this.currentUser.firstName) {
       return this.currentUser.firstName.charAt(0).toUpperCase();
     }
-    
     return this.currentUser.username.charAt(0).toUpperCase();
   }
 
-  getUserRole(): string {
+  get userRole(): string {
     return this.currentUser?.role || 'User';
   }
 
@@ -130,8 +125,7 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     this.router.navigate(['/login']);
   }
 
-  getPageTitle() {
-    const activeItem = this.menuItems.find(item => item.route === this.activeRoute);
-    return activeItem?.label || 'Dashboard';
+  get pageTitle(): string {
+    return this.menuItems.find(item => item.route === this.activeRoute)?.label ?? 'Dashboard';
   }
 }

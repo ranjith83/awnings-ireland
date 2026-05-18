@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of, finalize } from 'rxjs';
@@ -46,7 +46,8 @@ import { NotificationService } from '../../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './invoice.component.html',
-  styleUrl: './invoice.component.css'
+  styleUrl: './invoice.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InvoiceComponent implements OnInit, OnDestroy {
   // Observables for data
@@ -185,7 +186,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     private pdfService: PdfGenerationService,
     private route: ActivatedRoute,
     private router: Router,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {}
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
@@ -293,6 +295,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
         }
 
         this.loadWorkflowsForCustomer(workflowId, paramQuoteId);
+        this.cdr.markForCheck();
       });
   }
 
@@ -418,7 +421,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.includeShadeplus = false;
     this.removeAddonLineItem('shadeplus');
 
-    this.workflowService.hasNonStandardRALColours(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
+    this.workflowService.hasNonStandardRALColours(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => { this.hasRalSurcharge = v; this.cdr.markForCheck(); });
 
     // Load all ShadePlus options for this product (all widths) in one call
     this.workflowService.getShadePlusOptions(this.selectedModelId, 0)
@@ -436,10 +439,11 @@ export class InvoiceComponent implements OnInit, OnDestroy {
           this.selectedShadePlusId          = this.shadePlusOptions[0].shadePlusId;
           this.selectedShadePlusDescription = this.shadePlusOptions[0].description;
         }
+        this.cdr.markForCheck();
       });
 
-    this.workflowService.hasValanceStyles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
-    this.workflowService.hasWallSealingProfiles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasWallSealing = v);
+    this.workflowService.hasValanceStyles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => { this.hasValanceStyle = v; this.cdr.markForCheck(); });
+    this.workflowService.hasWallSealingProfiles(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => { this.hasWallSealing = v; this.cdr.markForCheck(); });
 
     // Brackets + motors both depend on armTypeId — load with default armTypeId 1 initially
     this.reloadArmTypeDependents();

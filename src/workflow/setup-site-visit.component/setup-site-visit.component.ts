@@ -149,6 +149,12 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     { id: '8', name: 'Other', key: 'other' }
   ];
 
+  readonly productModelNameMap: Record<string, string | undefined> = Object.fromEntries(
+    this.productModels.map(m => [m.key, m.name])
+  );
+
+  fieldValuesCache: Record<string, string[]> = {};
+
   productModelFields: FieldConfig[] = [
     { name: 'structure', label: 'Structure', type: 'dropdown', category: 'Structure', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'passageHeight', label: 'Passage Height (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
@@ -438,9 +444,34 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.siteVisitService.getAllDropdownValues()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (values) => this.dropdownValuesSubject$.next(values),
+        next: (values) => {
+          this.dropdownValuesSubject$.next(values);
+          this.fieldValuesCache = this.buildFieldValuesCache(values);
+          this.cdr.markForCheck();
+        },
         error: (error) => console.error('Failed to load dropdown values:', error)
       });
+  }
+
+  private buildFieldValuesCache(values: SiteVisitDropdownValues): Record<string, string[]> {
+    const allFields = [
+      ...this.productModelFields,
+      ...this.modelDetailsFields,
+      ...this.shadePlusLightsFields,
+      ...this.heaterFields,
+    ];
+    const cache: Record<string, string[]> = {};
+    for (const field of allFields) {
+      if (field.values) {
+        cache[field.name] = field.values;
+      } else if (field.category) {
+        cache[field.name] = values[field.category] ?? [];
+      } else {
+        cache[field.name] = [];
+      }
+    }
+    cache['model'] = values['Model'] ?? [];
+    return cache;
   }
 
   // ── Calendar methods ────────────────────────────────────────────────────────
