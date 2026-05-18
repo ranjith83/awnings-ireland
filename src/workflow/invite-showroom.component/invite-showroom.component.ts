@@ -463,6 +463,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     );
     console.log('⬅️ Navigate to previous month:', this.currentMonth.toLocaleDateString());
     this.generateCalendar();
+    this.cdr.markForCheck();
     this.loadCalendarEvents();
   }
 
@@ -474,6 +475,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     );
     console.log('➡️ Navigate to next month:', this.currentMonth.toLocaleDateString());
     this.generateCalendar();
+    this.cdr.markForCheck();
     this.loadCalendarEvents();
   }
 
@@ -557,6 +559,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
       this.selectedEndTime = '';
       this.bookingForm.patchValue({ endTime: '' });
     }
+    this.cdr.markForCheck();
   }
 
   onEndTimeChange(): void {

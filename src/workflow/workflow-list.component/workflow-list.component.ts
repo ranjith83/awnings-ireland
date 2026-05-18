@@ -119,6 +119,14 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
+    // Reload table whenever any workflow step is saved or a record is deleted
+    this.workflowStateService.stepCompleted$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.customerId) this.loadWorkflows(this.customerId);
+    });
+    this.workflowStateService.workflowChanged$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.customerId) this.loadWorkflows(this.customerId);
+    });
+
     this.loadSuppliers();
 
     this.productTypes$ = this.selectedSupplierSubject$.pipe(

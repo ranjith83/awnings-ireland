@@ -480,6 +480,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     this.showCalendar = !this.showCalendar;
     if (this.showCalendar && this.calendarWeeks$.getValue().length === 0) {
       this.loadCalendarMonth(this.calendarViewDate);
+    } else {
+      this.cdr.markForCheck();
     }
   }
 
