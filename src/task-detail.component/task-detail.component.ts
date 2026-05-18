@@ -54,6 +54,11 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   TaskPriority = TaskPriority;
   AuditAction = AuditAction;
 
+  trackByCommentId    = (_i: number, c: TaskComment)    => c.commentId;
+  trackByAttachmentId = (_i: number, a: TaskAttachment) => a.attachmentId;
+  trackByAuditId      = (_i: number, a: TaskAudit)      => a.auditId;
+  trackByIndex        = (i: number)                     => i;
+
   constructor(
     private taskService: TaskService,
     private route: ActivatedRoute,

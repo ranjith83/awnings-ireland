@@ -15,7 +15,7 @@
   <!-- ══ Tab Bar ══════════════════════════════════════════════════════════════ -->
   <div class="tab-bar">
     <button
-      *ngFor="let tab of tabs"
+      *ngFor="let tab of tabs; trackBy: trackByTabId"
       class="tab-btn"
       [class.active]="activeTab === tab.id"
       (click)="switchTab(tab.id)">
@@ -36,7 +36,7 @@
             <label class="form-label">Category <span class="req">*</span></label>
             <input class="form-input" type="text" [(ngModel)]="newSv.category" placeholder="e.g. WallType" list="svCategoryList" />
             <datalist id="svCategoryList">
-              <option *ngFor="let c of svCategories$ | async" [value]="c"></option>
+              <option *ngFor="let c of svCategories$ | async; trackBy: trackByString" [value]="c"></option>
             </datalist>
           </div>
           <div class="form-group">
@@ -69,7 +69,7 @@
             <label class="form-label">Filter by Category:</label>
             <select class="form-input form-input--sm" [(ngModel)]="svFilterCategory">
               <option value="">All categories</option>
-              <option *ngFor="let c of svCategories$ | async" [value]="c">{{ c }}</option>
+              <option *ngFor="let c of svCategories$ | async; trackBy: trackByString" [value]="c">{{ c }}</option>
             </select>
           </div>
         </div>
@@ -77,7 +77,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Category</th><th>Value</th><th>Order</th><th>Active</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let sv of filteredSiteVisitValues$ | async">
+              <tr *ngFor="let sv of filteredSiteVisitValues$ | async; trackBy: trackBySvId">
                 <td class="id-cell">{{ sv.id }}</td>
                 <td><span class="badge-category">{{ sv.category }}</span></td>
                 <td>{{ sv.value }}</td>
@@ -104,7 +104,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newBracket.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of bracketProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -115,7 +115,7 @@
             <label class="form-label">Arm Type</label>
             <select class="form-input" [(ngModel)]="newBracket.armTypeId">
               <option [ngValue]="null">Universal (all arm types)</option>
-              <option *ngFor="let at of armTypes$ | async" [ngValue]="at.armTypeId">{{ at.description }}</option>
+              <option *ngFor="let at of armTypes$ | async; trackBy: trackByArmTypeId" [ngValue]="at.armTypeId">{{ at.description }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -143,7 +143,7 @@
             <label class="form-label">Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="bracketFilterProduct" (ngModelChange)="applyBracketFilters()">
               <option value="">All products</option>
-              <option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of bracketProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="filter-group">
@@ -161,7 +161,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Bracket Name</th><th>Arm Type</th><th>Part No.</th><th>Price</th><th class="center-cell">Defaulted</th><th class="center-cell">Price Included</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let b of filteredBrackets$ | async">
+              <tr *ngFor="let b of filteredBrackets$ | async; trackBy: trackByBracketId">
                 <td class="id-cell">{{ b.bracketId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(b.productId) }}</span></td>
                 <td>{{ b.bracketName }}</td>
@@ -214,7 +214,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Supplier Name</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let s of suppliers$ | async">
+              <tr *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId">
                 <td class="id-cell">{{ s.supplierId }}</td>
                 <td>{{ s.supplierName }}</td>
                 <td class="actions-cell">
@@ -238,7 +238,7 @@
             <label class="form-label">Supplier <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newPt.supplierId">
               <option [ngValue]="0" disabled>Select supplier</option>
-              <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+              <option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -260,7 +260,7 @@
             <label class="form-label">Filter by Supplier:</label>
             <select class="form-input form-input--sm" [(ngModel)]="ptFilterSupplier">
               <option value="">All suppliers</option>
-              <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+              <option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
             </select>
           </div>
         </div>
@@ -268,7 +268,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Supplier</th><th>Description</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let pt of filteredProductTypes$ | async">
+              <tr *ngFor="let pt of filteredProductTypes$ | async; trackBy: trackByProductTypeId">
                 <td class="id-cell">{{ pt.productTypeId }}</td>
                 <td><span class="badge-category">{{ getSupplierName(pt.supplierId) }}</span></td>
                 <td>{{ pt.description }}</td>
@@ -293,14 +293,14 @@
             <label class="form-label">Supplier <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newProd.supplierId" (ngModelChange)="onNewProdSupplierChange()">
               <option [ngValue]="0" disabled>Select supplier</option>
-              <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+              <option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Product Type <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newProd.productTypeId" [disabled]="!newProd.supplierId">
               <option [ngValue]="0" disabled>Select type</option>
-              <option *ngFor="let pt of filteredProductTypesForNew$ | async" [ngValue]="pt.productTypeId">{{ pt.description }}</option>
+              <option *ngFor="let pt of filteredProductTypesForNew$ | async; trackBy: trackByProductTypeId" [ngValue]="pt.productTypeId">{{ pt.description }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -322,7 +322,7 @@
             <label class="form-label">Filter by Supplier:</label>
             <select class="form-input form-input--sm" [(ngModel)]="prodFilterSupplier">
               <option value="">All suppliers</option>
-              <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+              <option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
             </select>
           </div>
         </div>
@@ -330,7 +330,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Supplier</th><th>Product Type</th><th>Description</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let p of filteredProducts$ | async">
+              <tr *ngFor="let p of filteredProducts$ | async; trackBy: trackByProductId">
                 <td class="id-cell">{{ p.productId }}</td>
                 <td><span class="badge-category">{{ getSupplierName(p.supplierId) }}</span></td>
                 <td class="small-cell">{{ getProductTypeName(p.productTypeId) }}</td>
@@ -356,7 +356,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newArm.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -386,7 +386,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="armFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -394,7 +394,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Arm Type</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let a of filteredArms$ | async">
+              <tr *ngFor="let a of filteredArms$ | async; trackBy: trackByArmId">
                 <td class="id-cell">{{ a.armId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(a.productId) }}</span></td>
                 <td>{{ a.description }}</td>
@@ -421,7 +421,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newMotor.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -447,7 +447,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="motorFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -455,7 +455,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let m of filteredMotors$ | async">
+              <tr *ngFor="let m of filteredMotors$ | async; trackBy: trackByMotorId">
                 <td class="id-cell">{{ m.motorId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(m.productId) }}</span></td>
                 <td>{{ m.description }}</td>
@@ -481,7 +481,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newHeater.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -511,7 +511,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="heaterFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -519,7 +519,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Price</th><th>Price Non-RAL</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let h of filteredHeaters$ | async">
+              <tr *ngFor="let h of filteredHeaters$ | async; trackBy: trackByHeaterId">
                 <td class="id-cell">{{ h.heaterId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(h.productId) }}</span></td>
                 <td>{{ h.description }}</td>
@@ -546,7 +546,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newRalColour.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -572,7 +572,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="ralColourFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -580,7 +580,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Width (cm)</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let c of filteredRalColours$ | async">
+              <tr *ngFor="let c of filteredRalColours$ | async; trackBy: trackByRalColourId">
                 <td class="id-cell">{{ c.ralColourId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(c.productId) }}</span></td>
                 <td class="center-cell">{{ c.widthCm }}</td>
@@ -606,7 +606,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newProjection.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -636,7 +636,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="projectionFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -644,7 +644,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Width (cm)</th><th>Projection (cm)</th><th>Arm Type</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let p of filteredProjections$ | async">
+              <tr *ngFor="let p of filteredProjections$ | async; trackBy: trackByProjectionId">
                 <td class="id-cell">{{ p.projectionId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(p.productId) }}</span></td>
                 <td class="center-cell">{{ p.widthCm }}</td>
@@ -672,7 +672,7 @@
             <label class="form-label">Product <span class="req">*</span></label>
             <select class="form-input" [(ngModel)]="newRadioMotor.productId">
               <option [ngValue]="0" disabled>Select product</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group">
@@ -702,7 +702,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="radioMotorFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -710,7 +710,7 @@
           <table class="config-table">
             <thead><tr><th>ID</th><th>Product</th><th>Description</th><th>Width (cm)</th><th>Price</th><th class="actions-th">Actions</th></tr></thead>
             <tbody>
-              <tr *ngFor="let m of filteredRadioMotors$ | async">
+              <tr *ngFor="let m of filteredRadioMotors$ | async; trackBy: trackByRadioMotorId">
                 <td class="id-cell">{{ m.radioMotorId }}</td>
                 <td><span class="badge-category">{{ getProductLabel(m.productId) }}</span></td>
                 <td>{{ m.description }}</td>
@@ -737,7 +737,7 @@
             <label class="form-label">Filter by Product:</label>
             <select class="form-input form-input--sm" [(ngModel)]="frameColourFilterProduct">
               <option value="">All products</option>
-              <option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option>
+              <option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option>
             </select>
           </div>
         </div>
@@ -752,7 +752,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let c of filteredFrameColours$ | async">
+              <tr *ngFor="let c of filteredFrameColours$ | async; trackBy: trackByFrameColourId">
                 <td><span class="badge-category">{{ c.productName }}</span></td>
                 <td>{{ c.description }}</td>
                 <td class="center-cell">
@@ -800,7 +800,7 @@
 
       <!-- Site Visit Values edit -->
       <ng-container *ngIf="activeTab === 'siteVisit' && editingSv">
-        <div class="modal-field"><label class="modal-label">Category <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSv.category" list="svCategoryListEdit" /><datalist id="svCategoryListEdit"><option *ngFor="let c of svCategories$ | async" [value]="c"></option></datalist></div>
+        <div class="modal-field"><label class="modal-label">Category <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSv.category" list="svCategoryListEdit" /><datalist id="svCategoryListEdit"><option *ngFor="let c of svCategories$ | async; trackBy: trackByString" [value]="c"></option></datalist></div>
         <div class="modal-field"><label class="modal-label">Value <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingSv.value" /></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Display Order</label><input class="modal-input" type="number" [(ngModel)]="editingSv.displayOrder" min="1" /></div>
@@ -811,8 +811,8 @@
       <!-- Brackets edit -->
       <ng-container *ngIf="activeTab === 'brackets' && editingBracket">
         <div class="modal-row">
-          <div class="modal-field modal-field--half"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingBracket.productId"><option *ngFor="let p of bracketProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
-          <div class="modal-field modal-field--half"><label class="modal-label">Arm Type</label><select class="modal-input" [(ngModel)]="editingBracket.armTypeId"><option [ngValue]="null">Universal (all arm types)</option><option *ngFor="let at of armTypes$ | async" [ngValue]="at.armTypeId">{{ at.description }}</option></select></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingBracket.productId"><option *ngFor="let p of bracketProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+          <div class="modal-field modal-field--half"><label class="modal-label">Arm Type</label><select class="modal-input" [(ngModel)]="editingBracket.armTypeId"><option [ngValue]="null">Universal (all arm types)</option><option *ngFor="let at of armTypes$ | async; trackBy: trackByArmTypeId" [ngValue]="at.armTypeId">{{ at.description }}</option></select></div>
         </div>
         <div class="modal-field"><label class="modal-label">Bracket Name <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingBracket.bracketName" /></div>
         <div class="modal-row">
@@ -828,20 +828,20 @@
 
       <!-- Product Types edit -->
       <ng-container *ngIf="activeTab === 'productTypes' && editingPt">
-        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingPt.supplierId"><option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingPt.supplierId"><option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingPt.description" /></div>
       </ng-container>
 
       <!-- Products edit -->
       <ng-container *ngIf="activeTab === 'products' && editingProd">
-        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.supplierId" (ngModelChange)="onEditProdSupplierChange()"><option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
-        <div class="modal-field"><label class="modal-label">Product Type <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.productTypeId"><option [ngValue]="0" disabled>Select type</option><option *ngFor="let pt of filteredProductTypesForEdit$ | async" [ngValue]="pt.productTypeId">{{ pt.description }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Supplier <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.supplierId" (ngModelChange)="onEditProdSupplierChange()"><option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product Type <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProd.productTypeId"><option [ngValue]="0" disabled>Select type</option><option *ngFor="let pt of filteredProductTypesForEdit$ | async; trackBy: trackByProductTypeId" [ngValue]="pt.productTypeId">{{ pt.description }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingProd.description" /></div>
       </ng-container>
 
       <!-- Arms edit -->
       <ng-container *ngIf="activeTab === 'arms' && editingArm">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingArm.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingArm.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingArm.description" /></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Arm Type ID</label><input class="modal-input" type="number" [(ngModel)]="editingArm.armTypeId" min="0" /></div>
@@ -851,14 +851,14 @@
 
       <!-- Motors edit -->
       <ng-container *ngIf="activeTab === 'motors' && editingMotor">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingMotor.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingMotor.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingMotor.description" /></div>
         <div class="modal-field"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingMotor.price" min="0" step="0.01" /></div>
       </ng-container>
 
       <!-- Heaters edit -->
       <ng-container *ngIf="activeTab === 'heaters' && editingHeater">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingHeater.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingHeater.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingHeater.description" /></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingHeater.price" min="0" step="0.01" /></div>
@@ -868,7 +868,7 @@
 
       <!-- RAL Colours edit -->
       <ng-container *ngIf="activeTab === 'ralColours' && editingRalColour">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRalColour.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRalColour.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Width (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingRalColour.widthCm" min="0" /></div>
           <div class="modal-field modal-field--half"><label class="modal-label">Price (€)</label><input class="modal-input" type="number" [(ngModel)]="editingRalColour.price" min="0" step="0.01" /></div>
@@ -877,7 +877,7 @@
 
       <!-- Projections edit -->
       <ng-container *ngIf="activeTab === 'projections' && editingProjection">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProjection.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingProjection.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Width (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingProjection.widthCm" min="0" /></div>
           <div class="modal-field modal-field--half"><label class="modal-label">Projection (cm) <span class="req">*</span></label><input class="modal-input" type="number" [(ngModel)]="editingProjection.projectionCm" min="0" /></div>
@@ -890,7 +890,7 @@
 
       <!-- Radio Motors edit -->
       <ng-container *ngIf="activeTab === 'radioMotors' && editingRadioMotor">
-        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRadioMotor.productId"><option *ngFor="let p of allProducts$ | async" [ngValue]="p.productId">{{ p.label }}</option></select></div>
+        <div class="modal-field"><label class="modal-label">Product <span class="req">*</span></label><select class="modal-input" [(ngModel)]="editingRadioMotor.productId"><option *ngFor="let p of allProducts$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.label }}</option></select></div>
         <div class="modal-field"><label class="modal-label">Description <span class="req">*</span></label><input class="modal-input" type="text" [(ngModel)]="editingRadioMotor.description" /></div>
         <div class="modal-row">
           <div class="modal-field modal-field--half"><label class="modal-label">Width (cm)</label><input class="modal-input" type="number" [(ngModel)]="editingRadioMotor.widthCm" min="0" /></div>

@@ -14,7 +14,7 @@
           <label class="form-label">Select Workflow</label>
           <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
             <option [value]="null" disabled>Select Workflow</option>
-            <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
+            <option *ngFor="let workflow of workflows$ | async; trackBy: trackByWorkflowId" [value]="workflow.workflowId">
               {{ workflow.workflowName }}
             </option>
           </select>
@@ -34,7 +34,7 @@
           <label class="form-label">Select Quote</label>
           <select class="form-select" [(ngModel)]="selectedQuoteId" (change)="onQuoteChange()">
             <option [value]="null" disabled>Select Quote</option>
-            <option *ngFor="let quote of quotes$ | async" [value]="quote.quoteId">
+            <option *ngFor="let quote of quotes$ | async; trackBy: trackByQuoteId" [value]="quote.quoteId">
               {{ quote.quoteNumber }} - €{{ quote.totalAmount | number:'1.2-2' }}
             </option>
           </select>
@@ -62,7 +62,7 @@
           <label class="form-label">Select Awning (Projection)</label>
           <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
             <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let projection of availableProjections$ | async" [value]="projection">
+            <option *ngFor="let projection of availableProjections$ | async; trackBy: trackByIndex" [value]="projection">
               {{ projection }}
             </option>
           </select>
@@ -93,7 +93,7 @@
                 <span class="dropdown-arrow">{{ bracketDropdownOpen ? '▲' : '▼' }}</span>
               </button>
               <div class="dropdown-panel" *ngIf="bracketDropdownOpen">
-                <label class="dropdown-item" *ngFor="let bracket of bracketList">
+                <label class="dropdown-item" *ngFor="let bracket of bracketList; trackBy: trackByBracketName">
                   <input type="checkbox"
                     [checked]="isBracketSelected(bracket.bracketName)"
                     (change)="toggleBracket(bracket.bracketName)">
@@ -109,7 +109,7 @@
           <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
             <option value="" disabled selected>Select</option>
             <option value="">None</option>
-            <option *ngFor="let motor of motors$ | async" [value]="motor.motorId">
+            <option *ngFor="let motor of motors$ | async; trackBy: trackByMotorId" [value]="motor.motorId">
               {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
             </option>
           </select>
@@ -119,7 +119,7 @@
           <label class="form-label">Heater</label>
           <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
             <option value="" disabled selected>Select</option>
-            <option *ngFor="let heater of heaters$ | async" [value]="heater.heaterId">
+            <option *ngFor="let heater of heaters$ | async; trackBy: trackByHeaterId" [value]="heater.heaterId">
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
             </option>
           </select>
@@ -130,7 +130,7 @@
           <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
             <option value="" disabled selected>Select</option>
             <option value="">None</option>
-            <option *ngFor="let cassette of lightingCassettes$ | async" [value]="cassette.lightingId">
+            <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
               {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
             </option>
           </select>
@@ -141,7 +141,7 @@
           <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
             <option value="" disabled selected>Select</option>
             <option value="">None</option>
-            <option *ngFor="let control of controls$ | async" [value]="control.controlId">
+            <option *ngFor="let control of controls$ | async; trackBy: trackByControlId" [value]="control.controlId">
               {{ control.description }} - €{{ control.price | number:'1.2-2' }}
             </option>
           </select>
@@ -205,7 +205,7 @@
                 [(ngModel)]="selectedShadePlusId"
                 (change)="onShadeplusOptionChange()">
                 <option value="" disabled selected>Select option</option>
-                <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
                   {{ opt.description }}
                 </option>
               </select>
@@ -298,7 +298,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let item of invoiceItems$ | async; let i = index; let even = even" [class.even-row]="even">
+          <tr *ngFor="let item of invoiceItems$ | async; let i = index; let even = even; trackBy: trackByIndex" [class.even-row]="even">
             <td>{{ item.description }}</td>
             <td>
               <input 

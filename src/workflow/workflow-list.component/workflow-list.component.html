@@ -14,7 +14,7 @@
           (ngModelChange)="onSupplierChange($event)"
           [disabled]="(isLoading$ | async) === true">
           <option [ngValue]="null" disabled>Choose a supplier</option>
-          <option *ngFor="let s of suppliers$ | async" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
+          <option *ngFor="let s of suppliers$ | async; trackBy: trackBySupplierId" [ngValue]="s.supplierId">{{ s.supplierName }}</option>
         </select>
       </div>
 
@@ -25,7 +25,7 @@
           (ngModelChange)="onProductTypeChange($event)"
           [disabled]="!selectedSupplier || (isLoading$ | async) === true">
           <option [ngValue]="null" disabled selected>Choose a product type</option>
-          <option *ngFor="let t of productTypes$ | async" [ngValue]="t.productTypeId">{{ t.description }}</option>
+          <option *ngFor="let t of productTypes$ | async; trackBy: trackByProductTypeId" [ngValue]="t.productTypeId">{{ t.description }}</option>
         </select>
       </div>
 
@@ -36,7 +36,7 @@
           (ngModelChange)="onProductChange($event)"
           [disabled]="!selectedProductType || (isLoading$ | async) === true">
           <option [ngValue]="null" disabled selected>Choose a product</option>
-          <option *ngFor="let p of products$ | async" [ngValue]="p.productId">{{ p.productName }}</option>
+          <option *ngFor="let p of products$ | async; trackBy: trackByProductId" [ngValue]="p.productId">{{ p.productName }}</option>
         </select>
       </div>
     </div>
@@ -87,7 +87,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let workflow of paginatedWorkflows$ | async"
+        <tr *ngFor="let workflow of paginatedWorkflows$ | async; trackBy: trackByWorkflowId"
             class="workflow-row"
             [class.loading-row]="(isLoading$ | async) === true"
             (click)="selectWorkflow(workflow)">
@@ -314,7 +314,7 @@
         <!-- Dependency list from server (populated after a 200 blocked response) -->
         <div class="dep-list" *ngIf="blockingDependencies.length">
           <p class="dep-list-heading">Linked records blocking deletion:</p>
-          <div class="dep-item" *ngFor="let d of blockingDependencies">
+          <div class="dep-item" *ngFor="let d of blockingDependencies; trackBy: trackByIndex">
             <span class="dep-icon">{{ depIcon(d.name) }}</span>
             <span class="dep-name">{{ d.name }}</span>
             <span class="dep-count">{{ d.count }} record{{ d.count === 1 ? '' : 's' }}</span>

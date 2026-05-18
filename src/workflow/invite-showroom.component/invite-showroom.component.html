@@ -31,7 +31,7 @@
             <select id="workflow" formControlName="workflow" class="form-control" (change)="onWorkflowSelectionChange()">
               <option value="">Select a workflow</option>
               <!-- ✅ Using async pipe -->
-              <option *ngFor="let workflow of workflows$ | async" [value]="workflow.workflowId">
+              <option *ngFor="let workflow of workflows$ | async; trackBy: trackByWorkflowId" [value]="workflow.workflowId">
                 {{ workflow.workflowName }}
               </option>
             </select>
@@ -88,7 +88,7 @@
             </div>
 
             <div class="calendar-grid">
-              <div *ngFor="let day of weekDays" class="calendar-weekday">
+              <div *ngFor="let day of weekDays; trackBy: trackByIndex" class="calendar-weekday">
                 {{ day }}
               </div>
               <!-- ✅ Add trackBy to force re-render when events change -->
@@ -138,7 +138,7 @@
           
           <div *ngIf="showEventsList" class="events-list">
             <!-- ✅ Using async pipe for events -->
-            <div *ngFor="let event of eventsForSelectedDate$ | async" class="event-item">
+            <div *ngFor="let event of eventsForSelectedDate$ | async; trackBy: trackByEventId" class="event-item">
               <div class="event-info">
                 <h4>{{ event.subject }}</h4>
                 <p class="event-time">
@@ -195,7 +195,7 @@
                 (change)="onStartTimeChange()">
                 <option value="" disabled>Select start time</option>
                 <option 
-                  *ngFor="let time of timeSlots" 
+                  *ngFor="let time of timeSlots; trackBy: trackByIndex"
                   [value]="time"
                   [disabled]="!isStartTimeAvailable(time)">
                   {{ time }} {{ !isStartTimeAvailable(time) ? '(Booked)' : '' }}
@@ -213,7 +213,7 @@
                 (change)="onEndTimeChange()">
                 <option value="" disabled>Select end time</option>
                 <option 
-                  *ngFor="let time of availableEndTimeSlots" 
+                  *ngFor="let time of availableEndTimeSlots; trackBy: trackByIndex"
                   [value]="time">
                   {{ time }}
                 </option>
@@ -312,7 +312,7 @@
       
       <div class="popup-content">
         <!-- ✅ Using async pipe for popup events -->
-        <div *ngFor="let event of popupEvents$ | async" class="popup-event-item">
+        <div *ngFor="let event of popupEvents$ | async; trackBy: trackByEventId" class="popup-event-item">
           <div class="event-info">
             <h4>{{ event.subject }}</h4>
             <p class="event-time">

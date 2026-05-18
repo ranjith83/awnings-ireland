@@ -90,6 +90,12 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
   fromTask: number | null     = null;
 
   private destroy$        = new Subject<void>();
+
+  trackByWorkflowId    = (_i: number, w: WorkflowDto)    => w.workflowId;
+  trackBySupplierId    = (_i: number, s: SupplierDto)    => s.supplierId;
+  trackByProductTypeId = (_i: number, t: ProductTypeDto) => t.productTypeId;
+  trackByProductId     = (_i: number, p: ProductDto)     => p.productId;
+  trackByIndex         = (i: number)                     => i;
   private workflowsSubject$ = new BehaviorSubject<WorkflowDto[]>([]);
 
   constructor(

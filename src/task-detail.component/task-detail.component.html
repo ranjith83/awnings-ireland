@@ -106,7 +106,7 @@
 
       <div class="task-tags" *ngIf="task.tags && task.tags.length">
         <span class="tag-label">Tags:</span>
-        <span class="tag" *ngFor="let tag of task.tags">{{ tag }}</span>
+        <span class="tag" *ngFor="let tag of task.tags; trackBy: trackByIndex">{{ tag }}</span>
       </div>
     </div>
 
@@ -129,7 +129,7 @@
 
       <!-- Comments List -->
       <div class="comments-list">
-        <div *ngFor="let comment of comments" class="comment-item">
+        <div *ngFor="let comment of comments; trackBy: trackByCommentId" class="comment-item">
           <div class="comment-header">
             <div class="comment-author">
               <strong>{{ comment.createdByName }}</strong>
@@ -170,7 +170,7 @@
 
       <!-- Attachments List -->
       <div class="attachments-list">
-        <div *ngFor="let attachment of attachments" class="attachment-item">
+        <div *ngFor="let attachment of attachments; trackBy: trackByAttachmentId" class="attachment-item">
           <div class="attachment-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
@@ -207,7 +207,7 @@
     <!-- Audit Trail Tab -->
     <div *ngIf="activeTab === 'audit'" class="content-panel">
       <div class="audit-timeline">
-        <div *ngFor="let audit of auditTrail" class="audit-item">
+        <div *ngFor="let audit of auditTrail; trackBy: trackByAuditId" class="audit-item">
           <div class="audit-icon">{{ getAuditActionIcon(audit.action) }}</div>
           <div class="audit-content">
             <div class="audit-header">

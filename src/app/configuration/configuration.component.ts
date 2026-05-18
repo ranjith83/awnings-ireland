@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, forkJoin, of } from 'rxjs';
@@ -39,11 +39,28 @@ import { NotificationService } from '../../service/notification.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './configuration.component.html',
-  styleUrl: './configuration.component.scss'
+  styleUrl: './configuration.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ConfigurationComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
+
+  trackByTabId         = (_i: number, t: { id: ConfigTab })             => t.id;
+  trackBySupplierId    = (_i: number, s: SupplierConfig)                => s.supplierId;
+  trackByProductTypeId = (_i: number, t: ProductTypeConfig)             => t.productTypeId;
+  trackByProductId     = (_i: number, p: { productId: number })         => p.productId;
+  trackByArmTypeId     = (_i: number, a: ArmTypeConfig)                 => a.armTypeId;
+  trackByArmId         = (_i: number, a: ArmConfig)                     => a.armId;
+  trackByMotorId       = (_i: number, m: MotorConfig)                   => m.motorId;
+  trackByHeaterId      = (_i: number, h: HeaterConfig)                  => h.heaterId;
+  trackByBracketId     = (_i: number, b: BracketConfig)                 => b.bracketId;
+  trackBySvId          = (_i: number, s: SiteVisitValue)                => s.id;
+  trackByRalColourId   = (_i: number, c: NonStandardRALColourConfig)    => c.ralColourId;
+  trackByProjectionId  = (_i: number, p: ProjectionConfig)              => p.projectionId;
+  trackByRadioMotorId  = (_i: number, m: RadioControlledMotorConfig)    => m.radioMotorId;
+  trackByFrameColourId = (_i: number, c: FrameColourConfig)             => c.frameColourOptionId;
+  trackByString        = (_i: number, s: string)                        => s;
 
   // ── Tab state ─────────────────────────────────────────────────────────────────
   tabs: { id: ConfigTab; label: string; icon: string }[] = [
@@ -306,7 +323,8 @@ export class ConfigurationComponent implements OnInit, OnDestroy {
   }
 
   constructor(private configService: ConfigurationService,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.bracketSearchTrigger$.pipe(

@@ -178,6 +178,16 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   
   private destroy$ = new Subject<void>();
 
+  trackByWorkflowId  = (_i: number, w: WorkflowDto)        => w.workflowId;
+  trackByQuoteId     = (_i: number, q: QuoteDto)            => q.quoteId;
+  trackByMotorId     = (_i: number, m: MotorDto)            => m.motorId;
+  trackByHeaterId    = (_i: number, h: HeaterDto)           => h.heaterId;
+  trackByLightingId  = (_i: number, c: LightingCassetteDto) => c.lightingId;
+  trackByControlId   = (_i: number, c: ControlDto)          => c.controlId;
+  trackByBracketName = (_i: number, b: BracketDto)          => b.bracketName;
+  trackByShadePlusId = (_i: number, o: any)                 => o.shadePlusId;
+  trackByIndex       = (i: number)                          => i;
+
   constructor(
     private invoiceService: InvoiceService,
     private quoteService: CreateQuoteService,

@@ -740,4 +740,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
   trackByIndex(index: number, item: any): number {
     return index;
   }
+
+  trackByWorkflowId = (_i: number, w: WorkflowDto)   => w.workflowId;
+  trackByEventId    = (_i: number, e: CalendarEvent) => e.id;
 }
