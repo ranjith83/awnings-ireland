@@ -130,19 +130,22 @@
 }
 
 .form-row.addons-row .form-group {
-  flex: 0 0 280px;
+  flex: 0 0 180px;
 }
 
 .form-group.bracket-group {
-  flex: 0 0 360px !important;
+  flex: 0 0 220px !important;
 }
 
 .form-group.motor-group {
-  flex: 0 0 280px !important;
+  flex: 0 0 180px !important;
 }
 
-.form-group.lighting-group {
-  flex: 0 0 180px !important;
+.corrosion-price-input {
+  width: 80px !important;
+  min-width: 0 !important;
+  max-width: 80px !important;
+  flex: 0 0 80px !important;
 }
 
 .form-label {
@@ -257,7 +260,7 @@
   font-weight: 500;
   color: #333;
   white-space: nowrap;
-  min-width: 160px;
+  width: 180px;
 }
 
 .frame-colour-trigger:hover:not(:disabled) {

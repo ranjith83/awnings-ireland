@@ -164,54 +164,65 @@
           </ng-container>
         </div>
 
-        <div class="form-group motor-group" *ngIf="(motors$ | async)?.length">
+        <div class="form-group motor-group">
           <label class="form-label">Motor</label>
-          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let motor of motors$ | async; trackBy: trackByMotorId" [value]="motor.motorId">
-              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
-            </option>
+          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()"
+                  [disabled]="!(motors$ | async)?.length">
+            <option value="" disabled selected>{{ (motors$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(motors$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let motor of motors$ | async; trackBy: trackByMotorId" [value]="motor.motorId">
+                {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(heaters$ | async)?.length">
+        <div class="form-group">
           <label class="form-label">Heater</label>
-          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
-            <option value="" disabled selected>Select</option>
+          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()"
+                  [disabled]="!(heaters$ | async)?.length">
+            <option value="" disabled selected>{{ (heaters$ | async)?.length ? 'Select' : 'No option available' }}</option>
             <option *ngFor="let heater of heaters$ | async; trackBy: trackByHeaterId" [value]="heater.heaterId">
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
             </option>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="windSensorOptions.length > 0">
+        <div class="form-group">
           <label class="form-label">Wind Sensor</label>
-          <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()">
-            <option value="" disabled selected>Select</option>
+          <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()"
+                  [disabled]="!windSensorOptions.length">
+            <option value="" disabled selected>{{ windSensorOptions.length ? 'Select' : 'No option available' }}</option>
             <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
           </select>
         </div>
 
-        <div class="form-group lighting-group" *ngIf="(lightingCassettes$ | async)?.length">
+        <div class="form-group lighting-group">
           <label class="form-label">Lighting Cassette</label>
-          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
-              {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
-            </option>
+          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()"
+                  [disabled]="!(lightingCassettes$ | async)?.length">
+            <option value="" disabled selected>{{ (lightingCassettes$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(lightingCassettes$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
+                {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(controls$ | async)?.length">
+        <div class="form-group">
           <label class="form-label">Controls</label>
-          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let control of controls$ | async; trackBy: trackByControlId" [value]="control.controlId">
-              {{ control.description }} - €{{ control.price | number:'1.2-2' }}
-            </option>
+          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()"
+                  [disabled]="!(controls$ | async)?.length">
+            <option value="" disabled selected>{{ (controls$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(controls$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let control of controls$ | async; trackBy: trackByControlId" [value]="control.controlId">
+                {{ control.description }} - €{{ control.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
           </select>
         </div>
       </div>
@@ -348,9 +359,9 @@
                 [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
               <span>Corrosion Protection</span>
             </label>
-            <input *ngIf="includeCorrosionProtection" type="number" class="form-input shadeplus-select"
+            <input *ngIf="includeCorrosionProtection" type="number" class="form-input corrosion-price-input"
                    [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
-                   placeholder="Price (€)" min="0" step="0.01">
+                   placeholder="€" min="0" step="0.01">
           </div>
         </div>
         <div class="form-group extras-addon-check">
