@@ -692,7 +692,19 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   onRalCustomCodeChange() {
-    if (this.selectedFrameColourId !== null) this.onFrameColourChange();
+    if (this.selectedFrameColourId === null) return;
+    const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
+    if (!opt) return;
+    const items = this.quoteItemsSubject$.value;
+    const idx = items.findIndex(i => i.id === this.getAddonItemId(ADDON_SLOT.FRAMECOLOUR));
+    if (idx !== -1) {
+      const desc = this.ralCustomCode
+        ? `Frame Colour - ${opt.description} (${this.ralCustomCode})`
+        : `Frame Colour - ${opt.description}`;
+      items[idx] = { ...items[idx], description: desc };
+      this.quoteItemsSubject$.next([...items]);
+      this.cdr.markForCheck();
+    }
   }
 
   onCorrosionProtectionChange() {
@@ -839,7 +851,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     }
 
     if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
+    this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => addLine(price));
   }
