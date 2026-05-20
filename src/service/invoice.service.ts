@@ -23,6 +23,7 @@ export interface InvoiceDto {
   status: string;
   notes: string;
   terms: string;
+  windSensorOption?: string;
   createdAt: string | Date;
   createdBy: string;
   invoiceItems: InvoiceItemDto[];
@@ -63,6 +64,7 @@ export interface CreateInvoiceDto {
   customerId: number;
   notes?: string;
   terms?: string;
+  windSensorOption?: string;
   invoiceItems: CreateInvoiceItemDto[];
 }
 
@@ -81,6 +83,7 @@ export interface UpdateInvoiceDto {
   status?: string;
   notes?: string;
   terms?: string;
+  windSensorOption?: string;
   invoiceItems?: UpdateInvoiceItemDto[];
 }
 

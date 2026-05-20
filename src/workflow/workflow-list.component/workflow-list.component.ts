@@ -19,12 +19,12 @@ import {
 } from '../../service/workflow-state.service';
 
 /**
- * Three states for each workflow stage pill:
- *  'disabled'   – stage not enabled for this workflow   (grey ring)
- *  'pending'    – stage enabled but no activity yet     (blue ring)
- *  'completed'  – stage has real activity records       (green check)
+ * Two visible states for each workflow stage pill:
+ *  'pending'    – stage enabled but no activity yet  (blue ring)
+ *  'completed'  – stage has real activity records    (green check)
+ * null means the stage is not enabled and the pill is hidden entirely.
  */
-export type StageStatus = 'disabled' | 'pending' | 'completed';
+export type StageStatus = 'pending' | 'completed';
 
 import { NotificationService } from '../../service/notification.service';
 @Component({
@@ -215,8 +215,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
    *  'completed' — enabled AND the server confirmed real activity exists
    *  'pending'   — enabled but no activity yet
    */
-  stageStatus(enabled: boolean, completed: boolean): StageStatus {
-    if (!enabled)   return 'disabled';
+  stageStatus(enabled: boolean, completed: boolean): StageStatus | null {
+    if (!enabled)   return null;
     if (completed)  return 'completed';
     return 'pending';
   }
@@ -228,7 +228,6 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   /** Tooltip text for each state. */
   stageTooltip(label: string, status: StageStatus): string {
-    if (status === 'disabled')  return `${label}: Not enabled`;
     if (status === 'completed') return `${label}: Completed ✓`;
     return `${label}: In progress`;
   }

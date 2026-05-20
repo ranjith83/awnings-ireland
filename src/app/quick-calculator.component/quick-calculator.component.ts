@@ -703,7 +703,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     const total          = subtotal - itemDisc - quoteDisc + totalTax;
 
     const pdfData: QuotePdfData = {
-      quoteNumber:        'ESTIMATE-' + Date.now(),
+      quoteNumber:        'ESTIMATE-' + (10000 + Math.floor(Math.random() * 90000)),
       quoteDate:          new Date().toLocaleDateString('en-GB'),
       expiryDate:         this.getFollowUpDate(),
       customerName:       'Phone Enquiry',

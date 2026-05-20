@@ -19,6 +19,7 @@ import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation
 import { EmailTaskService, SendDirectEmailPayload, EmailAttachmentPayload } from '../../service/email-task.service';
 import { NotificationService } from '../../service/notification.service';
 import { QuoteFormBase, QuoteItemDisplay } from '../quote-form-base';
+import { OptionLookupDto } from '../../service/option-lookup.service';
 
 @Component({
   selector: 'app-final-quote',
@@ -32,6 +33,10 @@ import { QuoteFormBase, QuoteItemDisplay } from '../quote-form-base';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
+
+  // Re-declared so the Angular Language Service resolves them from the template.
+  override windSensorOptions: OptionLookupDto[] = [];
+  override selectedWindSensor = '';
 
   // ── Quote selection / edit state ───────────────────────────────────────────
   selectedDraftQuote: QuoteDto | null = null;
@@ -157,6 +162,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.includeWallSealing  = false;
     this.extrasDescription   = '';
     this.extrasPrice         = 0;
+    this.selectedWindSensor  = '';
     this.enteredWidthCm      = null;
     this.selectedWidthCm     = null;
     this.selectedAwning      = null;
@@ -399,13 +405,14 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     }
 
     const dto: CreateFinalQuoteDto = {
-      draftQuoteId:  this.selectedDraftQuote.quoteId,
-      quoteDate:     this.quoteDate,
-      followUpDate:  this.followUpDate,
-      notes:         this.notes,
-      terms:         this.terms,
-      discountType:  this.discountType  || undefined,
-      discountValue: this.discountValue || 0,
+      draftQuoteId:     this.selectedDraftQuote.quoteId,
+      quoteDate:        this.quoteDate,
+      followUpDate:     this.followUpDate,
+      notes:            this.notes,
+      terms:            this.terms,
+      discountType:     this.discountType  || undefined,
+      discountValue:    this.discountValue || 0,
+      windSensorOption: this.selectedWindSensor || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,

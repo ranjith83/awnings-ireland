@@ -233,11 +233,13 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
         const events: any[] = Array.isArray(response) ? response : (response?.value ?? []);
         console.log('✅ Loaded calendar events:', events.length, 'events');
         console.log('Events:', events);
-        
-        // ✅ Update the BehaviorSubject with new events
+
+        // Update the BehaviorSubject — calendarEvents$ subscription in ngOnInit
+        // will reassign calendarDays and call markForCheck, but we also call it
+        // here directly to guarantee CD runs in zoneless + OnPush mode.
         this.calendarEventsSubject$.next(events);
-        
-        // ✅ If a date is selected, refresh its events too
+        this.cdr.markForCheck();
+
         if (this.selectedDate) {
           this.loadEventsForSelectedDate();
         }
@@ -271,24 +273,30 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
 
     try {
       console.log('🗑️ Starting delete operation for:', idToDelete);
-      
+
       await firstValueFrom(
         this.outlookService.deleteCalendarEvent(idToDelete)
           .pipe(takeUntil(this.destroy$))
       );
-      
+
       console.log('✅ Delete successful');
-      
+
+      // Optimistic update: immediately remove the deleted event so the calendar
+      // grid and events list refresh before the server reload completes.
+      const updatedEvents = this.calendarEventsSubject$.value.filter(e => e.id !== idToDelete);
+      this.calendarEventsSubject$.next(updatedEvents);
+      this.cdr.markForCheck();
+
       // Close popup immediately
       this.closeEventsPopup();
-      
+
       // Show success message
       this.notificationService.success(`Event "${nameToDelete}" has been successfully deleted!`);
       this.workflowStateService.notifyWorkflowChanged();
 
-      // Refresh calendar from server
+      // Reload from server to confirm final state
       this.loadCalendarEvents();
-      
+
       // Update selected date
       if (this.selectedDate) {
         this.loadEventsForSelectedDate();
@@ -339,6 +347,7 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
     this.showEventsPopup = false;
     this.popupEventsSubject$.next([]);
     this.popupDate = null;
+    this.cdr.markForCheck();
   }
 
   onWorkflowSelectionChange(): void {

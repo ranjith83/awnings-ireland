@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(npx ng *)",
+      "Read(//c/Projects/**)",
+      "Bash(dir \"c:\\\\Projects\" /b)",
+      "Bash(dir \"c:\\\\Projects\\\\AwiningsIreland-WebAPI\" /b /s)",
+      "Bash(findstr -i \"program.cs\\\\|startup.cs\\\\|cors\")",
+      "Bash(git show *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d['projects']['awnings-ireland']['architect']['build']['configurations']['development'], indent=2\\)\\)\")",
+      "Bash(grep -rn \"Motors.*ProductId\\\\|ProductId.*Motors\\\\|{ [0-9].*[0-9]m, [0-9]\" \"c:/Projects/AwningsAPI/AwningsAPI/Migrations/20251030152343_updatedModels.cs\")",
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Projects\\\\awnings-ireland\\\\src\" -Recurse -File)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(grep \"component.ts$\")",
+      "Bash(Get-Content \"c:\\\\Projects\\\\awnings-ireland\\\\src\\\\workflow\\\\create-quote.component\\\\create-quote.component.css\")",
+      "Bash(Select-Object -Last 15)"
+    ]
+  }
+}

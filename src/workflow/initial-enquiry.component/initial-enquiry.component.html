@@ -171,13 +171,33 @@
           <input type="checkbox" [(ngModel)]="sendEmailOnAdd" [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
           <span>Send email notification to customer on save</span>
         </label>
-        <button class="btn-primary" (click)="addEnquiry()" [disabled]="!newComments.trim() || (isSaving$ | async) === true">
-          <svg *ngIf="(isSaving$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
-            <line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/>
-          </svg>
-          <span *ngIf="(isSaving$ | async) === false">Add Enquiry</span>
-          <span *ngIf="(isSaving$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
-        </button>
+
+        <div class="form-footer-actions">
+          <label class="checkbox-label checkbox-label--sm">
+            <input type="checkbox" [(ngModel)]="includeSiteVisitInEmail"
+              [disabled]="(isSaving$ | async) === true" />
+            <span>Include quote in email</span>
+          </label>
+          <button type="button" class="btn-over50km"
+            (click)="generateSiteVisitQuotePdf()"
+            [disabled]="(isSaving$ | async) === true || (isGeneratingSiteVisitPdf$ | async) === true"
+            title="Generate & download Site Visit quote (€350 + VAT)">
+            <svg *ngIf="(isGeneratingSiteVisitPdf$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+              <path d="M4 2h6l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/>
+              <polyline points="10,2 10,6 14,6"/>
+              <line x1="8" y1="9" x2="8" y2="13"/><line x1="6" y1="11" x2="10" y2="11"/>
+            </svg>
+            <span *ngIf="(isGeneratingSiteVisitPdf$ | async) === false">Over 50 Km</span>
+            <span *ngIf="(isGeneratingSiteVisitPdf$ | async) === true"><span class="spinner-inline"></span></span>
+          </button>
+          <button class="btn-primary" (click)="addEnquiry()" [disabled]="!newComments.trim() || (isSaving$ | async) === true">
+            <svg *ngIf="(isSaving$ | async) === false" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2">
+              <line x1="8" y1="1" x2="8" y2="15"/><line x1="1" y1="8" x2="15" y2="8"/>
+            </svg>
+            <span *ngIf="(isSaving$ | async) === false">Add Enquiry</span>
+            <span *ngIf="(isSaving$ | async) === true"><span class="spinner-inline"></span> Saving…</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>

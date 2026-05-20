@@ -17,6 +17,7 @@ import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation
 import { EmailTaskService, SendDirectEmailPayload, EmailAttachmentPayload } from '../../service/email-task.service';
 import { NotificationService } from '../../service/notification.service';
 import { QuoteFormBase, QuoteItemDisplay } from '../quote-form-base';
+import { OptionLookupDto } from '../../service/option-lookup.service';
 
 @Component({
   selector: 'app-create-quote.component',
@@ -30,6 +31,10 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
 
   editingQuote: QuoteDto | null = null;
   pageSize = 10;
+
+  // Re-declared so the Angular Language Service resolves them from the template.
+  override windSensorOptions: OptionLookupDto[] = [];
+  override selectedWindSensor = '';
 
   constructor(
     private createQuoteService: CreateQuoteService,
@@ -137,6 +142,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.includeWallSealing = false;
     this.extrasDescription = '';
     this.extrasPrice = 0;
+    this.selectedWindSensor = '';
     this.enteredWidthCm = null;
     this.selectedWidthCm = null;
     this.selectedAwning = null;
@@ -181,10 +187,11 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   private populateFormFromQuote(quote: QuoteDto) {
     const parseDate = (d: string | Date): string =>
       typeof d === 'string' ? d.split('T')[0] : d.toISOString().split('T')[0];
-    this.quoteDate    = parseDate(quote.quoteDate);
-    this.followUpDate = parseDate(quote.followUpDate);
-    this.discountType  = quote.discountType  || '';
-    this.discountValue = quote.discountValue || 0;
+    this.quoteDate         = parseDate(quote.quoteDate);
+    this.followUpDate      = parseDate(quote.followUpDate);
+    this.discountType      = quote.discountType  || '';
+    this.discountValue     = quote.discountValue || 0;
+    this.selectedWindSensor = quote.windSensorOption || '';
 
     this.quoteItemsSubject$.next((quote.quoteItems || []).map(qi => ({
       productItemId:      qi.productItemId,
@@ -212,14 +219,15 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
 
   private createDraftQuote(items: QuoteItemDisplay[]) {
     const createDto: CreateQuoteDto = {
-      workflowId:    this.workflowId!,
-      customerId:    this.customerId!,
-      quoteDate:     this.quoteDate,
-      followUpDate:  this.followUpDate,
-      notes:         this.notes,
-      terms:         this.terms,
-      discountType:  this.discountType  || undefined,
-      discountValue: this.discountValue || undefined,
+      workflowId:        this.workflowId!,
+      customerId:        this.customerId!,
+      quoteDate:         this.quoteDate,
+      followUpDate:      this.followUpDate,
+      notes:             this.notes,
+      terms:             this.terms,
+      discountType:      this.discountType  || undefined,
+      discountValue:     this.discountValue || undefined,
+      windSensorOption:  this.selectedWindSensor || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,
@@ -256,12 +264,13 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   private updateDraftQuote(items: QuoteItemDisplay[]) {
     const q = this.editingQuote!;
     const updateDto: UpdateQuoteDto = {
-      quoteDate:     this.quoteDate,
-      followUpDate:  this.followUpDate,
-      notes:         this.notes,
-      terms:         this.terms,
-      discountType:  this.discountType  || undefined,
-      discountValue: this.discountValue || undefined,
+      quoteDate:        this.quoteDate,
+      followUpDate:     this.followUpDate,
+      notes:            this.notes,
+      terms:            this.terms,
+      discountType:     this.discountType  || undefined,
+      discountValue:    this.discountValue || undefined,
+      windSensorOption: this.selectedWindSensor || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,

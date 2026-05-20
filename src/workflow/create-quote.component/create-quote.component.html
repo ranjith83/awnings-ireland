@@ -185,6 +185,14 @@
           </select>
         </div>
 
+        <div class="form-group" *ngIf="windSensorOptions.length > 0">
+          <label class="form-label">Wind Sensor</label>
+          <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()">
+            <option value="" disabled selected>Select</option>
+            <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </div>
+
         <div class="form-group lighting-group" *ngIf="(lightingCassettes$ | async)?.length">
           <label class="form-label">Lighting Cassette</label>
           <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">

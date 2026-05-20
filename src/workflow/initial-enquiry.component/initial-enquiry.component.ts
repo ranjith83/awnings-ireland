@@ -10,6 +10,7 @@ import { takeUntil, finalize, catchError } from 'rxjs/operators';
 import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.service';
 import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload, TaskSourceType } from '../../service/email-task.service';
 import { SignatureService, UserSignatureDto } from '../../service/signature.service';
+import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
 
 export interface CustomerEmailRow {
   taskId: number; subject: string; fromEmail: string; fromName: string;
@@ -133,6 +134,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   newSigFontFamily  = 'georgia';   // ← tracks active font for add-form textarea
   sendEmailOnAdd    = false;
 
+  // ── Over-50-Km site visit quote ───────────────────────────────────────────
+  includeSiteVisitInEmail        = false;
+  isGeneratingSiteVisitPdf$      = new BehaviorSubject<boolean>(false);
+  private siteVisitPdfBase64: string | null = null;
+
   // ── Delete enquiry modal ───────────────────────────────────────────────────
   showDeleteModal     = false;
   deletingEnquiry: InitialEnquiryDto | null = null;
@@ -180,7 +186,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private notificationService: NotificationService,
     private workflowStateService: WorkflowStateService,
     private http: HttpClient,
-    private cdr: ChangeDetectorRef) {}
+    private cdr: ChangeDetectorRef,
+    private pdfGenerationService: PdfGenerationService) {}
 
   ngOnInit() {
     this.loadUserSignatures();
@@ -502,9 +509,22 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   // ── Add enquiry ────────────────────────────────────────────────────────────
 
-  addEnquiry() {
+  async addEnquiry(): Promise<void> {
     if (!this.workflowId) { this.showError('No workflow selected.'); return; }
     if (!this.newComments.trim()) { this.showError('Please enter enquiry comments.'); return; }
+
+    // Build site visit PDF attachment if requested.
+    // Reuse already-generated base64 from the button click, or generate fresh.
+    const shouldAttachSiteVisit = this.includeSiteVisitInEmail && this.sendEmailOnAdd;
+    if (shouldAttachSiteVisit && !this.siteVisitPdfBase64) {
+      try {
+        this.siteVisitPdfBase64 = await this.pdfGenerationService.generateQuotePdfAsBase64(
+          this.buildSiteVisitQuoteData()
+        );
+      } catch {
+        this.showError('Could not generate site visit quote PDF. Proceeding without it.');
+      }
+    }
 
     const imagesJson = this.pendingAttachments.length
       ? JSON.stringify(this.pendingAttachments.map(a => ({
@@ -521,7 +541,14 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     const commentsToSend  = this.newComments.trim();
     const signatureToSend = this.newSignature.trim();
     const shouldSend      = this.sendEmailOnAdd;
-    const attachsToSend   = [...this.pendingAttachments];
+    const svBase64        = shouldAttachSiteVisit ? this.siteVisitPdfBase64 : null;
+    const svFileName      = `SiteVisitQuote_${this.customerName.replace(/\s+/g, '_')}.pdf`;
+    const attachsToSend: PendingAttachment[] = [
+      ...this.pendingAttachments,
+      ...(svBase64 ? [{ fileName: svFileName, contentType: 'application/pdf',
+                        base64Content: svBase64, sizeBytes: Math.round(svBase64.length * 0.75) }]
+                   : [])
+    ];
 
     this.isSaving$.next(true);
     this.workflowService.addInitialEnquiry(dto)
@@ -534,6 +561,8 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
           this.newSignature     = def?.signatureText  ?? '';
           this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
           this.pendingAttachments = [];
+          this.includeSiteVisitInEmail = false;
+          this.siteVisitPdfBase64 = null;
           this.cdr.markForCheck();
           this.showSuccess('Enquiry added successfully!');
           this.workflowStateService.notifyStepCompleted('initial-enquiry');
@@ -670,6 +699,57 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     this.sendBody     = this.buildQuoteBodyText(model, firstName)
                       + '\n\n'
                       + this.buildQuoteSignatureText(salesperson);
+  }
+
+  async generateSiteVisitQuotePdf(): Promise<void> {
+    this.isGeneratingSiteVisitPdf$.next(true);
+    try {
+      const base64 = await this.pdfGenerationService.generateQuotePdfAsBase64(
+        this.buildSiteVisitQuoteData()
+      );
+      this.siteVisitPdfBase64 = base64;
+      this.notificationService.success('Site visit quote PDF downloaded.');
+    } catch {
+      this.notificationService.error('Failed to generate site visit quote PDF.');
+    } finally {
+      this.isGeneratingSiteVisitPdf$.next(false);
+    }
+  }
+
+  private buildSiteVisitQuoteData(): QuotePdfData {
+    const today      = new Date();
+    const expiry     = new Date(today);
+    expiry.setDate(expiry.getDate() + 30);
+    const pad        = (n: number) => n.toString().padStart(2, '0');
+    const fmt        = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const VAT_RATE   = 13.5;
+    const unitPrice  = 350;
+    const taxAmount  = +(unitPrice * VAT_RATE / 100).toFixed(2);
+    const total      = +(unitPrice + taxAmount).toFixed(2);
+    const quoteNum   = `SV-${today.getFullYear()}${pad(today.getMonth()+1)}${pad(today.getDate())}`;
+    return {
+      quoteNumber:     quoteNum,
+      fileNamePrefix:  'SiteVisitQuote',
+      quoteDate:       fmt(today),
+      expiryDate:      fmt(expiry),
+      customerName:    this.customerName || 'Customer',
+      customerAddress: '',
+      customerCity:    '',
+      customerPostalCode: '',
+      reference:       this.workflowId ? `Workflow #${this.workflowId}` : this.customerName,
+      items: [{
+        description: 'Site Visit Fee (Over 50 Km)',
+        quantity:    1,
+        unitPrice,
+        tax:         VAT_RATE,
+        amount:      unitPrice
+      }],
+      subtotal:  unitPrice,
+      totalTax:  taxAmount,
+      taxRate:   VAT_RATE,
+      total,
+      terms: 'Quote valid for 30 days from date of issue.'
+    };
   }
   closeSendModal() {
     this.showSendModal = false; this.sendModalTaskId = null;

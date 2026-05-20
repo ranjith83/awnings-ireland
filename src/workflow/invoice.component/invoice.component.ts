@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of, finalize } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { map } from 'rxjs/operators';
+import { OptionLookupService, OptionLookupDto } from '../../service/option-lookup.service';
 
 import { 
   InvoiceService,
@@ -142,6 +143,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   selectedBrackets: string[] = [];
   extrasDescription: string = '';
   extrasPrice: number = 0;
+  windSensorOptions: OptionLookupDto[] = [];
+  selectedWindSensor: string = '';
   selectedMotor: string = '';
   selectedHeater: string = '';
   selectedLightingCassette: string = '';
@@ -194,6 +197,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     private workflowService: WorkflowService,
     private workflowStateService: WorkflowStateService,
     private pdfService: PdfGenerationService,
+    private optionLookupService: OptionLookupService,
     private route: ActivatedRoute,
     private router: Router,
     private notificationService: NotificationService,
@@ -210,6 +214,9 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.initializeObservables();
     this.initializeComponent();
+    this.optionLookupService.getByCategory('WindSensor')
+      .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+      .subscribe(opts => { this.windSensorOptions = opts; this.cdr.markForCheck(); });
   }
 
   ngOnDestroy() {
@@ -567,6 +574,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedBrackets = [];
     this.extrasDescription = '';
     this.extrasPrice = 0;
+    this.selectedWindSensor = '';
     this.selectedMotor = '';
     this.selectedHeater = '';
     this.selectedLightingCassette = '';
@@ -1024,6 +1032,27 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     return taxableAmount;
   }
 
+  onWindSensorChange() {
+    if (!this.selectedWindSensor || this.selectedWindSensor === 'No') {
+      this.removeAddonLineItem('windsensor');
+      return;
+    }
+    const option = this.windSensorOptions.find(o => o.value === this.selectedWindSensor);
+    if (!option) return;
+    const price = option.price ?? 0;
+    const lineItem: InvoiceItemDisplay = {
+      description: `Wind Sensor - ${option.label}`,
+      quantity: 1,
+      unitPrice: price,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      unit: 'pcs',
+      totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('windsensor')
+    };
+    this.addOrUpdateAddonLineItem('windsensor', lineItem);
+  }
+
   private addOrUpdateAddonLineItem(type: string, lineItem: InvoiceItemDisplay) {
     const currentItems = this.invoiceItemsSubject$.value;
     const existingIndex = currentItems.findIndex(item => item.id === lineItem.id);
@@ -1052,13 +1081,14 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     const typeIds: { [key: string]: number } = {
       'bracket': 100001, 'arm': 100002, 'motor': 100003, 'heater': 100004,
       'electrician': 100005, 'installation': 100006, 'ral': 100007,
-      'shadeplus': 100008, 'valance': 100009, 'wallsealing': 100010, 'lighting': 100011, 'control': 100012
+      'shadeplus': 100008, 'valance': 100009, 'wallsealing': 100010,
+      'lighting': 100011, 'control': 100012, 'framecolour': 100013, 'windsensor': 100014
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control', 'framecolour', 'windsensor'];
     const currentTypeIndex = typeOrder.indexOf(type);
     const currentItems = this.invoiceItemsSubject$.value;
     
@@ -1122,12 +1152,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     }
 
     const createDto: CreateInvoiceDto = {
-      workflowId: this.workflowId!,
-      customerId: this.customerId!,
-      invoiceDate: new Date(this.invoiceDate),
-      dueDate: new Date(this.dueDate),
-      notes: this.notes,
-      terms: this.terms,
+      workflowId:       this.workflowId!,
+      customerId:       this.customerId!,
+      invoiceDate:      new Date(this.invoiceDate),
+      dueDate:          new Date(this.dueDate),
+      notes:            this.notes,
+      terms:            this.terms,
+      windSensorOption: this.selectedWindSensor || undefined,
       invoiceItems: items.map(item => ({
         description: item.description,
         quantity: item.quantity,

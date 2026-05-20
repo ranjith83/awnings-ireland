@@ -1,4 +1,4 @@
-import { Directive, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Directive, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import {
   BehaviorSubject, Observable, Subject, combineLatest,
@@ -19,6 +19,7 @@ import {
 } from '../service/workflow.service';
 import { ProductItemType, QuoteDto } from '../service/create-quote.service';
 import { NotificationService } from '../service/notification.service';
+import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
   ADDON_ITEM_IDS, ADDON_SLOT, ADDON_SLOT_ORDER, AddonSlot,
   QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE,
@@ -156,6 +157,12 @@ export abstract class QuoteFormBase implements OnDestroy {
   extrasDescription = '';
   extrasPrice       = 0;
 
+  // ── Wind Sensor ───────────────────────────────────────────────────────────
+  windSensorOptions: OptionLookupDto[] = [];
+  selectedWindSensor = '';
+
+  private optionLookupService = inject(OptionLookupService);
+
   protected destroy$ = new Subject<void>();
 
   constructor(
@@ -165,6 +172,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     protected router: Router
   ) {
     this.initObservables();
+    this.loadWindSensorOptions();
   }
 
   // ── Observable setup ───────────────────────────────────────────────────────
@@ -253,6 +261,31 @@ export abstract class QuoteFormBase implements OnDestroy {
   abstract resetFormPartial(): void;
 
   // ── Loaders ────────────────────────────────────────────────────────────────
+
+  private loadWindSensorOptions() {
+    this.optionLookupService.getByCategory('WindSensor')
+      .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+      .subscribe(opts => { this.windSensorOptions = opts; this.cdr.markForCheck(); });
+  }
+
+  onWindSensorChange() {
+    if (!this.selectedWindSensor || this.selectedWindSensor === 'No') {
+      this.removeAddonLineItem(ADDON_SLOT.WINDSENSOR);
+      return;
+    }
+    const option = this.windSensorOptions.find(o => o.value === this.selectedWindSensor);
+    if (!option) return;
+    const price = option.price ?? 0;
+    this.addOrUpdateAddonLineItem(ADDON_SLOT.WINDSENSOR, {
+      description: `Wind Sensor - ${option.label}`,
+      quantity: 1,
+      unitPrice: price,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: this.calculateAmount(1, price, this.vatRate, 0),
+      id: this.getAddonItemId(ADDON_SLOT.WINDSENSOR)
+    });
+  }
 
   protected loadSuppliers() {
     this.workflowService.getAllSuppliers()
