@@ -129,9 +129,14 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedHeater = '';
     this.selectedLightingCassette = '';
     this.selectedControl = '';
-    this.includeElectrician = false;
-    this.includeRalSurcharge = false;
-    this.includeShadeplus = false;
+    this.includeElectrician            = false;
+    this.selectedRalType               = '';
+    this.ralCustomCode                 = '';
+    this.selectedFrameColourId         = null;
+    this.includeCorrosionProtection    = false;
+    this.corrosionProtectionPrice      = 0;
+    this.over50Km                      = false;
+    this.includeShadeplus              = false;
     this.shadePlusAllRows = [];
     this.shadePlusOptions = [];
     this.shadePlusHasMultiple = false;

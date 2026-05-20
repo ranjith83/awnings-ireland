@@ -22,7 +22,7 @@ import { NotificationService } from '../service/notification.service';
 import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
   ADDON_ITEM_IDS, ADDON_SLOT, ADDON_SLOT_ORDER, AddonSlot,
-  QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE,
+  QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE, QUOTE_OVER_50KM_PRICE,
 } from './quote.constants';
 
 export interface QuoteItemDisplay {
@@ -130,7 +130,12 @@ export abstract class QuoteFormBase implements OnDestroy {
   selectedControl            = '';
   includeElectrician         = false;
 
-  includeRalSurcharge  = false;
+  selectedRalType: '' | 'standard' | 'nonstandard' = '';
+  ralCustomCode    = '';
+
+  includeCorrosionProtection = false;
+  corrosionProtectionPrice   = 0;
+  over50Km                   = false;
 
   includeShadeplus  = false;
   shadePlusAllRows: { shadePlusId: number; description: string; widthCm: number; price: number }[] = [];
@@ -669,13 +674,50 @@ export abstract class QuoteFormBase implements OnDestroy {
     });
   }
 
-  onRalSurchargeChange() {
-    if (!this.includeRalSurcharge) {
-      this.removeAddonLineItem(ADDON_SLOT.RAL);
-      this.selectedFrameColourId   = null;
-      this.frameColourDropdownOpen = false;
-      this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR);
+  get filteredFrameColourOptions(): FrameColourOption[] {
+    if (!this.selectedRalType) return this.frameColourOptions;
+    return this.frameColourOptions.filter(o => {
+      const v = o.isNonStandardRAL as unknown;
+      const isNonStd = v === true || v === 1 || v === '1';
+      return this.selectedRalType === 'nonstandard' ? isNonStd : !isNonStd;
+    });
+  }
+
+  onRalTypeChange() {
+    this.selectedFrameColourId   = null;
+    this.frameColourDropdownOpen = false;
+    this.ralCustomCode           = '';
+    this.removeAddonLineItem(ADDON_SLOT.RAL);
+    this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR);
+  }
+
+  onRalCustomCodeChange() {
+    if (this.selectedFrameColourId !== null) this.onFrameColourChange();
+  }
+
+  onCorrosionProtectionChange() {
+    if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
+      this.removeAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION);
+      return;
     }
+    const price = this.corrosionProtectionPrice;
+    this.addOrUpdateAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION, {
+      description: 'Corrosion Protection',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      amount: this.calculateAmount(1, price, this.vatRate, 0),
+      id: this.getAddonItemId(ADDON_SLOT.CORROSIONPROTECTION)
+    });
+  }
+
+  onOver50KmChange() {
+    if (!this.over50Km) { this.removeAddonLineItem(ADDON_SLOT.OVER50KM); return; }
+    const price = QUOTE_OVER_50KM_PRICE;
+    this.addOrUpdateAddonLineItem(ADDON_SLOT.OVER50KM, {
+      description: 'Travel Surcharge - Over 50km',
+      quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+      amount: this.calculateAmount(1, price, this.vatRate, 0),
+      id: this.getAddonItemId(ADDON_SLOT.OVER50KM)
+    });
   }
 
   onShadeplusChange() {
@@ -778,21 +820,28 @@ export abstract class QuoteFormBase implements OnDestroy {
     const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
     if (!opt) { this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR); return; }
 
+    const desc = this.ralCustomCode
+      ? `Frame Colour - ${opt.description} (${this.ralCustomCode})`
+      : `Frame Colour - ${opt.description}`;
+
+    const addLine = (price: number) => {
+      this.addOrUpdateAddonLineItem(ADDON_SLOT.FRAMECOLOUR, {
+        description: desc,
+        quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+        amount: this.calculateAmount(1, price, this.vatRate, 0),
+        id: this.getAddonItemId(ADDON_SLOT.FRAMECOLOUR)
+      });
+    };
+
+    if (this.selectedRalType === 'standard') {
+      addLine(0);
+      return;
+    }
+
     if (!this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(price => {
-        if (price > 0) {
-          this.addOrUpdateAddonLineItem(ADDON_SLOT.FRAMECOLOUR, {
-            description: `Frame Colour - ${opt.description}`,
-            quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
-            amount: this.calculateAmount(1, price, this.vatRate, 0),
-            id: this.getAddonItemId(ADDON_SLOT.FRAMECOLOUR)
-          });
-        } else {
-          this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR);
-        }
-      });
+      .subscribe(price => addLine(price));
   }
 
   onMotorChange() {

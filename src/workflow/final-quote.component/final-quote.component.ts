@@ -149,9 +149,14 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedHeater = '';
     this.selectedLightingCassette = '';
     this.selectedControl = '';
-    this.includeElectrician  = false;
-    this.includeRalSurcharge = false;
-    this.includeShadeplus    = false;
+    this.includeElectrician         = false;
+    this.selectedRalType            = '';
+    this.ralCustomCode              = '';
+    this.selectedFrameColourId      = null;
+    this.includeCorrosionProtection = false;
+    this.corrosionProtectionPrice   = 0;
+    this.over50Km                   = false;
+    this.includeShadeplus           = false;
     this.shadePlusAllRows    = [];
     this.shadePlusOptions    = [];
     this.shadePlusHasMultiple = false;
@@ -285,7 +290,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.resetAddonCheckboxes();
     for (const qi of quote.quoteItems || []) {
       switch (qi.productItemId) {
-        case ProductItemType.NonStandardRals:    this.includeRalSurcharge = true; break;
+        case ProductItemType.NonStandardRals:    this.selectedRalType = 'nonstandard'; break;
         case ProductItemType.ShadePlus:          this.includeShadeplus    = true; break;
         case ProductItemType.Valance: {
           this.includeValanceStyle = true;
@@ -679,9 +684,14 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedHeater           = '';
     this.selectedLightingCassette = '';
     this.selectedControl          = '';
-    this.includeElectrician       = false;
-    this.includeRalSurcharge      = false;
-    this.includeShadeplus         = false;
+    this.includeElectrician         = false;
+    this.selectedRalType            = '';
+    this.ralCustomCode              = '';
+    this.selectedFrameColourId      = null;
+    this.includeCorrosionProtection = false;
+    this.corrosionProtectionPrice   = 0;
+    this.over50Km                   = false;
+    this.includeShadeplus           = false;
     this.includeValanceStyle      = false;
     this.selectedValanceType      = 'Straight';
     this.includeWallSealing       = false;

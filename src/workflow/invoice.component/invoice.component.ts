@@ -24,7 +24,8 @@ import {
   HeaterDto,
   BracketDto,
   LightingCassetteDto,
-  ControlDto
+  ControlDto,
+  FrameColourOption
 } from '../../service/workflow.service';
 
 import { WorkflowStateService } from '../../service/workflow-state.service';
@@ -155,8 +156,19 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   vatRate: number = 13.5;
   emailToCustomer: boolean = false;
 
-  // RAL surcharge — price fetched from API based on productId + ceiling width
-  includeRalSurcharge: boolean = false;
+  // RAL — dropdown: '' | 'standard' | 'nonstandard'
+  selectedRalType: '' | 'standard' | 'nonstandard' = '';
+  ralCustomCode    = '';
+  frameColourOptions: FrameColourOption[] = [];
+  selectedFrameColourId: number | null    = null;
+  frameColourDropdownOpen                 = false;
+
+  // Corrosion Protection
+  includeCorrosionProtection = false;
+  corrosionProtectionPrice   = 0;
+
+  // Over 50 km
+  over50Km = false;
 
   // Shadeplus — loaded once per product; options cover all widths
   includeShadeplus: boolean = false;
@@ -173,6 +185,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   // ── Addon availability flags (set after workflow/product selected) ──────────
   hasRalSurcharge  = false;
+  hasFrameColour   = false;
   hasShadePlus     = false;
   hasValanceStyle  = false;
   hasWallSealing   = false;
@@ -206,9 +219,8 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
-    if (!target.closest('.custom-dropdown')) {
-      this.bracketDropdownOpen = false;
-    }
+    if (!target.closest('.custom-dropdown'))       this.bracketDropdownOpen     = false;
+    if (!target.closest('.frame-colour-dropdown')) this.frameColourDropdownOpen = false;
   }
 
   ngOnInit() {
@@ -427,11 +439,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     if (!this.selectedModelId) return;
 
     // Reset availability flags for the newly selected product
-    this.hasRalSurcharge = false;
-    this.hasShadePlus    = false;
-    this.hasValanceStyle = false;
-    this.hasWallSealing  = false;
-    this.shadePlusOptions = [];
+    this.hasRalSurcharge     = false;
+    this.hasFrameColour      = false;
+    this.frameColourOptions  = [];
+    this.hasShadePlus        = false;
+    this.hasValanceStyle     = false;
+    this.hasWallSealing      = false;
+    this.shadePlusOptions    = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
@@ -439,6 +453,15 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.removeAddonLineItem('shadeplus');
 
     this.workflowService.hasNonStandardRALColours(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => { this.hasRalSurcharge = v; this.cdr.markForCheck(); });
+
+    this.workflowService.hasFrameColour(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => {
+      this.hasFrameColour = v;
+      if (v) {
+        this.workflowService.getFrameColourOptions(this.selectedModelId!)
+          .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+          .subscribe(opts => { this.frameColourOptions = opts; this.cdr.markForCheck(); });
+      }
+    });
 
     // Load all ShadePlus options for this product (all widths) in one call
     this.workflowService.getShadePlusOptions(this.selectedModelId, 0)
@@ -579,9 +602,14 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedHeater = '';
     this.selectedLightingCassette = '';
     this.selectedControl = '';
-    this.includeElectrician = false;
-    this.includeRalSurcharge = false;
-    this.includeShadeplus = false;
+    this.includeElectrician         = false;
+    this.selectedRalType            = '';
+    this.ralCustomCode              = '';
+    this.selectedFrameColourId      = null;
+    this.includeCorrosionProtection = false;
+    this.corrosionProtectionPrice   = 0;
+    this.over50Km                   = false;
+    this.includeShadeplus           = false;
     this.shadePlusOptions = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;
@@ -595,7 +623,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
     this.reloadArmTypeDependents();
     this.checkAndGenerateFirstLineItem();
-    if (this.includeRalSurcharge) this.onRalSurchargeChange();
+    if (this.selectedFrameColourId !== null) this.onFrameColourChange();
     if (this.includeShadeplus)    this.onShadeplusChange();
     if (this.includeValanceStyle) this.onValanceStyleChange();
     if (this.includeWallSealing)  this.onWallSealingChange();
@@ -780,23 +808,99 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     }
   }
 
-  onRalSurchargeChange() {
-    if (!this.includeRalSurcharge) { this.removeAddonLineItem('ral'); return; }
+  get filteredFrameColourOptions(): FrameColourOption[] {
+    if (!this.selectedRalType) return [];
+    return this.frameColourOptions.filter(o =>
+      this.selectedRalType === 'nonstandard' ? o.isNonStandardRAL : !o.isNonStandardRAL
+    );
+  }
+
+  onRalTypeChange() {
+    this.selectedFrameColourId   = null;
+    this.frameColourDropdownOpen = false;
+    this.ralCustomCode           = '';
+    this.removeAddonLineItem('ral');
+    this.removeAddonLineItem('framecolour');
+  }
+
+  onRalCustomCodeChange() {
+    if (this.selectedFrameColourId !== null) this.onFrameColourChange();
+  }
+
+  toggleFrameColourDropdown() { this.frameColourDropdownOpen = !this.frameColourDropdownOpen; }
+
+  selectFrameColour(opt: FrameColourOption) {
+    this.selectedFrameColourId   = opt.frameColourOptionId;
+    this.frameColourDropdownOpen = false;
+    this.onFrameColourChange();
+  }
+
+  getFrameColourLabel(): string {
+    if (!this.selectedFrameColourId) return 'Select colour';
+    return this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId)?.description ?? 'Select colour';
+  }
+
+  getFrameColourCss(description: string): string {
+    const n = description.toLowerCase();
+    if (n.includes('anthracite'))                             return '#383E42';
+    if (n.includes('black'))                                  return '#1C1C1C';
+    if (n.includes('dark grey') || n.includes('dark gray'))   return '#5A5A5A';
+    if (n.includes('grey') || n.includes('gray'))             return '#9E9E9E';
+    if (n.includes('silver'))                                 return '#C0C0C0';
+    if (n.includes('white'))                                  return '#F2F2F2';
+    if (n.includes('cream') || n.includes('ivory'))           return '#F5F0D0';
+    if (n.includes('bronze'))                                 return '#8C6B3E';
+    if (n.includes('green'))                                  return '#3A5F3A';
+    if (n.includes('blue'))                                   return '#2B4F7A';
+    return '#888888';
+  }
+
+  onFrameColourChange() {
+    const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
+    if (!opt) { this.removeAddonLineItem('framecolour'); return; }
     if (!this.selectedModelId || !this.selectedWidthCm) return;
-    this.workflowService.getNonStandardRALColourPrice(this.selectedModelId, this.selectedWidthCm)
+    this.workflowService.getFrameColourPrice(this.selectedModelId, opt.frameColourOptionId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {
+        const desc = this.ralCustomCode
+          ? `Frame Colour - ${opt.description} (${this.ralCustomCode})`
+          : `Frame Colour - ${opt.description}`;
         const lineItem: InvoiceItemDisplay = {
-          description: 'Surcharge for non-standard RAL colors',
-          quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
+          description: desc, quantity: 1, unitPrice: price,
+          taxRate: this.vatRate, discountPercentage: 0,
           unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
-          id: this.getAddonItemId('ral')
+          id: this.getAddonItemId('framecolour')
         };
-        this.addOrUpdateAddonLineItem('ral', lineItem);
+        this.addOrUpdateAddonLineItem('framecolour', lineItem);
       });
   }
 
-  getRalPrice(): number { return 0; } // kept for template compatibility — price now from API
+  onCorrosionProtectionChange() {
+    if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
+      this.removeAddonLineItem('corrosionprotection');
+      return;
+    }
+    const price = this.corrosionProtectionPrice;
+    const lineItem: InvoiceItemDisplay = {
+      description: 'Corrosion Protection', quantity: 1, unitPrice: price,
+      taxRate: this.vatRate, discountPercentage: 0,
+      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('corrosionprotection')
+    };
+    this.addOrUpdateAddonLineItem('corrosionprotection', lineItem);
+  }
+
+  onOver50KmChange() {
+    if (!this.over50Km) { this.removeAddonLineItem('over50km'); return; }
+    const price = 350;
+    const lineItem: InvoiceItemDisplay = {
+      description: 'Travel Surcharge - Over 50km', quantity: 1, unitPrice: price,
+      taxRate: this.vatRate, discountPercentage: 0,
+      unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
+      id: this.getAddonItemId('over50km')
+    };
+    this.addOrUpdateAddonLineItem('over50km', lineItem);
+  }
 
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonLineItem('shadeplus'); return; }
@@ -1082,13 +1186,14 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       'bracket': 100001, 'arm': 100002, 'motor': 100003, 'heater': 100004,
       'electrician': 100005, 'installation': 100006, 'ral': 100007,
       'shadeplus': 100008, 'valance': 100009, 'wallsealing': 100010,
-      'lighting': 100011, 'control': 100012, 'framecolour': 100013, 'windsensor': 100014
+      'lighting': 100011, 'control': 100012, 'framecolour': 100013, 'windsensor': 100014,
+      'corrosionprotection': 100015, 'over50km': 100016
     };
     return typeIds[type] || 0;
   }
 
   private getAddonInsertIndex(type: string): number {
-    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control', 'framecolour', 'windsensor'];
+    const typeOrder = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control', 'framecolour', 'windsensor', 'corrosionprotection', 'over50km'];
     const currentTypeIndex = typeOrder.indexOf(type);
     const currentItems = this.invoiceItemsSubject$.value;
     

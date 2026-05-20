@@ -216,7 +216,7 @@
         </div>
       </div>
 
-      <!-- Extras + RAL + Shadeplus + Valance + Wall Sealing on same row -->
+      <!-- Extras + Shadeplus on same row -->
       <div class="extras-addons-row" style="margin-top:15px;">
         <div class="form-group extras-group-full">
           <label class="form-label">Extras</label>
@@ -235,39 +235,6 @@
               placeholder="Price"
               min="0"
               step="0.01">
-          </div>
-        </div>
-
-        <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge">
-          <label class="form-label" style="visibility:hidden;">RAL</label>
-          <div class="ral-frame-row">
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input"
-                [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
-              <span>Non-standard RAL colors</span>
-            </label>
-            <div class="frame-colour-section" *ngIf="hasFrameColour && frameColourOptions.length > 0">
-              <div class="custom-dropdown frame-colour-dropdown">
-                <button type="button" class="dropdown-trigger frame-colour-trigger"
-                        [disabled]="!includeRalSurcharge"
-                        (click)="toggleFrameColourDropdown()">
-                  <span class="colour-swatch-sm"
-                        [style.background]="selectedFrameColourId ? getFrameColourCss(getFrameColourLabel()) : '#ccc'">
-                  </span>
-                  <span class="colour-trigger-label">{{ getFrameColourLabel() }}</span>
-                  <span class="dropdown-arrow">▾</span>
-                </button>
-                <div class="dropdown-panel colour-panel" *ngIf="frameColourDropdownOpen">
-                  <div class="colour-option"
-                       *ngFor="let opt of frameColourOptions; trackBy: trackByFrameColourId"
-                       [class.selected]="selectedFrameColourId === opt.frameColourOptionId"
-                       (click)="selectFrameColour(opt)">
-                    <span class="colour-swatch-sm" [style.background]="getFrameColourCss(opt.description)"></span>
-                    <span>{{ opt.description }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -332,6 +299,66 @@
             <input type="checkbox" class="checkbox-input"
               [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
             <span>Wall Sealing Profile</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- RAL Colour + Corrosion Protection + Over 50 km on same row -->
+      <div class="extras-addons-row" style="margin-top:15px;">
+        <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge || hasFrameColour">
+          <label class="form-label">RAL Colour</label>
+          <div class="ral-frame-row">
+            <select class="form-select ral-type-select" [(ngModel)]="selectedRalType" (change)="onRalTypeChange()">
+              <option value="" disabled selected>Select RAL type</option>
+              <option value="standard">Standard RAL</option>
+              <option value="nonstandard">Non-Standard RAL</option>
+            </select>
+            <div class="frame-colour-section" *ngIf="frameColourOptions.length > 0">
+              <div class="custom-dropdown frame-colour-dropdown">
+                <button type="button" class="dropdown-trigger frame-colour-trigger"
+                        [disabled]="!selectedRalType"
+                        (click)="selectedRalType ? toggleFrameColourDropdown() : null">
+                  <span class="colour-swatch-sm"
+                        [style.background]="selectedFrameColourId ? getFrameColourCss(getFrameColourLabel()) : '#ccc'">
+                  </span>
+                  <span class="colour-trigger-label">{{ getFrameColourLabel() }}</span>
+                  <span class="dropdown-arrow">▾</span>
+                </button>
+                <div class="dropdown-panel colour-panel" *ngIf="frameColourDropdownOpen">
+                  <div class="colour-option"
+                       *ngFor="let opt of filteredFrameColourOptions; trackBy: trackByFrameColourId"
+                       [class.selected]="selectedFrameColourId === opt.frameColourOptionId"
+                       (click)="selectFrameColour(opt)">
+                    <span class="colour-swatch-sm" [style.background]="getFrameColourCss(opt.description)"></span>
+                    <span>{{ opt.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <input *ngIf="selectedRalType === 'nonstandard'" type="text" class="form-input ral-code-input"
+                   [(ngModel)]="ralCustomCode" (ngModelChange)="onRalCustomCodeChange()"
+                   placeholder="RAL code (e.g. RAL 7016)">
+          </div>
+        </div>
+        <div class="form-group extras-addon-check">
+          <label class="form-label" style="visibility:hidden;">Corrosion</label>
+          <div class="shadeplus-multi-row">
+            <label class="checkbox-label shadeplus-checkbox">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
+              <span>Corrosion Protection</span>
+            </label>
+            <input *ngIf="includeCorrosionProtection" type="number" class="form-input shadeplus-select"
+                   [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
+                   placeholder="Price (€)" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-group extras-addon-check">
+          <label class="form-label" style="visibility:hidden;">Over 50 km</label>
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="over50Km" (change)="onOver50KmChange()">
+            <span>Over 50 Km — €350 + VAT</span>
           </label>
         </div>
       </div>
