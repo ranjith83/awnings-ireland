@@ -11,6 +11,27 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* ── Split section (two labelled groups side by side) ─────────────────── */
+.split-section-row {
+  display: flex;
+  gap: 0;
+  align-items: flex-start;
+}
+
+.split-group {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+
+.split-divider {
+  width: 1px;
+  background: #e5e7eb;
+  align-self: stretch;
+  margin: 0 24px;
+  flex-shrink: 0;
+}
+
 /* Loading Overlay */
 .loading-overlay {
   position: fixed;

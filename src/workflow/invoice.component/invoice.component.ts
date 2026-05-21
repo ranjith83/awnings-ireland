@@ -183,6 +183,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   // Valance Style — price fetched from API based on productId + ceiling width
   includeValanceStyle: boolean = false;
+  selectedValanceType = '';
 
   // Wall Sealing Profile — price fetched from API based on productId + ceiling width
   includeWallSealing: boolean = false;
@@ -619,6 +620,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeValanceStyle = false;
+    this.selectedValanceType = '';
     this.includeWallSealing = false;
     this.installationFee = 0;
   }
@@ -956,19 +958,23 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   getShadeplusPrice(): number { return 0; }
 
   onValanceStyleChange() {
-    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); return; }
-    if (!this.selectedModelId || !this.selectedWidthCm) return;
+    if (!this.includeValanceStyle) { this.removeAddonLineItem('valance'); this.selectedValanceType = ''; return; }
+    if (!this.selectedValanceType || !this.selectedModelId || !this.selectedWidthCm) return;
     this.workflowService.getValanceStylePrice(this.selectedModelId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => {
         const lineItem: InvoiceItemDisplay = {
-          description: 'Valance Style',
+          description: 'Valance Style ' + this.selectedValanceType,
           quantity: 1, unitPrice: price, taxRate: this.vatRate, discountPercentage: 0,
           unit: 'pcs', totalPrice: this.calculateItemTotal(1, price, this.vatRate, 0),
           id: this.getAddonItemId('valance')
         };
         this.addOrUpdateAddonLineItem('valance', lineItem);
       });
+  }
+
+  onValanceTypeChange() {
+    if (this.includeValanceStyle && this.selectedValanceType) this.onValanceStyleChange();
   }
 
   onWallSealingChange() {

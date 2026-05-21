@@ -1,3 +1,18 @@
+.split-section-row { display: flex; gap: 0; align-items: flex-start; }
+.split-group { flex: 1 1 0; min-width: 0; }
+.split-divider { width: 1px; background: #e5e7eb; align-self: stretch; margin: 0 24px; flex-shrink: 0; }
+
+/* Proportional widths: Workflow+Quote (3 fields) gets more room; Dimensions and Supply/Fit get less */
+.split-section-row > .split-group:first-child  { flex: 3 1 0; }
+.split-section-row > .split-group:nth-child(3) { flex: 1.5 1 0; }
+.split-section-row > .split-group:last-child   { flex: 1.5 1 0; }
+
+/* Compact grid inside split-groups so multiple fields fit on one row */
+.split-group .form-row:not(.installation-row) {
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+}
+
 .create-invoice-container {
   /*max-width: 1400px;
   margin: 0 auto; */
@@ -120,7 +135,8 @@
 }
 
 .form-row.addons-row .form-group {
-  flex: 0 0 280px;
+  flex: 1 1 150px;
+  min-width: 0;
 }
 
 .form-group.bracket-group {
@@ -523,13 +539,6 @@
   }
 }
 
-/* ShadePlus multi-option block */
-.shadeplus-block {
-  flex: 1 1 150px !important;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
 
 .shadeplus-row {
   display: flex;
@@ -656,6 +665,14 @@
   padding-bottom: 10px;
 }
 
+/* ShadePlus multi-option block — must come after .extras-addon-check to win the flex override */
+.shadeplus-block {
+  flex: 1 1 150px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
 @media (max-width: 900px) {
   .extras-addons-row {
     flex-wrap: wrap;
@@ -761,6 +778,24 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+.ral-block {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.ral-frame-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: nowrap;
+}
+
+.frame-colour-section {
+  display: flex;
+  align-items: flex-start;
 }
 
 .frame-colour-dropdown { position: relative; }

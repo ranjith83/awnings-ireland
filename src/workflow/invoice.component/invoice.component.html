@@ -6,75 +6,81 @@
   </div>
 
   <div class="invoice-content">
-    <!-- Select Workflow and Quote -->
+    <!-- Workflow + Dimensions + Supply and Fit -->
     <div class="form-section">
-      <h3 class="section-title">Select Workflow & Quote</h3>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Select Workflow</label>
-          <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
-            <option [value]="null" disabled>Select Workflow</option>
-            <option *ngFor="let workflow of workflows$ | async; trackBy: trackByWorkflowId" [value]="workflow.workflowId">
-              {{ workflow.workflowName }}
-            </option>
-          </select>
+      <div class="split-section-row">
+
+        <!-- Workflow & Quote group -->
+        <div class="split-group">
+          <h3 class="section-title">Select Workflow &amp; Quote</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Select Workflow</label>
+              <select class="form-select" [(ngModel)]="selectedWorkflowId" (change)="onWorkflowChange()">
+                <option [value]="null" disabled>Select Workflow</option>
+                <option *ngFor="let workflow of workflows$ | async; trackBy: trackByWorkflowId" [value]="workflow.workflowId">
+                  {{ workflow.workflowName }}
+                </option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Product Model</label>
+              <input type="text" class="form-input"
+                [(ngModel)]="selectedProductName" readonly
+                placeholder="Product will be displayed here">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Select Quote</label>
+              <select class="form-select" [(ngModel)]="selectedQuoteId" (change)="onQuoteChange()">
+                <option [value]="null" disabled>Select Quote</option>
+                <option *ngFor="let quote of quotes$ | async; trackBy: trackByQuoteId" [value]="quote.quoteId">
+                  {{ quote.quoteNumber }} - €{{ quote.totalAmount | number:'1.2-2' }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Product Model</label>
-          <input 
-            type="text" 
-            class="form-input" 
-            [(ngModel)]="selectedProductName" 
-            readonly
-            placeholder="Product will be displayed here">
+        <div class="split-divider"></div>
+
+        <!-- Dimensions group -->
+        <div class="split-group">
+          <h3 class="section-title">Select Dimensions</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Width (cm)</label>
+              <input type="number" class="form-input"
+                [(ngModel)]="enteredWidthCm"
+                (ngModelChange)="onWidthInput()"
+                placeholder="e.g. 255" min="1" step="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Projection</label>
+              <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
+                <option [value]="null" disabled selected>Select</option>
+                <option *ngFor="let projection of availableProjections$ | async; trackBy: trackByIndex" [value]="projection">
+                  {{ projection }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Select Quote</label>
-          <select class="form-select" [(ngModel)]="selectedQuoteId" (change)="onQuoteChange()">
-            <option [value]="null" disabled>Select Quote</option>
-            <option *ngFor="let quote of quotes$ | async; trackBy: trackByQuoteId" [value]="quote.quoteId">
-              {{ quote.quoteNumber }} - €{{ quote.totalAmount | number:'1.2-2' }}
-            </option>
-          </select>
-        </div>
-      </div>
-    </div>
+        <div class="split-divider"></div>
 
-    <!-- Select Dimensions -->
-    <div class="form-section">
-      <h3 class="section-title">Select Dimensions</h3>
-      <div class="dimensions-row">
-        <div class="form-group">
-          <label class="form-label">Width in cm</label>
-          <input
-            type="number"
-            class="form-input"
-            [(ngModel)]="enteredWidthCm"
-            (ngModelChange)="onWidthInput()"
-            placeholder="e.g. 255"
-            min="1"
-            step="1">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Select Awning (Projection)</label>
-          <select class="form-select" [(ngModel)]="selectedAwning" (change)="onAwningChange()">
-            <option [value]="null" disabled selected>Select</option>
-            <option *ngFor="let projection of availableProjections$ | async; trackBy: trackByIndex" [value]="projection">
-              {{ projection }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group electrician-inline">
-          <label class="form-label" style="visibility:hidden;">Electrician</label>
-          <label class="checkbox-label" style="padding-bottom: 10px;">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
-            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
-          </label>
+        <!-- Supply and Fit group -->
+        <div class="split-group">
+          <h3 class="section-title">Supply and Fit</h3>
+          <div class="form-row installation-row">
+            <div class="form-group small">
+              <label class="form-label">Fee</label>
+              <input type="number" class="form-input"
+                [(ngModel)]="installationFee"
+                (ngModelChange)="onInstallationFeeChange()"
+                placeholder="0.00">
+            </div>
+            <div class="vat-text">{{ vatRate }}% VAT</div>
+          </div>
         </div>
 
       </div>
@@ -97,67 +103,87 @@
                   <input type="checkbox"
                     [checked]="isBracketSelected(bracket.bracketName)"
                     (change)="toggleBracket(bracket.bracketName)">
-                  <span>{{ stripSurchargePrefix(bracket.bracketName) }} — €{{ bracket.price | number:'1.2-2' }}</span>
+                  <span>{{ stripSurchargePrefix(bracket.bracketName) }} — {{ bracket.isPriceIgnored ? 'Included' : '€' + (bracket.price | number:'1.2-2') }}</span>
                 </label>
               </div>
             </div>
           </ng-container>
         </div>
 
-        <div class="form-group motor-group" *ngIf="(motors$ | async)?.length">
+        <div class="form-group motor-group">
           <label class="form-label">Motor</label>
-          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let motor of motors$ | async; trackBy: trackByMotorId" [value]="motor.motorId">
-              {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
-            </option>
+          <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()"
+                  [disabled]="!(motors$ | async)?.length">
+            <option value="" disabled selected>{{ (motors$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(motors$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let motor of motors$ | async; trackBy: trackByMotorId" [value]="motor.motorId">
+                {{ motor.description }} - €{{ motor.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(heaters$ | async)?.length">
+        <div class="form-group">
           <label class="form-label">Heater</label>
-          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
-            <option value="" disabled selected>Select</option>
+          <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()"
+                  [disabled]="!(heaters$ | async)?.length">
+            <option value="" disabled selected>{{ (heaters$ | async)?.length ? 'Select' : 'No option available' }}</option>
             <option *ngFor="let heater of heaters$ | async; trackBy: trackByHeaterId" [value]="heater.heaterId">
               {{ heater.description }} - €{{ heater.price | number:'1.2-2' }}
             </option>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="windSensorOptions.length > 0">
+        <div class="form-group">
+          <label class="form-label">Controls</label>
+          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()"
+                  [disabled]="!(controls$ | async)?.length">
+            <option value="" disabled selected>{{ (controls$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(controls$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let control of controls$ | async; trackBy: trackByControlId" [value]="control.controlId">
+                {{ control.description }} - €{{ control.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
+          </select>
+        </div>
+
+        <div class="form-group electrician-inline">
+          <label class="form-label" style="visibility:hidden;">Electrician</label>
+          <label class="checkbox-label" style="padding-bottom: 10px;">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
+            <span>Electric connection by our Qualified Electrician - €{{ electricianPrice | number:'1.2-2' }}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Wind Sensor + Lighting Cassette + ShadePlus + Valance Style -->
+      <div class="extras-addons-row" style="margin-top:8px;">
+        <div class="form-group">
           <label class="form-label">Wind Sensor</label>
-          <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()">
-            <option value="" disabled selected>Select</option>
+          <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()"
+                  [disabled]="!windSensorOptions.length">
+            <option value="" disabled selected>{{ windSensorOptions.length ? 'Select' : 'No option available' }}</option>
             <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(lightingCassettes$ | async)?.length">
+        <div class="form-group">
           <label class="form-label">Lighting Cassette</label>
-          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
-              {{ stripSurchargePrefix(cassette.description) }} - €{{ cassette.price | number:'1.2-2' }}
-            </option>
+          <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()"
+                  [disabled]="!(lightingCassettes$ | async)?.length">
+            <option value="" disabled selected>{{ (lightingCassettes$ | async)?.length ? 'Select' : 'No option available' }}</option>
+            <ng-container *ngIf="(lightingCassettes$ | async)?.length">
+              <option value="">None</option>
+              <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
+                {{ stripSurchargePrefix(cassette.description) }} - €{{ cassette.price | number:'1.2-2' }}
+              </option>
+            </ng-container>
           </select>
         </div>
 
-        <div class="form-group" *ngIf="(controls$ | async)?.length">
-          <label class="form-label">Controls</label>
-          <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
-            <option value="" disabled selected>Select</option>
-            <option value="">None</option>
-            <option *ngFor="let control of controls$ | async; trackBy: trackByControlId" [value]="control.controlId">
-              {{ control.description }} - €{{ control.price | number:'1.2-2' }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <!-- ShadePlus + Valance Style -->
-      <div class="extras-addons-row" style="margin-top:8px;">
         <div class="form-group extras-addon-check shadeplus-block">
           <label class="form-label" style="visibility:hidden;">Shadeplus</label>
           <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
@@ -190,11 +216,21 @@
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
-            <span>Valance Style</span>
-          </label>
+          <div class="shadeplus-multi-row">
+            <label class="checkbox-label shadeplus-checkbox">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+              <span>Valance Style</span>
+            </label>
+            <select class="form-select shadeplus-select"
+              [disabled]="!includeValanceStyle"
+              [(ngModel)]="selectedValanceType"
+              (change)="onValanceTypeChange()">
+              <option value="" disabled selected>Select</option>
+              <option value="Straight">Straight</option>
+              <option value="Wavey">Wavey</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -274,21 +310,6 @@
               placeholder="Price" min="0" step="0.01">
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- Supply and Fit -->
-    <div class="form-section">
-      <h3 class="section-title">Supply and Fit</h3>
-      <div class="form-row installation-row">
-        <div class="form-group small">
-          <label class="form-label">Fee</label>
-          <input type="number" class="form-input"
-            [(ngModel)]="installationFee"
-            (ngModelChange)="onInstallationFeeChange()"
-            placeholder="0.00">
-        </div>
-        <div class="vat-text">{{ vatRate }}% VAT</div>
       </div>
     </div>
 
