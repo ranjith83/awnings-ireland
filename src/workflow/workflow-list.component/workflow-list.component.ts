@@ -209,15 +209,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
 
   // ── Stage status helpers ──────────────────────────────────────────────────
 
-  /**
-   * Returns the three-way status for a stage:
-   *  'disabled'  — the stage flag is not enabled
-   *  'completed' — enabled AND the server confirmed real activity exists
-   *  'pending'   — enabled but no activity yet
-   */
   stageStatus(enabled: boolean, completed: boolean): StageStatus | null {
-    if (!enabled)   return null;
-    if (completed)  return 'completed';
+    if (completed) return 'completed';
     return 'pending';
   }
 

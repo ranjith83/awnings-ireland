@@ -253,29 +253,6 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">Wind Sensor</label>
-            <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()"
-                    [disabled]="!windSensorOptions.length">
-              <option value="" disabled selected>{{ windSensorOptions.length ? 'Select' : 'No option available' }}</option>
-              <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
-            </select>
-          </div>
-
-          <div class="form-group lighting-group">
-            <label class="form-label">Lighting Cassette</label>
-            <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()"
-                    [disabled]="!(lightingCassettes$ | async)?.length">
-              <option value="" disabled selected>{{ (lightingCassettes$ | async)?.length ? 'Select' : 'No option available' }}</option>
-              <ng-container *ngIf="(lightingCassettes$ | async)?.length">
-                <option value="">None</option>
-                <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
-                  {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
-                </option>
-              </ng-container>
-            </select>
-          </div>
-
-          <div class="form-group">
             <label class="form-label">Controls</label>
             <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()"
                     [disabled]="!(controls$ | async)?.length">
@@ -290,7 +267,31 @@
           </div>
         </div>
 
-        <div class="extras-addons-row" style="margin-top:15px;">
+        <!-- Wind Sensor + Lighting Cassette + Extras + ShadePlus on same row -->
+        <div class="extras-addons-row" style="margin-top:8px;">
+          <div class="form-group">
+            <label class="form-label">Wind Sensor</label>
+            <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()"
+                    [disabled]="!windSensorOptions.length">
+              <option value="" disabled selected>{{ windSensorOptions.length ? 'Select' : 'No option available' }}</option>
+              <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Lighting Cassette</label>
+            <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()"
+                    [disabled]="!(lightingCassettes$ | async)?.length">
+              <option value="" disabled selected>{{ (lightingCassettes$ | async)?.length ? 'Select' : 'No option available' }}</option>
+              <ng-container *ngIf="(lightingCassettes$ | async)?.length">
+                <option value="">None</option>
+                <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
+                  {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
+                </option>
+              </ng-container>
+            </select>
+          </div>
+
           <div class="form-group extras-group-full">
             <label class="form-label">Extras</label>
             <div class="extras-row">
@@ -332,40 +333,10 @@
             </ng-container>
           </div>
 
-
         </div>
 
-        <!-- Valance Style + Wall Sealing on their own row -->
-        <div class="extras-addons-row" style="margin-top:20px;"
-             *ngIf="hasValanceStyle || hasWallSealing">
-          <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-            <div class="shadeplus-multi-row">
-              <label class="checkbox-label shadeplus-checkbox">
-                <input type="checkbox" class="checkbox-input"
-                  [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
-                <span>Valance Style</span>
-              </label>
-              <select class="form-select shadeplus-select"
-                [disabled]="!includeValanceStyle"
-                [(ngModel)]="selectedValanceType"
-                (change)="onValanceTypeChange()">
-                <option value="" disabled selected>Select</option>
-                <option value="Straight">Straight</option>
-                <option value="Wavey">Wavey</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input"
-                [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
-              <span>Wall Sealing Profile</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- RAL Colour + Corrosion Protection + Over 50 km on same row -->
-        <div class="extras-addons-row" style="margin-top:15px;">
+        <!-- RAL Colour + Corrosion + Valance Style + Wall Sealing + Over 50 km -->
+        <div class="extras-addons-row" style="margin-top:8px;">
           <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge || hasFrameColour">
             <label class="form-label">RAL Colour</label>
             <div class="ral-frame-row">
@@ -413,6 +384,30 @@
                      [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
                      placeholder="€" min="0" step="0.01">
             </div>
+          </div>
+          <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
+            <div class="shadeplus-multi-row">
+              <label class="checkbox-label shadeplus-checkbox">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+                <span>Valance Style</span>
+              </label>
+              <select class="form-select shadeplus-select"
+                [disabled]="!includeValanceStyle"
+                [(ngModel)]="selectedValanceType"
+                (change)="onValanceTypeChange()">
+                <option value="" disabled selected>Select</option>
+                <option value="Straight">Straight</option>
+                <option value="Wavey">Wavey</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
+            <label class="checkbox-label">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
+              <span>Wall Sealing Profile</span>
+            </label>
           </div>
           <div class="form-group extras-addon-check">
             <label class="form-label" style="visibility:hidden;">Over 50 km</label>

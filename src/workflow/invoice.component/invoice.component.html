@@ -156,28 +156,52 @@
         </div>
       </div>
 
-      <!-- Extras + RAL + Shadeplus + Valance + Wall Sealing on same row -->
-      <div class="extras-addons-row" style="margin-top:15px;">
+      <!-- Extras + ShadePlus -->
+      <div class="extras-addons-row" style="margin-top:8px;">
         <div class="form-group extras-group-full">
           <label class="form-label">Extras</label>
           <div class="extras-row">
-            <input
-              type="text"
-              class="form-input extras-description"
-              [(ngModel)]="extrasDescription"
-              (ngModelChange)="onExtrasChange()"
+            <input type="text" class="form-input extras-description"
+              [(ngModel)]="extrasDescription" (ngModelChange)="onExtrasChange()"
               placeholder="Description (e.g. Custom cover)">
-            <input
-              type="number"
-              class="form-input extras-price"
-              [(ngModel)]="extrasPrice"
-              (ngModelChange)="onExtrasChange()"
-              placeholder="Price"
-              min="0"
-              step="0.01">
+            <input type="number" class="form-input extras-price"
+              [(ngModel)]="extrasPrice" (ngModelChange)="onExtrasChange()"
+              placeholder="Price" min="0" step="0.01">
           </div>
         </div>
 
+        <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
+          <label class="form-label" style="visibility:hidden;">Shadeplus</label>
+          <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
+            <label class="checkbox-label" style="padding-bottom: 6px;">
+              <input type="checkbox" class="checkbox-input"
+                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+              <span>ShadePlus</span>
+            </label>
+          </ng-container>
+          <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
+            <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
+              <label class="checkbox-label shadeplus-checkbox">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                <span>ShadePlus</span>
+              </label>
+              <select class="form-select shadeplus-select"
+                [disabled]="!includeShadeplus"
+                [(ngModel)]="selectedShadePlusId"
+                (change)="onShadeplusOptionChange()">
+                <option value="" disabled selected>Select option</option>
+                <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
+                  {{ opt.description }}
+                </option>
+              </select>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+
+      <!-- RAL Colour + Corrosion + Valance Style + Wall Sealing + Over 50 km -->
+      <div class="extras-addons-row" style="margin-top:8px;">
         <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge || hasFrameColour">
           <label class="form-label">RAL Colour</label>
           <div class="ral-frame-row">
@@ -213,65 +237,6 @@
                    placeholder="RAL code (e.g. RAL 7016)">
           </div>
         </div>
-
-        <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
-          <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-
-          <!-- ── SINGLE option: checkbox only ── -->
-          <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
-            <label class="checkbox-label" style="padding-bottom: 6px;">
-              <input type="checkbox" class="checkbox-input"
-                [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-              <span>ShadePlus</span>
-            </label>
-          </ng-container>
-
-          <!-- ── MULTIPLE options: checkbox + dropdown on one row ── -->
-          <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
-            <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
-              <label class="checkbox-label shadeplus-checkbox">
-                <input type="checkbox" class="checkbox-input"
-                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-                <span>ShadePlus</span>
-              </label>
-              <select class="form-select shadeplus-select"
-                [disabled]="!includeShadeplus"
-                [(ngModel)]="selectedShadePlusId"
-                (change)="onShadeplusOptionChange()">
-                <option value="" disabled selected>Select option</option>
-                <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
-                  {{ opt.description }}
-                </option>
-              </select>
-            </div>
-          </ng-container>
-
-        </div>
-
-        <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-          <label class="form-label" style="visibility:hidden;">Valance</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeValanceStyle"
-              (change)="onValanceStyleChange()">
-            <span>Valance Style</span>
-          </label>
-        </div>
-
-        <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
-          <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="includeWallSealing"
-              (change)="onWallSealingChange()">
-            <span>Wall Sealing Profile</span>
-          </label>
-        </div>
-
-      </div>
-
-      <!-- Corrosion Protection + Over 50 km -->
-      <div class="extras-addons-row" style="margin-top:15px;">
         <div class="form-group extras-addon-check">
           <label class="form-label" style="visibility:hidden;">Corrosion</label>
           <div class="shadeplus-multi-row">
@@ -280,10 +245,24 @@
                 [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
               <span>Corrosion Protection</span>
             </label>
-            <input *ngIf="includeCorrosionProtection" type="number" class="form-input shadeplus-select"
+            <input *ngIf="includeCorrosionProtection" type="number" class="form-input corrosion-price-input"
                    [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
-                   placeholder="Price (€)" min="0" step="0.01">
+                   placeholder="€" min="0" step="0.01">
           </div>
+        </div>
+        <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+            <span>Valance Style</span>
+          </label>
+        </div>
+        <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
+          <label class="checkbox-label">
+            <input type="checkbox" class="checkbox-input"
+              [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
+            <span>Wall Sealing Profile</span>
+          </label>
         </div>
         <div class="form-group extras-addon-check">
           <label class="form-label" style="visibility:hidden;">Over 50 km</label>
