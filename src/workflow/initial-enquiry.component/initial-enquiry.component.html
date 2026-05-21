@@ -154,6 +154,13 @@
             </svg>Choose files
             <input type="file" multiple hidden (change)="onFilesSelected($event,'add')" [disabled]="(isSaving$ | async) === true" />
           </label>
+          <button type="button" class="ie-calc-btn" (click)="showQuickCalculator = true" title="Generate an instant price quote">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="14" height="14">
+              <rect x="2" y="2" width="12" height="12" rx="2"/>
+              <line x1="5" y1="5" x2="11" y2="5"/><line x1="5" y1="8" x2="7" y2="8"/><line x1="9" y1="8" x2="11" y2="8"/>
+              <line x1="5" y1="11" x2="7" y2="11"/><line x1="9" y1="11" x2="11" y2="11"/>
+            </svg>Instant Quote
+          </button>
           <span class="ie-attach-hint">PDF, images, Word, Excel — any file type</span>
         </div>
         <div class="ie-attach-list" *ngIf="pendingAttachments.length">
@@ -259,6 +266,9 @@
   </div>
 
 </div><!-- /ie-container -->
+
+<!-- Quick Calculator modal -->
+<app-quick-calculator *ngIf="showQuickCalculator" (closeCalculator)="showQuickCalculator = false"></app-quick-calculator>
 
 
 <!-- ═══════════════════════════════════════════════════════════════════

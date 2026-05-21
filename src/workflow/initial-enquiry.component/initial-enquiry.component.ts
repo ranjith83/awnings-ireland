@@ -89,10 +89,11 @@ const LAYOUT_OPTIONS = [
 
 import { NotificationService } from '../../service/notification.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
+import { QuickCalculatorComponent } from '../../app/quick-calculator.component/quick-calculator.component';
 @Component({
   selector: 'app-initial-enquiry',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, QuickCalculatorComponent],
   templateUrl: './initial-enquiry.component.html',
   styleUrl: './initial-enquiry.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -170,6 +171,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   sendModalTaskId: number | null = null;
   sendSubject = ''; sendBody = ''; sendToEmail = '';
   sendPendingAttachments: PendingAttachment[] = [];
+
+  // ── Quick Calculator ───────────────────────────────────────────────────────
+  showQuickCalculator = false;
 
   // ── Attachments ────────────────────────────────────────────────────────────
   pendingAttachments: PendingAttachment[] = [];

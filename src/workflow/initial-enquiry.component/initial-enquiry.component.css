@@ -360,6 +360,23 @@
 .ie-attach-btn.disabled             { opacity: .5; cursor: not-allowed; }
 .ie-attach-btn--sm                  { padding: 5px 12px; font-size: 12.5px; }
 
+.ie-calc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: white;
+  border: 1px solid #7c3aed;
+  border-radius: 6px;
+  color: #7c3aed;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.ie-calc-btn:hover { background: #7c3aed; color: white; }
+
 /* ── Staged / saved attachment list ─────────────────────────────── */
 .ie-attach-list {
   display: flex;
