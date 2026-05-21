@@ -646,7 +646,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     selected.forEach(b => {
       const price = b.isPriceIgnored ? 0 : b.price;
       const lineItem: QuoteItemDisplay = {
-        description: b.bracketName, quantity: 1, unitPrice: price,
+        description: this.stripSurchargePrefix(b.bracketName), quantity: 1, unitPrice: price,
         taxRate: this.vatRate, discountPercentage: 0,
         amount: this.calculateAmount(1, price, this.vatRate, 0),
         id: QUOTE_BRACKET_ID_OFFSET + b.bracketId,
@@ -745,7 +745,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     this.selectedShadePlusId = chosen.shadePlusId;
     this.selectedShadePlusDescription = chosen.description;
 
-    const lineDesc = this.shadePlusHasMultiple ? chosen.description : 'ShadePlus';
+    const lineDesc = this.shadePlusHasMultiple ? this.stripSurchargePrefix(chosen.description) : 'ShadePlus';
 
     const addItem = (price: number) => {
       this.addOrUpdateAddonLineItem(ADDON_SLOT.SHADEPLUS, {
@@ -871,7 +871,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   onLightingCassetteChange() {
     if (!this.selectedLightingCassette) { this.removeAddonLineItem(ADDON_SLOT.LIGHTING); return; }
     const cassette = this.lightingCassettesSubject$.value.find(c => c.lightingId.toString() === this.selectedLightingCassette);
-    if (cassette) this.addOrUpdateAddonLineItem(ADDON_SLOT.LIGHTING, { description: cassette.description, quantity: 1, unitPrice: cassette.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, cassette.price, this.vatRate, 0), id: this.getAddonItemId(ADDON_SLOT.LIGHTING) });
+    if (cassette) this.addOrUpdateAddonLineItem(ADDON_SLOT.LIGHTING, { description: this.stripSurchargePrefix(cassette.description), quantity: 1, unitPrice: cassette.price, taxRate: this.vatRate, discountPercentage: 0, amount: this.calculateAmount(1, cassette.price, this.vatRate, 0), id: this.getAddonItemId(ADDON_SLOT.LIGHTING) });
   }
 
   onControlChange() {

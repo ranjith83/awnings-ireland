@@ -204,17 +204,18 @@
           </div>
 
           <!-- ShadePlus -->
-          <div class="form-group shadeplus-block" *ngIf="hasShadePlus">
+          <div class="form-group shadeplus-block">
             <label class="form-label">ShadePlus</label>
             <div class="shadeplus-inline-row">
               <label class="checkbox-label">
                 <input type="checkbox" class="checkbox-input"
+                       [disabled]="!hasShadePlus"
                        [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
                 <span>ShadePlus</span>
               </label>
               <select *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1"
                       class="form-select shadeplus-select"
-                      [disabled]="!includeShadeplus"
+                      [disabled]="!hasShadePlus || !includeShadeplus"
                       [(ngModel)]="selectedShadePlusId"
                       (change)="onShadeplusOptionChange()">
                 <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">

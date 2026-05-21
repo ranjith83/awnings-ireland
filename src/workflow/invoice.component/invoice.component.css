@@ -483,6 +483,7 @@
 
 .extras-group-full .extras-description {
   flex: 1;
+  max-width: none;
 }
 
 .extras-group-full .extras-price {

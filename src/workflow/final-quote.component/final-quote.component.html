@@ -220,7 +220,7 @@
                     <input type="checkbox"
                       [checked]="isBracketSelected(bracket.bracketName)"
                       (change)="toggleBracket(bracket.bracketName)">
-                    <span>{{ bracket.bracketName }} — €{{ bracket.price | number:'1.2-2' }}</span>
+                    <span>{{ stripSurchargePrefix(bracket.bracketName) }} — €{{ bracket.price | number:'1.2-2' }}</span>
                   </label>
                 </div>
               </div>
@@ -267,7 +267,7 @@
           </div>
         </div>
 
-        <!-- Wind Sensor + Lighting Cassette + Extras + ShadePlus on same row -->
+        <!-- Wind Sensor + Lighting Cassette + ShadePlus + Valance Style -->
         <div class="extras-addons-row" style="margin-top:8px;">
           <div class="form-group">
             <label class="form-label">Wind Sensor</label>
@@ -286,29 +286,18 @@
               <ng-container *ngIf="(lightingCassettes$ | async)?.length">
                 <option value="">None</option>
                 <option *ngFor="let cassette of lightingCassettes$ | async; trackBy: trackByLightingId" [value]="cassette.lightingId">
-                  {{ cassette.description }} - €{{ cassette.price | number:'1.2-2' }}
+                  {{ stripSurchargePrefix(cassette.description) }} - €{{ cassette.price | number:'1.2-2' }}
                 </option>
               </ng-container>
             </select>
           </div>
 
-          <div class="form-group extras-group-full">
-            <label class="form-label">Extras</label>
-            <div class="extras-row">
-              <input type="text" class="form-input extras-description"
-                [(ngModel)]="extrasDescription" (ngModelChange)="onExtrasChange()"
-                placeholder="Description (e.g. Custom cover)">
-              <input type="number" class="form-input extras-price"
-                [(ngModel)]="extrasPrice" (ngModelChange)="onExtrasChange()"
-                placeholder="Price" min="0" step="0.01">
-            </div>
-          </div>
-
-          <div class="form-group extras-addon-check shadeplus-block" *ngIf="hasShadePlus">
+          <div class="form-group extras-addon-check shadeplus-block">
             <label class="form-label" style="visibility:hidden;">Shadeplus</label>
             <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
               <label class="checkbox-label" style="padding-bottom: 6px;">
                 <input type="checkbox" class="checkbox-input"
+                  [disabled]="!hasShadePlus"
                   [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
                 <span>ShadePlus</span>
               </label>
@@ -317,25 +306,44 @@
               <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
                 <label class="checkbox-label shadeplus-checkbox">
                   <input type="checkbox" class="checkbox-input"
+                    [disabled]="!hasShadePlus"
                     [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
                   <span>ShadePlus</span>
                 </label>
                 <select class="form-select shadeplus-select"
-                  [disabled]="!includeShadeplus"
+                  [disabled]="!hasShadePlus || !includeShadeplus"
                   [(ngModel)]="selectedShadePlusId"
                   (change)="onShadeplusOptionChange()">
                   <option value="" disabled selected>Select option</option>
                   <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
-                    {{ opt.description }}
+                    {{ stripSurchargePrefix(opt.description) }}
                   </option>
                 </select>
               </div>
             </ng-container>
           </div>
 
+          <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
+            <div class="shadeplus-multi-row">
+              <label class="checkbox-label shadeplus-checkbox">
+                <input type="checkbox" class="checkbox-input"
+                  [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+                <span>Valance Style</span>
+              </label>
+              <select class="form-select shadeplus-select"
+                [disabled]="!includeValanceStyle"
+                [(ngModel)]="selectedValanceType"
+                (change)="onValanceTypeChange()">
+                <option value="" disabled selected>Select</option>
+                <option value="Straight">Straight</option>
+                <option value="Wavey">Wavey</option>
+              </select>
+            </div>
+          </div>
+
         </div>
 
-        <!-- RAL Colour + Corrosion + Valance Style + Wall Sealing + Over 50 km -->
+        <!-- RAL Colour + Corrosion + Wall Sealing + Over 50 km + Extras -->
         <div class="extras-addons-row" style="margin-top:8px;">
           <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge || hasFrameColour">
             <label class="form-label">RAL Colour</label>
@@ -385,23 +393,6 @@
                      placeholder="€" min="0" step="0.01">
             </div>
           </div>
-          <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
-            <div class="shadeplus-multi-row">
-              <label class="checkbox-label shadeplus-checkbox">
-                <input type="checkbox" class="checkbox-input"
-                  [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
-                <span>Valance Style</span>
-              </label>
-              <select class="form-select shadeplus-select"
-                [disabled]="!includeValanceStyle"
-                [(ngModel)]="selectedValanceType"
-                (change)="onValanceTypeChange()">
-                <option value="" disabled selected>Select</option>
-                <option value="Straight">Straight</option>
-                <option value="Wavey">Wavey</option>
-              </select>
-            </div>
-          </div>
           <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
             <label class="checkbox-label">
               <input type="checkbox" class="checkbox-input"
@@ -416,6 +407,17 @@
                 [(ngModel)]="over50Km" (change)="onOver50KmChange()">
               <span>Over 50 Km — €350 + VAT</span>
             </label>
+          </div>
+          <div class="form-group extras-group-full">
+            <label class="form-label">Extras</label>
+            <div class="extras-row">
+              <input type="text" class="form-input extras-description"
+                [(ngModel)]="extrasDescription" (ngModelChange)="onExtrasChange()"
+                placeholder="Description (e.g. Custom cover)">
+              <input type="number" class="form-input extras-price"
+                [(ngModel)]="extrasPrice" (ngModelChange)="onExtrasChange()"
+                placeholder="Price" min="0" step="0.01">
+            </div>
           </div>
         </div>
       </div>

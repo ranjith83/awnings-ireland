@@ -136,8 +136,12 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
   getBracketLabel(): string {
     if (!this.selectedBrackets.length) return 'Select brackets';
-    if (this.selectedBrackets.length === 1) return this.selectedBrackets[0];
+    if (this.selectedBrackets.length === 1) return this.stripSurchargePrefix(this.selectedBrackets[0]);
     return `${this.selectedBrackets.length} brackets selected`;
+  }
+
+  stripSurchargePrefix(name: string): string {
+    return name.replace(/^surcharge for\s*/i, '');
   }
 
   // Addon selections
@@ -791,13 +795,13 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     if (selected.length === 1) {
       const b = selected[0];
       this.addOrUpdateAddonLineItem('bracket', {
-        description: b.bracketName, quantity: 1, unitPrice: b.price,
+        description: this.stripSurchargePrefix(b.bracketName), quantity: 1, unitPrice: b.price,
         taxRate: this.vatRate, discountPercentage: 0, unit: 'pcs',
         totalPrice: this.calculateItemTotal(1, b.price, this.vatRate, 0),
         id: this.getAddonItemId('bracket')
       });
     } else {
-      const combinedDesc = selected.map(b => b.bracketName).join(' + ');
+      const combinedDesc = selected.map(b => this.stripSurchargePrefix(b.bracketName)).join(' + ');
       const combinedPrice = selected.reduce((sum, b) => sum + b.price, 0);
       this.addOrUpdateAddonLineItem('bracket', {
         description: combinedDesc, quantity: 1, unitPrice: combinedPrice,
@@ -917,7 +921,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedShadePlusDescription = chosen.description;
 
     // Single option → always "ShadePlus"; multiple → use chosen description
-    const lineDesc = this.shadePlusHasMultiple ? chosen.description : 'Shadeplus';
+    const lineDesc = this.shadePlusHasMultiple ? this.stripSurchargePrefix(chosen.description) : 'Shadeplus';
 
     const addItem = (price: number) => {
       const lineItem: InvoiceItemDisplay = {
@@ -1076,7 +1080,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     const cassette = this.lightingCassettesSubject$.value.find(c => c.lightingId.toString() === this.selectedLightingCassette);
     if (cassette) {
       const lineItem: InvoiceItemDisplay = {
-        description: cassette.description,
+        description: this.stripSurchargePrefix(cassette.description),
         quantity: 1, unitPrice: cassette.price, taxRate: this.vatRate, discountPercentage: 0,
         unit: 'pcs', totalPrice: this.calculateItemTotal(1, cassette.price, this.vatRate, 0),
         id: this.getAddonItemId('lighting')
