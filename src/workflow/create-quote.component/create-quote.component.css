@@ -23,6 +23,16 @@
   min-width: 0;
 }
 
+/* Workflow & Product gets most room; Dimensions compact; Supply and Fit gets least */
+.split-section-row > .split-group:first-child { flex: 3 1 0; }
+.split-section-row > .split-group:nth-child(3) { flex: 1.2 1 0; }
+.split-section-row > .split-group:last-child  { flex: 1 1 0; }
+
+/* Compact columns inside the Dimensions group */
+.split-section-row > .split-group:nth-child(3) .form-row {
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
+}
 
 .split-divider {
   width: 1px;

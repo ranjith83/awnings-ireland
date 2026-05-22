@@ -461,6 +461,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasFrameColour(this.selectedModelId).pipe(takeUntil(this.destroy$)).subscribe(v => {
       this.hasFrameColour = v;
+      this.cdr.markForCheck();
       if (v) {
         this.workflowService.getFrameColourOptions(this.selectedModelId!)
           .pipe(takeUntil(this.destroy$), catchError(() => of([])))

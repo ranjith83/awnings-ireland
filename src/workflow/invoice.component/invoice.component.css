@@ -2,15 +2,15 @@
 .split-group { flex: 1 1 0; min-width: 0; }
 .split-divider { width: 1px; background: #e5e7eb; align-self: stretch; margin: 0 24px; flex-shrink: 0; }
 
-/* Proportional widths: Workflow+Quote (3 fields) gets more room; Dimensions and Supply/Fit get less */
+/* Proportional widths: Workflow+Quote (3 fields) gets most room; Dimensions compact; Supply/Fit gets least */
 .split-section-row > .split-group:first-child  { flex: 3 1 0; }
-.split-section-row > .split-group:nth-child(3) { flex: 1.5 1 0; }
-.split-section-row > .split-group:last-child   { flex: 1.5 1 0; }
+.split-section-row > .split-group:nth-child(3) { flex: 1.2 1 0; }
+.split-section-row > .split-group:last-child   { flex: 1 1 0; }
 
-/* Compact grid inside split-groups so multiple fields fit on one row */
+/* Compact grid inside all split-groups (first group has 3 fields so needs this too) */
 .split-group .form-row:not(.installation-row) {
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 10px;
 }
 
 .create-invoice-container {
@@ -824,8 +824,6 @@
   font-size: 13px;
   color: #333;
   white-space: nowrap;
-  width: 360px;
-  min-width: 360px;
   flex-shrink: 0;
 }
 .frame-colour-trigger:hover:not(:disabled) { border-color: #667eea; background: #f8f9ff; }

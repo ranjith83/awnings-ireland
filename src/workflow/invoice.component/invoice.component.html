@@ -184,35 +184,24 @@
           </select>
         </div>
 
-        <div class="form-group extras-addon-check shadeplus-block">
-          <label class="form-label" style="visibility:hidden;">Shadeplus</label>
-          <ng-container *ngIf="!shadePlusHasMultiple || shadePlusOptions.length <= 1">
-            <label class="checkbox-label" style="padding-bottom: 6px;">
+        <div class="form-group">
+          <label class="form-label">ShadePlus</label>
+          <div class="shadeplus-multi-row">
+            <label class="checkbox-label shadeplus-checkbox" style="padding-bottom: 0;">
               <input type="checkbox" class="checkbox-input"
                 [disabled]="!hasShadePlus"
                 [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-              <span>ShadePlus</span>
             </label>
-          </ng-container>
-          <ng-container *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1">
-            <div class="shadeplus-multi-row" style="padding-bottom: 6px;">
-              <label class="checkbox-label shadeplus-checkbox">
-                <input type="checkbox" class="checkbox-input"
-                  [disabled]="!hasShadePlus"
-                  [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-                <span>ShadePlus</span>
-              </label>
-              <select class="form-select shadeplus-select"
-                [disabled]="!hasShadePlus || !includeShadeplus"
-                [(ngModel)]="selectedShadePlusId"
-                (change)="onShadeplusOptionChange()">
-                <option value="" disabled selected>Select option</option>
-                <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
-                  {{ stripSurchargePrefix(opt.description) }}
-                </option>
-              </select>
-            </div>
-          </ng-container>
+            <select class="form-select"
+              [disabled]="!hasShadePlus || !includeShadeplus"
+              [(ngModel)]="selectedShadePlusId"
+              (change)="onShadeplusOptionChange()">
+              <option value="" disabled selected>{{ hasShadePlus ? 'Select option' : 'No option available' }}</option>
+              <option *ngFor="let opt of shadePlusOptions; trackBy: trackByShadePlusId" [ngValue]="opt.shadePlusId">
+                {{ stripSurchargePrefix(opt.description) }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group extras-addon-check" *ngIf="hasValanceStyle">
@@ -236,11 +225,12 @@
 
       <!-- RAL Colour + Corrosion + Wall Sealing + Over 50 km + Extras -->
       <div class="extras-addons-row" style="margin-top:8px;">
-        <div class="form-group extras-addon-check ral-block" *ngIf="hasRalSurcharge || hasFrameColour">
+        <div class="form-group extras-addon-check ral-block">
           <label class="form-label">RAL Colour</label>
           <div class="ral-frame-row">
-            <select class="form-select ral-type-select" [(ngModel)]="selectedRalType" (change)="onRalTypeChange()">
-              <option value="" disabled selected>Select RAL type</option>
+            <select class="form-select ral-type-select" [(ngModel)]="selectedRalType" (change)="onRalTypeChange()"
+                    [disabled]="!hasRalSurcharge && !hasFrameColour">
+              <option value="" disabled selected>{{ (hasRalSurcharge || hasFrameColour) ? 'Select RAL type' : 'No option available' }}</option>
               <option value="standard">Standard RAL</option>
               <option value="nonstandard">Non-Standard RAL</option>
             </select>
