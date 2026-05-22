@@ -161,6 +161,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   // ── Extras ────────────────────────────────────────────────────────────────
   extrasDescription = '';
   extrasPrice       = 0;
+  fabricCode        = '';
 
   // ── Wind Sensor ───────────────────────────────────────────────────────────
   windSensorOptions: OptionLookupDto[] = [];
@@ -671,6 +672,22 @@ export abstract class QuoteFormBase implements OnDestroy {
       discountPercentage: 0,
       amount: this.calculateAmount(1, this.extrasPrice, this.vatRate, 0),
       id: this.getAddonItemId(ADDON_SLOT.ARM)
+    });
+  }
+
+  onFabricCodeChange() {
+    if (!this.fabricCode.trim()) {
+      this.removeAddonLineItem(ADDON_SLOT.FABRICCODE);
+      return;
+    }
+    this.addOrUpdateAddonLineItem(ADDON_SLOT.FABRICCODE, {
+      description: `Fabric Code: ${this.fabricCode.trim()}`,
+      quantity: 1,
+      unitPrice: 0,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: 0,
+      id: this.getAddonItemId(ADDON_SLOT.FABRICCODE)
     });
   }
 

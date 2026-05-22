@@ -20,6 +20,7 @@ export const ADDON_SLOT = {
   WINDSENSOR:          'windsensor',
   CORROSIONPROTECTION: 'corrosionprotection',
   OVER50KM:            'over50km',
+  FABRICCODE:          'fabriccode',
 } as const;
 
 export type AddonSlot = typeof ADDON_SLOT[keyof typeof ADDON_SLOT];
@@ -41,6 +42,7 @@ export const ADDON_ITEM_IDS: Record<AddonSlot, number> = {
   windsensor:          100014,
   corrosionprotection: 100015,
   over50km:            100016,
+  fabriccode:          100017,
 };
 
 export const ADDON_SLOT_ORDER: AddonSlot[] = [
@@ -48,4 +50,5 @@ export const ADDON_SLOT_ORDER: AddonSlot[] = [
   ADDON_SLOT.ELECTRICIAN, ADDON_SLOT.INSTALLATION, ADDON_SLOT.RAL,   ADDON_SLOT.SHADEPLUS,
   ADDON_SLOT.VALANCE, ADDON_SLOT.WALLSEALING,  ADDON_SLOT.LIGHTING,   ADDON_SLOT.CONTROL,
   ADDON_SLOT.FRAMECOLOUR, ADDON_SLOT.WINDSENSOR, ADDON_SLOT.CORROSIONPROTECTION, ADDON_SLOT.OVER50KM,
+  ADDON_SLOT.FABRICCODE,
 ];

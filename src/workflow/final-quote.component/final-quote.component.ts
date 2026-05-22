@@ -167,6 +167,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.includeWallSealing  = false;
     this.extrasDescription   = '';
     this.extrasPrice         = 0;
+    this.fabricCode          = '';
     this.selectedWindSensor  = '';
     this.enteredWidthCm      = null;
     this.selectedWidthCm     = null;
@@ -259,6 +260,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.followUpDate = parseDate(quote.followUpDate);
     this.discountType  = quote.discountType  || '';
     this.discountValue = quote.discountValue || 0;
+    this.fabricCode    = quote.fabricCode    || '';
 
     // ── Parse width & projection from first line item description ──────────
     const firstItem = (quote.quoteItems || [])[0];
@@ -418,6 +420,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
       discountType:     this.discountType  || undefined,
       discountValue:    this.discountValue || 0,
       windSensorOption: this.selectedWindSensor || undefined,
+      fabricCode:       this.fabricCode         || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,
@@ -483,6 +486,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
       terms:         this.terms,
       discountType:  this.discountType  || undefined,
       discountValue: this.discountValue || undefined,
+      fabricCode:    this.fabricCode    || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,

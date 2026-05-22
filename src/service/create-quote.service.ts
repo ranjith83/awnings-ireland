@@ -40,6 +40,7 @@ export interface QuoteDto {
   isFinal?: boolean;
   draftQuoteId?: number;
   windSensorOption?: string;
+  fabricCode?: string;
 }
 
 export interface QuoteItemDto {
@@ -65,6 +66,7 @@ export interface CreateQuoteDto {
   discountType?: string;
   discountValue?: number;
   windSensorOption?: string;
+  fabricCode?: string;
   quoteItems: CreateQuoteItemDto[];
   isFinal?: boolean;
   draftQuoteId?: number;
@@ -88,6 +90,7 @@ export interface CreateFinalQuoteDto {
   discountType?: string;
   discountValue?: number;
   windSensorOption?: string;
+  fabricCode?: string;
   quoteItems: CreateQuoteItemDto[];
 }
 
@@ -99,6 +102,7 @@ export interface UpdateQuoteDto {
   discountType?: string;
   discountValue?: number;
   windSensorOption?: string;
+  fabricCode?: string;
   quoteItems?: UpdateQuoteItemDto[];
 }
 

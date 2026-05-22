@@ -147,6 +147,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.includeWallSealing = false;
     this.extrasDescription = '';
     this.extrasPrice = 0;
+    this.fabricCode = '';
     this.selectedWindSensor = '';
     this.enteredWidthCm = null;
     this.selectedWidthCm = null;
@@ -197,6 +198,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.discountType      = quote.discountType  || '';
     this.discountValue     = quote.discountValue || 0;
     this.selectedWindSensor = quote.windSensorOption || '';
+    this.fabricCode         = quote.fabricCode        || '';
 
     this.quoteItemsSubject$.next((quote.quoteItems || []).map(qi => ({
       productItemId:      qi.productItemId,
@@ -233,6 +235,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       discountType:      this.discountType  || undefined,
       discountValue:     this.discountValue || undefined,
       windSensorOption:  this.selectedWindSensor || undefined,
+      fabricCode:        this.fabricCode         || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,
@@ -276,6 +279,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       discountType:     this.discountType  || undefined,
       discountValue:    this.discountValue || undefined,
       windSensorOption: this.selectedWindSensor || undefined,
+      fabricCode:       this.fabricCode         || undefined,
       quoteItems: items.map(item => ({
         description:        item.description,
         quantity:           item.quantity,

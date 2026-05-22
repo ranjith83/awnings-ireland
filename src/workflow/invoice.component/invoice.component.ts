@@ -148,6 +148,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   selectedBrackets: string[] = [];
   extrasDescription: string = '';
   extrasPrice: number = 0;
+  fabricCode: string = '';
   windSensorOptions: OptionLookupDto[] = [];
   selectedWindSensor: string = '';
   selectedMotor: string = '';
@@ -603,6 +604,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.selectedBrackets = [];
     this.extrasDescription = '';
     this.extrasPrice = 0;
+    this.fabricCode = '';
     this.selectedWindSensor = '';
     this.selectedMotor = '';
     this.selectedHeater = '';
@@ -1016,6 +1018,24 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     this.addOrUpdateAddonLineItem('arm', lineItem);
   }
 
+  onFabricCodeChange() {
+    if (!this.fabricCode.trim()) {
+      this.removeAddonLineItem('fabriccode');
+      return;
+    }
+    const lineItem: InvoiceItemDisplay = {
+      description: `Fabric Code: ${this.fabricCode.trim()}`,
+      quantity: 1,
+      unitPrice: 0,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      unit: 'pcs',
+      totalPrice: 0,
+      id: this.getAddonItemId('fabriccode')
+    };
+    this.addOrUpdateAddonLineItem('fabriccode', lineItem);
+  }
+
   onMotorChange() {
     if (!this.selectedMotor) {
       this.removeAddonLineItem('motor');
@@ -1198,7 +1218,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       'electrician': 100005, 'installation': 100006, 'ral': 100007,
       'shadeplus': 100008, 'valance': 100009, 'wallsealing': 100010,
       'lighting': 100011, 'control': 100012, 'framecolour': 100013, 'windsensor': 100014,
-      'corrosionprotection': 100015, 'over50km': 100016
+      'corrosionprotection': 100015, 'over50km': 100016, 'fabriccode': 100017
     };
     return typeIds[type] || 0;
   }
@@ -1275,6 +1295,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
       notes:            this.notes,
       terms:            this.terms,
       windSensorOption: this.selectedWindSensor || undefined,
+      fabricCode:       this.fabricCode         || undefined,
       invoiceItems: items.map(item => ({
         description: item.description,
         quantity: item.quantity,

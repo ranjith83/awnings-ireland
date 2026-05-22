@@ -23,9 +23,9 @@
           </select>
         </div>
         <div class="header-field product-field">
-          <label>Product Model</label>
+          <label>Select Product</label>
           <select formControlName="productModel" class="form-control">
-            <option value="">Select Product Model</option>
+            <option value="">Select Product</option>
             <option *ngFor="let model of productModels" [value]="model.id">
               {{ model.name }}
             </option>

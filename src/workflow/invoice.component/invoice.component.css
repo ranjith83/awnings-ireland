@@ -818,12 +818,15 @@
   gap: 8px;
   padding: 6px 10px;
   background: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid #ced4da;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
   color: #333;
   white-space: nowrap;
+  width: 360px;
+  min-width: 360px;
   flex-shrink: 0;
 }
 .frame-colour-trigger:hover:not(:disabled) { border-color: #667eea; background: #f8f9ff; }
