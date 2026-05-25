@@ -6,6 +6,7 @@ import { map } from 'rxjs/operators';
 
 import {
   WorkflowService,
+  FrameColourOption,
   SupplierDto,
   ProductDto,
   ProductTypeDto,
@@ -16,6 +17,7 @@ import {
   ControlDto
 } from '../../service/workflow.service';
 import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
+import { OptionLookupService, OptionLookupDto } from '../../service/option-lookup.service';
 
 interface CalculatorItem {
   id?:                number;   // addon slot marker (same as create-quote)
@@ -25,6 +27,19 @@ interface CalculatorItem {
   taxRate:            number;
   discountPercentage: number;
   amount:             number;
+}
+
+interface SavedQuote {
+  id:            string;
+  name:          string;
+  savedAt:       string;
+  productName:   string;
+  items:         CalculatorItem[];
+  subtotal:      number;
+  totalAmount:   number;
+  discountType:  string;
+  discountValue: number;
+  vatRate:       number;
 }
 
 @Component({
@@ -101,10 +116,28 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   // Extras (free-text)
   extrasDescription: string = '';
   extrasPrice:       number = 0;
+  fabricCode:        string = '';
 
-  // RAL Surcharge
-  includeRalSurcharge = false;
-  hasRalSurcharge     = false;
+  // Wind Sensor
+  windSensorOptions:  OptionLookupDto[] = [];
+  selectedWindSensor: string = '';
+
+  // RAL / Frame Colour
+  includeRalSurcharge     = false;
+  hasRalSurcharge         = false;
+  hasFrameColour          = false;
+  frameColourOptions:     FrameColourOption[] = [];
+  selectedRalType:        '' | 'standard' | 'nonstandard' = '';
+  ralCustomCode           = '';
+  selectedFrameColourId:  number | null = null;
+  frameColourDropdownOpen = false;
+
+  // Corrosion Protection
+  includeCorrosionProtection = false;
+  corrosionProtectionPrice   = 0;
+
+  // Over 50 km
+  over50Km = false;
 
   // ShadePlus
   includeShadeplus     = false;
@@ -116,8 +149,9 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   selectedShadePlusDescription = '';
 
   // Valance Style
-  includeValanceStyle = false;
-  hasValanceStyle     = false;
+  includeValanceStyle  = false;
+  hasValanceStyle      = false;
+  selectedValanceType  = '';
 
   // Wall Sealing
   includeWallSealing = false;
@@ -127,16 +161,23 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   discountType:  string = '';
   discountValue: number = 0;
 
+  // ── Saved quotes (localStorage) ──────────────────────────────────────────
+  savedQuotes: SavedQuote[] = [];
+  private readonly STORAGE_KEY = 'quick_calculator_saved_quotes';
+
   private destroy$ = new Subject<void>();
 
   constructor(
-    private workflowService: WorkflowService,
-    private pdfService:      PdfGenerationService
+    private workflowService:     WorkflowService,
+    private pdfService:          PdfGenerationService,
+    private optionLookupService: OptionLookupService
   ) {}
 
   ngOnInit() {
     this.initializeObservables();
     this.loadSuppliers();
+    this.loadWindSensorOptions();
+    this.loadSavedQuotes();
   }
 
   ngOnDestroy() {
@@ -148,7 +189,8 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   onDocumentClick(event: MouseEvent) {
     const target = event.target as HTMLElement;
     if (!target.closest('.custom-dropdown')) {
-      this.bracketDropdownOpen = false;
+      this.bracketDropdownOpen     = false;
+      this.frameColourDropdownOpen = false;
     }
   }
 
@@ -221,6 +263,12 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       .subscribe();
   }
 
+  private loadWindSensorOptions() {
+    this.optionLookupService.getByCategory('WindSensor')
+      .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+      .subscribe(opts => { this.windSensorOptions = opts; });
+  }
+
   // ── Product selection handlers ────────────────────────────────────────────
 
   onSupplierChange() {
@@ -286,7 +334,12 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     const id = this.selectedProductId;
 
     // Reset availability flags so stale data from prior product doesn't linger
-    this.hasRalSurcharge = false;
+    this.hasRalSurcharge      = false;
+    this.hasFrameColour       = false;
+    this.frameColourOptions   = [];
+    this.selectedFrameColourId = null;
+    this.frameColourDropdownOpen = false;
+    this.removeAddonItem('framecolour');
     this.hasShadePlus    = false;
     this.hasValanceStyle = false;
     this.hasWallSealing  = false;
@@ -300,6 +353,16 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
 
     this.workflowService.hasNonStandardRALColours(id)
       .pipe(takeUntil(this.destroy$)).subscribe(v => this.hasRalSurcharge = v);
+
+    this.workflowService.hasFrameColour(id)
+      .pipe(takeUntil(this.destroy$)).subscribe(v => {
+        this.hasFrameColour = v;
+        if (v) {
+          this.workflowService.getFrameColourOptions(id)
+            .pipe(takeUntil(this.destroy$), catchError(() => of([])))
+            .subscribe(opts => { this.frameColourOptions = opts; });
+        }
+      });
 
     this.workflowService.getShadePlusOptions(id, 0)
       .pipe(takeUntil(this.destroy$), catchError(() => of({ hasMultiple: false, options: [] })))
@@ -604,6 +667,88 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
         this.makeItem('Surcharge for non-standard RAL colors', 1, price, this.getAddonItemId('ral'))));
   }
 
+  get filteredFrameColourOptions(): FrameColourOption[] {
+    if (!this.selectedRalType) return this.frameColourOptions;
+    return this.frameColourOptions.filter(o => {
+      const v = o.isNonStandardRAL as unknown;
+      const isNonStd = v === true || v === 1 || v === '1';
+      return this.selectedRalType === 'nonstandard' ? isNonStd : !isNonStd;
+    });
+  }
+
+  onRalTypeChange() {
+    this.selectedFrameColourId   = null;
+    this.frameColourDropdownOpen = false;
+    this.ralCustomCode           = '';
+    this.removeAddonItem('ral');
+    this.removeAddonItem('framecolour');
+  }
+
+  onRalCustomCodeChange() {
+    if (this.selectedFrameColourId === null) return;
+    const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
+    if (!opt) return;
+    const items = this.calculatorItemsSubject$.value;
+    const idx = items.findIndex(i => i.id === this.getAddonItemId('framecolour'));
+    if (idx !== -1) {
+      const desc = this.ralCustomCode
+        ? `Frame Colour - ${opt.description} (${this.ralCustomCode})`
+        : `Frame Colour - ${opt.description}`;
+      items[idx] = { ...items[idx], description: desc };
+      this.calculatorItemsSubject$.next([...items]);
+    }
+  }
+
+  onFrameColourChange() {
+    const opt = this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId);
+    if (!opt) { this.removeAddonItem('framecolour'); return; }
+    const desc = this.ralCustomCode
+      ? `Frame Colour - ${opt.description} (${this.ralCustomCode})`
+      : `Frame Colour - ${opt.description}`;
+    const addLine = (price: number) => {
+      this.addOrUpdateAddonItem('framecolour', this.makeItem(desc, 1, price, this.getAddonItemId('framecolour')));
+    };
+    if (this.selectedRalType === 'standard') { addLine(0); return; }
+    if (!this.selectedProductId || !this.selectedWidthCm) return;
+    this.workflowService.getNonStandardRALColourPrice(this.selectedProductId, this.selectedWidthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(price => addLine(price));
+  }
+
+  toggleFrameColourDropdown() { this.frameColourDropdownOpen = !this.frameColourDropdownOpen; }
+
+  selectFrameColour(opt: FrameColourOption) {
+    this.selectedFrameColourId   = opt.frameColourOptionId;
+    this.frameColourDropdownOpen = false;
+    this.onFrameColourChange();
+  }
+
+  getFrameColourLabel(): string {
+    if (!this.selectedFrameColourId) return 'Select colour';
+    return this.frameColourOptions.find(o => o.frameColourOptionId === this.selectedFrameColourId)?.description ?? 'Select colour';
+  }
+
+  getFrameColourCss(description: string): string {
+    const n = description.toLowerCase();
+    if (n.includes('anthracite'))                              return '#383E42';
+    if (n.includes('black'))                                   return '#1C1C1C';
+    if (n.includes('dark grey') || n.includes('dark gray'))    return '#5A5A5A';
+    if (n.includes('grey') || n.includes('gray'))              return '#9E9E9E';
+    if (n.includes('silver'))                                  return '#C0C0C0';
+    if (n.includes('light grey') || n.includes('light gray'))  return '#D3D3D3';
+    if (n.includes('white'))                                   return '#F2F2F2';
+    if (n.includes('cream') || n.includes('ivory'))            return '#F5F0D0';
+    if (n.includes('beige'))                                   return '#C8B89A';
+    if (n.includes('sand'))                                    return '#D4BC8A';
+    if (n.includes('bronze'))                                  return '#8C6B3E';
+    if (n.includes('brown'))                                   return '#6B3A2A';
+    if (n.includes('terracotta'))                              return '#C75B39';
+    if (n.includes('green'))                                   return '#3A5F3A';
+    if (n.includes('blue'))                                    return '#2B4F7A';
+    if (n.includes('red'))                                     return '#B22222';
+    return '#888888';
+  }
+
   onShadeplusChange() {
     if (!this.includeShadeplus) { this.removeAddonItem('shadeplus'); return; }
     if (!this.selectedProductId || this.shadePlusOptions.length === 0) return;
@@ -630,12 +775,16 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   }
 
   onValanceStyleChange() {
-    if (!this.includeValanceStyle) { this.removeAddonItem('valance'); return; }
-    if (!this.selectedProductId || !this.selectedWidthCm) return;
+    if (!this.includeValanceStyle) { this.removeAddonItem('valance'); this.selectedValanceType = ''; return; }
+    if (!this.selectedValanceType || !this.selectedProductId || !this.selectedWidthCm) return;
     this.workflowService.getValanceStylePrice(this.selectedProductId, this.selectedWidthCm)
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => this.addOrUpdateAddonItem('valance',
-        this.makeItem('Valance Style', 1, price, this.getAddonItemId('valance'))));
+        this.makeItem(`Valance Style ${this.selectedValanceType}`, 1, price, this.getAddonItemId('valance'))));
+  }
+
+  onValanceTypeChange() {
+    if (this.includeValanceStyle && this.selectedValanceType) this.onValanceStyleChange();
   }
 
   onWallSealingChange() {
@@ -645,6 +794,36 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(price => this.addOrUpdateAddonItem('wallsealing',
         this.makeItem('Wall Sealing Profile', 1, price, this.getAddonItemId('wallsealing'))));
+  }
+
+  onWindSensorChange() {
+    if (!this.selectedWindSensor || this.selectedWindSensor === 'No') {
+      this.removeAddonItem('windsensor'); return;
+    }
+    const option = this.windSensorOptions.find(o => o.value === this.selectedWindSensor);
+    if (!option) return;
+    this.addOrUpdateAddonItem('windsensor',
+      this.makeItem(`Wind Sensor - ${option.label}`, 1, option.price ?? 0, this.getAddonItemId('windsensor')));
+  }
+
+  onCorrosionProtectionChange() {
+    if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
+      this.removeAddonItem('corrosionprotection'); return;
+    }
+    this.addOrUpdateAddonItem('corrosionprotection',
+      this.makeItem('Corrosion Protection', 1, this.corrosionProtectionPrice, this.getAddonItemId('corrosionprotection')));
+  }
+
+  onOver50KmChange() {
+    if (!this.over50Km) { this.removeAddonItem('over50km'); return; }
+    this.addOrUpdateAddonItem('over50km',
+      this.makeItem('Travel Surcharge - Over 50km', 1, 350, this.getAddonItemId('over50km')));
+  }
+
+  onFabricCodeChange() {
+    if (!this.fabricCode.trim()) { this.removeAddonItem('fabriccode'); return; }
+    this.addOrUpdateAddonItem('fabriccode',
+      this.makeItem(`Fabric Code: ${this.fabricCode.trim()}`, 1, 0, this.getAddonItemId('fabriccode')));
   }
 
   onDiscountChange() {
@@ -742,14 +921,24 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     this.includeElectrician       = false;
     this.installationFee          = 0;
     this.calculatedPrice          = 0;
-    this.extrasDescription        = '';
-    this.extrasPrice              = 0;
-    this.includeRalSurcharge      = false;
-    this.includeShadeplus         = false;
-    this.includeValanceStyle      = false;
-    this.includeWallSealing       = false;
-    this.discountType             = '';
-    this.discountValue            = 0;
+    this.extrasDescription         = '';
+    this.extrasPrice               = 0;
+    this.fabricCode                = '';
+    this.selectedWindSensor        = '';
+    this.includeCorrosionProtection = false;
+    this.corrosionProtectionPrice  = 0;
+    this.over50Km                  = false;
+    this.includeRalSurcharge       = false;
+    this.selectedRalType           = '';
+    this.ralCustomCode             = '';
+    this.selectedFrameColourId     = null;
+    this.frameColourDropdownOpen   = false;
+    this.includeShadeplus          = false;
+    this.includeValanceStyle       = false;
+    this.selectedValanceType       = '';
+    this.includeWallSealing        = false;
+    this.discountType              = '';
+    this.discountValue             = 0;
     this.calculatorItemsSubject$.next([]);
   }
 
@@ -796,7 +985,8 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       bracket: 100001, arm: 100002, motor: 100003, heater: 100004,
       electrician: 100005, installation: 100006, ral: 100007,
       shadeplus: 100008, valance: 100009, wallsealing: 100010,
-      lighting: 100011, control: 100012
+      lighting: 100011, control: 100012, framecolour: 100013,
+      windsensor: 100014, corrosionprotection: 100015, over50km: 100016, fabriccode: 100017
     };
     return ids[type] || 0;
   }
@@ -817,7 +1007,11 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   }
 
   private getAddonInsertIndex(type: string): number {
-    const order = ['bracket', 'arm', 'motor', 'heater', 'electrician', 'installation', 'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control'];
+    const order = [
+      'bracket', 'arm', 'motor', 'heater', 'electrician', 'installation',
+      'ral', 'shadeplus', 'valance', 'wallsealing', 'lighting', 'control',
+      'framecolour', 'windsensor', 'corrosionprotection', 'over50km', 'fabriccode'
+    ];
     const items = this.calculatorItemsSubject$.value;
     let idx = 1;
     for (let i = 0; i < order.indexOf(type); i++) {
@@ -830,7 +1024,102 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     return idx;
   }
 
-  private getFollowUpDate(): string {
-    const d = new Date(); d.setDate(d.getDate() + 60); return d.toISOString().split('T')[0];
+  private getFollowUpDate(from?: Date): string {
+    const d = from ? new Date(from) : new Date();
+    d.setDate(d.getDate() + 60);
+    return d.toISOString().split('T')[0];
+  }
+
+  // ── Saved Quotes ──────────────────────────────────────────────────────────
+
+  loadSavedQuotes() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      this.savedQuotes = raw ? JSON.parse(raw) : [];
+    } catch {
+      this.savedQuotes = [];
+    }
+  }
+
+  private persistSavedQuotes() {
+    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.savedQuotes));
+  }
+
+  private calcTotals(items: CalculatorItem[], discountType: string, discountValue: number, vatRate: number) {
+    const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    const itemDisc = items.reduce((s, i) => s + i.quantity * i.unitPrice * (i.discountPercentage / 100), 0);
+    const base = subtotal - itemDisc;
+    let quoteDisc = 0;
+    if (discountType && discountValue > 0) {
+      quoteDisc = discountType === 'Percentage' ? base * (discountValue / 100) : Math.min(discountValue, base);
+    }
+    const itemTax = items.reduce((s, i) => {
+      return s + i.quantity * i.unitPrice * (1 - i.discountPercentage / 100) * (i.taxRate / 100);
+    }, 0);
+    const ratio = base > 0 ? (1 - quoteDisc / base) : 1;
+    const totalTax = itemTax * ratio;
+    return { subtotal, itemDisc, quoteDisc, totalTax, total: subtotal - itemDisc - quoteDisc + totalTax };
+  }
+
+  saveCurrentQuote() {
+    const items = this.calculatorItemsSubject$.value;
+    if (items.length === 0) return;
+    const now = new Date();
+    const { subtotal, total } = this.calcTotals(items, this.discountType, this.discountValue, this.vatRate);
+    const saved: SavedQuote = {
+      id:            now.getTime().toString(),
+      name:          `${this.selectedProductName || 'Estimate'} — ${now.toLocaleDateString('en-IE', { day: '2-digit', month: 'short', year: 'numeric' })}`,
+      savedAt:       now.toISOString(),
+      productName:   this.selectedProductName,
+      items:         items.map(i => ({ ...i })),
+      subtotal,
+      totalAmount:   total,
+      discountType:  this.discountType,
+      discountValue: this.discountValue,
+      vatRate:       this.vatRate
+    };
+    this.savedQuotes = [saved, ...this.savedQuotes];
+    this.persistSavedQuotes();
+  }
+
+  deleteSavedQuote(id: string) {
+    this.savedQuotes = this.savedQuotes.filter(q => q.id !== id);
+    this.persistSavedQuotes();
+  }
+
+  loadSavedQuote(sq: SavedQuote) {
+    this.calculatorItemsSubject$.next(sq.items.map(i => ({ ...i })));
+    this.discountType  = sq.discountType;
+    this.discountValue = sq.discountValue;
+    this.onDiscountChange();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  downloadSavedQuotePdf(sq: SavedQuote) {
+    const { subtotal, itemDisc, quoteDisc, totalTax, total } =
+      this.calcTotals(sq.items, sq.discountType, sq.discountValue, sq.vatRate);
+    this.pdfService.generateQuotePdf({
+      quoteNumber:        'ESTIMATE-' + sq.id.slice(-5),
+      quoteDate:          new Date(sq.savedAt).toLocaleDateString('en-GB'),
+      expiryDate:         this.getFollowUpDate(new Date(sq.savedAt)),
+      customerName:       'Phone Enquiry',
+      customerAddress:    '',
+      customerCity:       '',
+      customerPostalCode: '',
+      reference:          sq.productName || 'Quick Estimate',
+      items: sq.items.map(i => ({
+        description: i.description,
+        quantity:    i.quantity,
+        unitPrice:   i.unitPrice,
+        tax:         i.taxRate,
+        amount:      i.amount
+      })),
+      subtotal,
+      discount:  itemDisc + quoteDisc > 0 ? itemDisc + quoteDisc : undefined,
+      totalTax,
+      taxRate:   sq.vatRate,
+      total,
+      terms: 'This is an estimate only. Final quote subject to site survey.'
+    });
   }
 }

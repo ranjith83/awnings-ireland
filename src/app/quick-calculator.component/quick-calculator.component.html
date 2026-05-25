@@ -68,14 +68,6 @@
             </select>
           </div>
 
-          <div class="form-group electrician-inline">
-            <label class="form-label" style="visibility:hidden;">Electrician</label>
-            <label class="checkbox-label" style="padding-bottom:10px">
-              <input type="checkbox" class="checkbox-input"
-                     [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
-              <span>Electric connection by our Qualified Electrician — €{{ electricianPrice | number:'1.2-2' }}</span>
-            </label>
-          </div>
         </div>
 
         <!-- Dimension not-found warning -->
@@ -123,56 +115,206 @@
           </div>
 
           <!-- Motor -->
-          <div class="form-group" *ngIf="(motors$ | async)?.length">
+          <div class="form-group">
             <label class="form-label">Motor</label>
-            <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()">
-              <option value="" disabled selected>Select</option>
-              <option value="">None</option>
-              <option *ngFor="let m of motors$ | async" [value]="m.motorId">
-                {{ m.description }} — €{{ m.price | number:'1.2-2' }}
-              </option>
+            <select class="form-select" [(ngModel)]="selectedMotor" (change)="onMotorChange()"
+                    [disabled]="!(motors$ | async)?.length">
+              <option value="" disabled selected>{{ (motors$ | async)?.length ? 'Select' : 'No option available' }}</option>
+              <ng-container *ngIf="(motors$ | async)?.length">
+                <option value="">None</option>
+                <option *ngFor="let m of motors$ | async" [value]="m.motorId">
+                  {{ m.description }} — €{{ m.price | number:'1.2-2' }}
+                </option>
+              </ng-container>
             </select>
           </div>
 
           <!-- Heater -->
-          <div class="form-group" *ngIf="(heaters$ | async)?.length">
+          <div class="form-group">
             <label class="form-label">Heater</label>
-            <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()">
-              <option value="" disabled selected>Select</option>
-              <option value="">None</option>
-              <option *ngFor="let h of heaters$ | async" [value]="h.heaterId">
-                {{ h.description }} — €{{ h.price | number:'1.2-2' }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Lighting Cassette -->
-          <div class="form-group" *ngIf="(lightingCassettes$ | async)?.length">
-            <label class="form-label">Lighting Cassette</label>
-            <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()">
-              <option value="" disabled selected>Select</option>
-              <option value="">None</option>
-              <option *ngFor="let c of lightingCassettes$ | async" [value]="c.lightingId">
-                {{ c.description }} — €{{ c.price | number:'1.2-2' }}
-              </option>
+            <select class="form-select" [(ngModel)]="selectedHeater" (change)="onHeaterChange()"
+                    [disabled]="!(heaters$ | async)?.length">
+              <option value="" disabled selected>{{ (heaters$ | async)?.length ? 'Select' : 'No option available' }}</option>
+              <ng-container *ngIf="(heaters$ | async)?.length">
+                <option value="">None</option>
+                <option *ngFor="let h of heaters$ | async" [value]="h.heaterId">
+                  {{ h.description }} — €{{ h.price | number:'1.2-2' }}
+                </option>
+              </ng-container>
             </select>
           </div>
 
           <!-- Controls -->
-          <div class="form-group" *ngIf="(controls$ | async)?.length">
+          <div class="form-group">
             <label class="form-label">Controls</label>
-            <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()">
-              <option value="" disabled selected>Select</option>
-              <option value="">None</option>
-              <option *ngFor="let c of controls$ | async" [value]="c.controlId">
-                {{ c.description }} — €{{ c.price | number:'1.2-2' }}
-              </option>
+            <select class="form-select" [(ngModel)]="selectedControl" (change)="onControlChange()"
+                    [disabled]="!(controls$ | async)?.length">
+              <option value="" disabled selected>{{ (controls$ | async)?.length ? 'Select' : 'No option available' }}</option>
+              <ng-container *ngIf="(controls$ | async)?.length">
+                <option value="">None</option>
+                <option *ngFor="let c of controls$ | async" [value]="c.controlId">
+                  {{ c.description }} — €{{ c.price | number:'1.2-2' }}
+                </option>
+              </ng-container>
             </select>
           </div>
         </div>
 
-        <!-- Extras + checkboxes row -->
-        <div class="extras-addons-row">
+        <!-- Row 2: Wind Sensor + Lighting Cassette + ShadePlus + Valance Style -->
+        <div class="extras-addons-row" style="margin-top:8px;">
+          <!-- Wind Sensor -->
+          <div class="form-group">
+            <label class="form-label">Wind Sensor</label>
+            <select class="form-select" [(ngModel)]="selectedWindSensor" (change)="onWindSensorChange()"
+                    [disabled]="!windSensorOptions.length">
+              <option value="" disabled selected>{{ windSensorOptions.length ? 'Select' : 'No option available' }}</option>
+              <option *ngFor="let opt of windSensorOptions" [value]="opt.value">{{ opt.label }}</option>
+            </select>
+          </div>
+
+          <!-- Lighting Cassette -->
+          <div class="form-group">
+            <label class="form-label">Lighting Cassette</label>
+            <select class="form-select" [(ngModel)]="selectedLightingCassette" (change)="onLightingCassetteChange()"
+                    [disabled]="!(lightingCassettes$ | async)?.length">
+              <option value="" disabled selected>{{ (lightingCassettes$ | async)?.length ? 'Select' : 'No option available' }}</option>
+              <ng-container *ngIf="(lightingCassettes$ | async)?.length">
+                <option value="">None</option>
+                <option *ngFor="let c of lightingCassettes$ | async" [value]="c.lightingId">
+                  {{ c.description }} — €{{ c.price | number:'1.2-2' }}
+                </option>
+              </ng-container>
+            </select>
+          </div>
+
+          <!-- ShadePlus -->
+          <div class="form-group shadeplus-block">
+            <label class="form-label">ShadePlus</label>
+            <div class="shadeplus-inline-row">
+              <label class="checkbox-label">
+                <input type="checkbox" class="checkbox-input"
+                       [disabled]="!hasShadePlus"
+                       [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
+                <span>ShadePlus</span>
+              </label>
+              <select class="form-select shadeplus-select"
+                      [disabled]="!hasShadePlus || !includeShadeplus || shadePlusOptions.length <= 1"
+                      [(ngModel)]="selectedShadePlusId"
+                      (change)="onShadeplusOptionChange()">
+                <option [ngValue]="null" disabled selected>{{ shadePlusOptions.length > 1 ? 'Select' : 'No option available' }}</option>
+                <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
+                  {{ opt.description }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Valance Style -->
+          <div class="form-group addon-check-group" *ngIf="hasValanceStyle">
+            <label class="form-label" style="visibility:hidden;">Valance</label>
+            <div class="shadeplus-inline-row">
+              <label class="checkbox-label">
+                <input type="checkbox" class="checkbox-input"
+                       [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
+                <span>Valance Style</span>
+              </label>
+              <select class="form-select shadeplus-select"
+                      [disabled]="!includeValanceStyle"
+                      [(ngModel)]="selectedValanceType"
+                      (change)="onValanceTypeChange()">
+                <option value="" disabled selected>Select</option>
+                <option value="Straight">Straight</option>
+                <option value="Wavey">Wavey</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: RAL + Corrosion Protection + Wall Sealing + Over 50km -->
+        <div class="extras-addons-row" style="margin-top:8px;">
+          <!-- RAL Colour -->
+          <div class="form-group extras-addon-check ral-block">
+            <label class="form-label">RAL Colour</label>
+            <div class="ral-frame-row">
+              <select class="form-select ral-type-select" [(ngModel)]="selectedRalType" (change)="onRalTypeChange()">
+                <option value="" disabled selected>Select RAL type</option>
+                <option value="standard">Standard RAL</option>
+                <option value="nonstandard">Non-Standard RAL</option>
+              </select>
+              <div class="frame-colour-section" *ngIf="frameColourOptions.length > 0">
+                <div class="custom-dropdown frame-colour-dropdown">
+                  <button type="button" class="dropdown-trigger frame-colour-trigger"
+                          [disabled]="!selectedRalType"
+                          (click)="selectedRalType ? toggleFrameColourDropdown() : null">
+                    <span class="colour-swatch-sm"
+                          [style.background]="selectedFrameColourId ? getFrameColourCss(getFrameColourLabel()) : '#ccc'">
+                    </span>
+                    <span class="colour-trigger-label">{{ getFrameColourLabel() }}</span>
+                    <span class="dropdown-arrow">▾</span>
+                  </button>
+                  <div class="dropdown-panel colour-panel" *ngIf="frameColourDropdownOpen">
+                    <div class="colour-option"
+                         *ngFor="let opt of filteredFrameColourOptions"
+                         [class.selected]="selectedFrameColourId === opt.frameColourOptionId"
+                         (click)="selectFrameColour(opt)">
+                      <span class="colour-swatch-sm" [style.background]="getFrameColourCss(opt.description)"></span>
+                      <span>{{ opt.description }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <input *ngIf="selectedRalType === 'nonstandard'" type="text" class="form-input ral-code-input"
+                     [(ngModel)]="ralCustomCode" (ngModelChange)="onRalCustomCodeChange()"
+                     placeholder="RAL code (e.g. RAL 7016)">
+            </div>
+          </div>
+
+          <!-- Corrosion Protection -->
+          <div class="form-group">
+            <label class="form-label" style="visibility:hidden;">Corrosion</label>
+            <div class="shadeplus-inline-row">
+              <label class="checkbox-label">
+                <input type="checkbox" class="checkbox-input"
+                       [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
+                <span>Corrosion Protection</span>
+              </label>
+              <input *ngIf="includeCorrosionProtection" type="number" class="form-input extras-price"
+                     [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
+                     placeholder="€" min="0" step="0.01">
+            </div>
+          </div>
+
+          <!-- Wall Sealing -->
+          <div class="form-group addon-check-group" *ngIf="hasWallSealing">
+            <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="checkbox-input"
+                     [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
+              <span>Wall Sealing Profile</span>
+            </label>
+          </div>
+
+          <!-- Over 50 km -->
+          <div class="form-group addon-check-group">
+            <label class="form-label" style="visibility:hidden;">Over 50 km</label>
+            <label class="checkbox-label">
+              <input type="checkbox" class="checkbox-input"
+                     [(ngModel)]="over50Km" (change)="onOver50KmChange()">
+              <span>Over 50 Km — €350 + VAT</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Row 4: Fabric Code + Extras + Installation Fee + Electrician -->
+        <div class="extras-addons-row" style="margin-top:8px;">
+          <!-- Fabric Code -->
+          <div class="form-group" style="max-width:160px">
+            <label class="form-label">Fabric Code</label>
+            <input type="text" class="form-input"
+                   [(ngModel)]="fabricCode" (ngModelChange)="onFabricCodeChange()"
+                   placeholder="e.g. 12345 or TBC" maxlength="10">
+          </div>
+
           <!-- Extras free-text -->
           <div class="form-group extras-group">
             <label class="form-label">Extras</label>
@@ -187,61 +329,19 @@
           </div>
 
           <!-- Installation Fee -->
-          <div class="form-group" style="min-width:150px">
+          <div class="form-group installation-fee-group">
             <label class="form-label">Installation Fee (€)</label>
             <input type="number" class="form-input" [(ngModel)]="installationFee"
                    (ngModelChange)="onInstallationFeeChange()" placeholder="0.00" min="0">
           </div>
 
-          <!-- RAL Surcharge -->
-          <div class="form-group addon-check-group" *ngIf="hasRalSurcharge">
-            <label class="form-label" style="visibility:hidden;">RAL</label>
-            <label class="checkbox-label">
+          <!-- Electrician -->
+          <div class="form-group electrician-group">
+            <label class="form-label" style="visibility:hidden;">Electrician</label>
+            <label class="checkbox-label" style="padding-bottom:10px">
               <input type="checkbox" class="checkbox-input"
-                     [(ngModel)]="includeRalSurcharge" (change)="onRalSurchargeChange()">
-              <span>Surcharge for non-standard RAL colors</span>
-            </label>
-          </div>
-
-          <!-- ShadePlus -->
-          <div class="form-group shadeplus-block">
-            <label class="form-label">ShadePlus</label>
-            <div class="shadeplus-inline-row">
-              <label class="checkbox-label">
-                <input type="checkbox" class="checkbox-input"
-                       [disabled]="!hasShadePlus"
-                       [(ngModel)]="includeShadeplus" (change)="onShadeplusChange()">
-                <span>ShadePlus</span>
-              </label>
-              <select *ngIf="shadePlusHasMultiple && shadePlusOptions.length > 1"
-                      class="form-select shadeplus-select"
-                      [disabled]="!hasShadePlus || !includeShadeplus"
-                      [(ngModel)]="selectedShadePlusId"
-                      (change)="onShadeplusOptionChange()">
-                <option *ngFor="let opt of shadePlusOptions" [ngValue]="opt.shadePlusId">
-                  {{ opt.description }}
-                </option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Valance Style -->
-          <div class="form-group addon-check-group" *ngIf="hasValanceStyle">
-            <label class="form-label" style="visibility:hidden;">Valance</label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input"
-                     [(ngModel)]="includeValanceStyle" (change)="onValanceStyleChange()">
-              <span>Valance Style</span>
-            </label>
-          </div>
-
-          <!-- Wall Sealing -->
-          <div class="form-group addon-check-group" *ngIf="hasWallSealing">
-            <label class="form-label" style="visibility:hidden;">Wall Sealing</label>
-            <label class="checkbox-label">
-              <input type="checkbox" class="checkbox-input"
-                     [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
-              <span>Wall Sealing Profile</span>
+                     [(ngModel)]="includeElectrician" (change)="onElectricianChange()">
+              <span>Electric connection by our Qualified Electrician — €{{ electricianPrice | number:'1.2-2' }}</span>
             </label>
           </div>
         </div>
@@ -361,11 +461,44 @@
       <!-- ── ACTIONS ────────────────────────────────────────────────── -->
       <div class="action-buttons">
         <button class="btn-clear" (click)="clearAll()">Clear All</button>
+        <button class="btn-save" (click)="saveCurrentQuote()"
+                [disabled]="(hasItems$ | async) === false"
+                title="Save to local cache">
+          &#128190; Save Quote
+        </button>
         <button class="btn-generate" (click)="generateEstimatePdf()"
                 [disabled]="(hasItems$ | async) === false">
           &#128196; Generate PDF Estimate
         </button>
       </div>
+
+      <!-- ── SAVED QUOTES ──────────────────────────────────────────── -->
+      <section class="calc-section saved-quotes-section" *ngIf="savedQuotes.length > 0">
+        <h3 class="section-title">Saved Quotes ({{ savedQuotes.length }})</h3>
+        <div class="saved-quotes-list">
+          <div class="saved-quote-card" *ngFor="let sq of savedQuotes">
+            <div class="saved-quote-info">
+              <div class="saved-quote-name">{{ sq.name }}</div>
+              <div class="saved-quote-meta">
+                <span class="saved-quote-product" *ngIf="sq.productName">{{ sq.productName }}</span>
+                <span class="saved-quote-date">{{ sq.savedAt | date:'dd MMM yyyy, HH:mm' }}</span>
+              </div>
+            </div>
+            <div class="saved-quote-total">€{{ sq.totalAmount | number:'1.2-2' }}</div>
+            <div class="saved-quote-actions">
+              <button class="btn-sq-load" (click)="loadSavedQuote(sq)" title="Load into calculator">
+                &#8635; Load
+              </button>
+              <button class="btn-sq-pdf" (click)="downloadSavedQuotePdf(sq)" title="Download PDF">
+                &#128196; PDF
+              </button>
+              <button class="btn-sq-delete" (click)="deleteSavedQuote(sq.id)" title="Delete">
+                &#128465; Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
 
     </div>
   </div>
