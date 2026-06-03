@@ -424,10 +424,11 @@
             <div class="email-date"><strong>Date:</strong> {{ formatDate(selectedTask.dateAdded) }}</div>
             <div class="email-category">
               <strong>Category:</strong>
-              <select class="category-select category-select--inline" [class]="'category-' + selectedTask.category"
-                      [ngModel]="selectedTask.category"
-                      (ngModelChange)="onCategoryChange(selectedTask, $event)"
+              <select class="category-select category-select--inline" [class]="'category-' + selectedCategoryValue"
+                      [(ngModel)]="selectedCategoryValue"
+                      (ngModelChange)="onCategoryChange($event)"
                       [disabled]="selectedTask.taskId === changingCategoryId">
+                <option value="" disabled>Select category…</option>
                 <option *ngFor="let cat of TASK_CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
               </select>
             </div>

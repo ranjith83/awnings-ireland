@@ -180,6 +180,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   ];
 
   changingCategoryId: number | null = null;
+  selectedCategoryValue: string = '';
 
   currentUserId: number | null = null;
   isAdmin: boolean = false;
@@ -408,6 +409,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.emailBodyHtml            = '';
     this.selectedAssignee         = task.assignedToUserId ?? null;
     this.selectedStatus           = task.status ?? 'New';
+    this.selectedCategoryValue    = task.category ?? '';
     this.showNoWorkflowBanner     = false;
     this.workflowMissingForAction = '';
     if (task.workflowId) this.workflowStatus$.next({ exists: true, workflowId: task.workflowId, workflowName: null });
@@ -749,21 +751,25 @@ export class TaskComponent implements OnInit, OnDestroy {
     return ({ initial_enquiry: 'Initial Enquiry', site_visit_meeting: 'Site Visit', invoice_due: 'Invoice Due', quote_creation: 'Quote Request', showroom_booking: 'Showroom', complaint: 'Complaint', general_inquiry: 'General', junk: 'Junk' } as Record<string,string>)[key] || key;
   }
 
-  onCategoryChange(task: EmailTaskExtended, newCategory: string): void {
-    if (!newCategory || newCategory === task.category) return;
-    const taskId = task.taskId;
+  onCategoryChange(newCategory: string): void {
+    if (!newCategory || !this.selectedTask || newCategory === this.selectedTask.category) return;
+    const taskId = this.selectedTask.taskId;
     this.changingCategoryId = taskId;
     this.emailTaskService.updateTaskCategory(taskId, newCategory).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: () => {
-        task.category = newCategory;
-        if (this.selectedTask?.taskId === taskId) this.selectedTask = { ...this.selectedTask, category: newCategory };
+        this.selectedTask = { ...this.selectedTask!, category: newCategory };
+        this.selectedCategoryValue = newCategory;
         this.changingCategoryId = null;
         this.cdr.markForCheck();
         this.refreshTrigger.next();
       },
-      error: () => { this.changingCategoryId = null; this.cdr.markForCheck(); }
+      error: () => {
+        this.selectedCategoryValue = this.selectedTask?.category ?? '';
+        this.changingCategoryId = null;
+        this.cdr.markForCheck();
+      }
     });
   }
   onKeyDown(event: KeyboardEvent, task: EmailTaskExtended): void { if (event.key === 'Enter') this.onRowDoubleClick(task); }
