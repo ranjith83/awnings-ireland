@@ -288,6 +288,14 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label class="form-label">Fabric Code</label>
+          <input type="text" class="form-input"
+            [(ngModel)]="fabricCode" (ngModelChange)="onFabricCodeChange()"
+            placeholder="e.g. 12345 or TBC"
+            maxlength="10">
+        </div>
+
       </div>
 
       <!-- RAL Colour + Corrosion + Wall Sealing + Over 50 km + Extras -->
@@ -346,21 +354,6 @@
               [(ngModel)]="includeWallSealing" (change)="onWallSealingChange()">
             <span>Wall Sealing Profile</span>
           </label>
-        </div>
-        <div class="form-group extras-addon-check">
-          <label class="form-label" style="visibility:hidden;">Over 50 km</label>
-          <label class="checkbox-label">
-            <input type="checkbox" class="checkbox-input"
-              [(ngModel)]="over50Km" (change)="onOver50KmChange()">
-            <span>Over 50 Km — €350 + VAT</span>
-          </label>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Fabric Code</label>
-          <input type="text" class="form-input"
-            [(ngModel)]="fabricCode" (ngModelChange)="onFabricCodeChange()"
-            placeholder="e.g. 12345 or TBC"
-            maxlength="10">
         </div>
         <div class="form-group extras-group-full">
           <label class="form-label">Extras</label>
