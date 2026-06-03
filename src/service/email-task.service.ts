@@ -463,6 +463,10 @@ export class EmailTaskService {
     return this.http.post<EmailTask>(`${this.apiUrl}/${taskId}/link-workflow`, { workflowId });
   }
 
+  updateTaskCategory(taskId: number, category: string): Observable<EmailTask> {
+    return this.http.patch<EmailTask>(`${this.apiUrl}/${taskId}/category`, { category });
+  }
+
   // ==================== EMAIL SENDING ====================
 
   sendTaskEmail(taskId: number, payload: SendTaskEmailPayload): Observable<{ message: string }> {

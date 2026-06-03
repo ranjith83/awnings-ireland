@@ -175,6 +175,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Quick Calculator ───────────────────────────────────────────────────────
   showQuickCalculator = false;
 
+
+
   // ── Attachments ────────────────────────────────────────────────────────────
   pendingAttachments: PendingAttachment[] = [];
   editPendingAttachments: PendingAttachment[] = [];
@@ -799,6 +801,16 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     this.emailTaskService.sendDirectEmail(payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({ next: () => onSuccess?.(), error: () => this.showError('Enquiry saved, but the email could not be sent.') });
+  }
+
+  getCategoryLabel(value: string): string {
+    const map: Record<string,string> = {
+      initial_enquiry: 'Initial Enquiry', quote_creation: 'Quote Request',
+      site_visit_meeting: 'Site Visit',   invoice_due: 'Invoice Due',
+      showroom_booking: 'Showroom',       complaint: 'Complaint',
+      general_inquiry: 'General',         junk: 'Junk'
+    };
+    return map[value] ?? value;
   }
 
   private showSuccess(msg: string) { this.notificationService.success(msg);  }

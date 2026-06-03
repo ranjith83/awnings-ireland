@@ -321,6 +321,33 @@
   color: #7b1fa2;
 }
 
+.col-category { min-width: 130px; }
+
+.category-select {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 1px solid #bbdefb;
+  background: #e3f2fd;
+  color: #1976d2;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+  appearance: auto;
+}
+.category-select:focus { border-color: #1976d2; box-shadow: 0 0 0 2px rgba(25,118,210,.15); }
+.category-select:disabled { opacity: .55; cursor: not-allowed; }
+.category-select.category-quote_creation  { background: #fff3e0; color: #f57c00; border-color: #ffcc80; }
+.category-select.category-showroom_booking { background: #f3e5f5; color: #7b1fa2; border-color: #ce93d8; }
+.category-select.category-invoice_creation { background: #e8f5e9; color: #388e3c; border-color: #a5d6a7; }
+
+.category-select--inline {
+  width: auto;
+  min-width: 130px;
+}
+
 .priority-badge {
   display: inline-block;
   padding: 4px 12px;

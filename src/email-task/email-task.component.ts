@@ -168,6 +168,19 @@ export class TaskComponent implements OnInit, OnDestroy {
     { value: 'Completed',   label: 'Completed'   },
   ];
 
+  readonly TASK_CATEGORIES = [
+    { value: 'initial_enquiry',    label: 'Initial Enquiry' },
+    { value: 'quote_creation',     label: 'Quote Request'   },
+    { value: 'site_visit_meeting', label: 'Site Visit'      },
+    { value: 'invoice_due',        label: 'Invoice Due'     },
+    { value: 'showroom_booking',   label: 'Showroom'        },
+    { value: 'complaint',          label: 'Complaint'       },
+    { value: 'general_inquiry',    label: 'General'         },
+    { value: 'junk',               label: 'Junk'            },
+  ];
+
+  changingCategoryId: number | null = null;
+
   currentUserId: number | null = null;
   isAdmin: boolean = false;
 
@@ -734,6 +747,24 @@ export class TaskComponent implements OnInit, OnDestroy {
   getCategoryDisplay(category: string | null | undefined): string {
     const key = category ?? '';
     return ({ initial_enquiry: 'Initial Enquiry', site_visit_meeting: 'Site Visit', invoice_due: 'Invoice Due', quote_creation: 'Quote Request', showroom_booking: 'Showroom', complaint: 'Complaint', general_inquiry: 'General', junk: 'Junk' } as Record<string,string>)[key] || key;
+  }
+
+  onCategoryChange(task: EmailTaskExtended, newCategory: string): void {
+    if (!newCategory || newCategory === task.category) return;
+    const taskId = task.taskId;
+    this.changingCategoryId = taskId;
+    this.emailTaskService.updateTaskCategory(taskId, newCategory).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
+      next: () => {
+        task.category = newCategory;
+        if (this.selectedTask?.taskId === taskId) this.selectedTask = { ...this.selectedTask, category: newCategory };
+        this.changingCategoryId = null;
+        this.cdr.markForCheck();
+        this.refreshTrigger.next();
+      },
+      error: () => { this.changingCategoryId = null; this.cdr.markForCheck(); }
+    });
   }
   onKeyDown(event: KeyboardEvent, task: EmailTaskExtended): void { if (event.key === 'Enter') this.onRowDoubleClick(task); }
   onContextMenu(event: MouseEvent, _task: EmailTaskExtended): void { event.preventDefault(); }

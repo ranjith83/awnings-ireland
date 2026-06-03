@@ -44,7 +44,7 @@
           <tr *ngFor="let row of customerEmails; trackBy: trackByEmail">
             <td class="col-subject" [title]="row.subject">{{ row.subject }}</td>
             <td class="col-from"><div class="from-name">{{ row.fromName }}</div><div class="from-email">{{ row.fromEmail }}</div></td>
-            <td><span class="type-chip">{{ row.taskType || row.category }}</span></td>
+            <td><span class="type-chip">{{ getCategoryLabel(row.category || row.taskType) }}</span></td>
             <td><span [class]="getPriorityClass(row.priority)">{{ row.priority }}</span></td>
             <td><span [class]="getStatusClass(row.status)">{{ row.status }}</span></td>
             <td class="col-date">{{ row.dateAdded | date:'dd MMM yyyy' }}</td>

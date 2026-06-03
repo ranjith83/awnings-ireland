@@ -424,7 +424,12 @@
             <div class="email-date"><strong>Date:</strong> {{ formatDate(selectedTask.dateAdded) }}</div>
             <div class="email-category">
               <strong>Category:</strong>
-              <span class="category-badge" [class]="'category-' + selectedTask.category">{{ getCategoryDisplay(selectedTask.category) }}</span>
+              <select class="category-select category-select--inline" [class]="'category-' + selectedTask.category"
+                      [ngModel]="selectedTask.category"
+                      (ngModelChange)="onCategoryChange(selectedTask, $event)"
+                      [disabled]="selectedTask.taskId === changingCategoryId">
+                <option *ngFor="let cat of TASK_CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
+              </select>
             </div>
           </div>
           <div class="email-header-row" *ngIf="selectedTask.aiConfidence">
