@@ -7,7 +7,6 @@ import {
   faChartLine,
   faUsers,
   faProjectDiagram,
-  faClipboardList,
   faFileAlt,
   faCog,
   faFileSignature,
