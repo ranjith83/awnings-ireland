@@ -17,6 +17,7 @@ import {
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService, User } from '../../service/auth.service';
+import { ClientConfigService } from '../../service/client-config.service';
 
 interface MenuItem {
   icon: any; // Changed from string to any for FontAwesome icons
@@ -57,7 +58,8 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   constructor(
     private router: Router,
     private authService: AuthService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public clientConfig: ClientConfigService
   ) {
     this.activeRoute = this.router.url;
   }
@@ -109,22 +111,23 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
   }
 
+  private get prefix(): string { return this.clientConfig.routePrefix; }
+
   navigateTo(route: string) {
     this.activeRoute = route;
-    this.router.navigate([route]);
+    this.router.navigate([`/${this.prefix}`, ...route.replace(/^\//, '').split('/')]);
   }
 
   isActive(route: string): boolean {
-    return this.activeRoute === route;
+    return this.router.url.includes(route);
   }
 
   logout() {
-    console.log('Logging out...');
-    this.authService.logout(); // Uncommented this
-    this.router.navigate(['/login']);
+    this.authService.logout();
+    this.router.navigate([`/${this.prefix}/login`]);
   }
 
   get pageTitle(): string {
-    return this.menuItems.find(item => item.route === this.activeRoute)?.label ?? 'Dashboard';
+    return this.menuItems.find(item => this.isActive(item.route))?.label ?? 'Dashboard';
   }
 }

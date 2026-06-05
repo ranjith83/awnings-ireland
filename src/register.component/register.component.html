@@ -1,9 +1,9 @@
 <div class="register-container">
   <div class="register-card">
     <div class="register-header">
-      <img src="assets/awnings.png" alt="Awnings of Ireland" class="logo">
+      <img [src]="clientConfig.assets.brandUrl" [alt]="clientConfig.appName" class="logo">
       <h1>Create Your Account</h1>
-      <p class="subtitle">Join Awnings of Ireland team</p>
+      <p class="subtitle">Join {{ clientConfig.appName }} team</p>
     </div>
 
     <!-- Success Message -->

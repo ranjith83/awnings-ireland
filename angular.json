@@ -64,6 +64,40 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "client-awnings": {
+              "index": "src/clients/awnings/index.html",
+              "fileReplacements": [
+                {
+                  "replace": "src/app/environments/environment.ts",
+                  "with": "src/app/environments/environment.awnings.ts"
+                }
+              ],
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "src/clients/awnings/assets",
+                  "output": "assets"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "client-unnamed": {
+              "index": "src/clients/unnamed/index.html",
+              "fileReplacements": [
+                {
+                  "replace": "src/app/environments/environment.ts",
+                  "with": "src/app/environments/environment.unnamed.ts"
+                }
+              ],
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "src/clients/unnamed/assets",
+                  "output": "assets"
+                }
+              ],
+              "outputHashing": "all"
             }
           },
           "defaultConfiguration": "production"
@@ -79,6 +113,12 @@
             },
             "local": {
               "buildTarget": "awnings-ireland:build:local"
+            },
+            "client-awnings": {
+              "buildTarget": "awnings-ireland:build:client-awnings"
+            },
+            "client-unnamed": {
+              "buildTarget": "awnings-ireland:build:client-unnamed"
             }
           },
           "defaultConfiguration": "local"

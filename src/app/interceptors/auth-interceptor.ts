@@ -10,7 +10,8 @@ import {
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, filter, switchMap, take } from 'rxjs/operators';
 import { Router } from '@angular/router';
-import { AuthService } from '../../service/auth.service'
+import { AuthService } from '../../service/auth.service';
+import { environment } from '../environments/environment';
 
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
@@ -84,9 +85,8 @@ export class AuthInterceptor implements HttpInterceptor {
   }
 
   private redirectToLogin(): Observable<never> {
-    // Clear stale auth data and send user to login with a message
     this.authService.logout();
-    this.router.navigate(['/login'], {
+    this.router.navigate([`/${environment.client.routePrefix}/login`], {
       queryParams: { sessionExpired: 'true' }
     });
     return throwError(() => new Error('Session expired. Please log in again.'));

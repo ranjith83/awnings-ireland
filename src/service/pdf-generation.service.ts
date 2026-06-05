@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { ClientConfigService } from './client-config.service';
 
 export interface QuotePdfData {
   quoteNumber: string;
@@ -63,20 +64,23 @@ export interface InvoicePdfItem {
   providedIn: 'root'
 })
 export class PdfGenerationService {
-  private readonly COMPANY_NAME = 'MM Awnings Ltd.';
-  private readonly COMPANY_TRADING_AS = 't/a Awnings of Ireland';
-  private readonly COMPANY_ADDRESS_LINE1 = 'Unit 2 Hillview House';
-  private readonly COMPANY_ADDRESS_LINE2 = '52 Bracken Road';
-  private readonly COMPANY_ADDRESS_LINE3 = 'Sandyford';
-  private readonly COMPANY_ADDRESS_LINE4 = 'Dublin 18';
-  private readonly COMPANY_EMAIL = 'hello@awningsofireland.com';
-  private readonly COMPANY_WEBSITE = 'www.awningsofireland.com';
-  private readonly COMPANY_VAT = '3533984BH';
-  private readonly COMPANY_REG = '622756';
-  private readonly LOGO_URL = 'assets/logo.png';
   private readonly ELECTRICIAN_PRICE = 280.00;
 
-  constructor() { }
+  private get co()       { return this.clientConfig.config.company; }
+  private get LOGO_URL() { return this.clientConfig.assets.pdfLogoUrl; }
+
+  private get COMPANY_NAME()         { return this.co.name; }
+  private get COMPANY_TRADING_AS()   { return this.co.tradingAs ?? ''; }
+  private get COMPANY_ADDRESS_LINE1(){ return this.co.address[0] ?? ''; }
+  private get COMPANY_ADDRESS_LINE2(){ return this.co.address[1] ?? ''; }
+  private get COMPANY_ADDRESS_LINE3(){ return this.co.address[2] ?? ''; }
+  private get COMPANY_ADDRESS_LINE4(){ return this.co.address[3] ?? ''; }
+  private get COMPANY_EMAIL()        { return this.co.email; }
+  private get COMPANY_WEBSITE()      { return this.co.website; }
+  private get COMPANY_VAT()          { return this.co.vat; }
+  private get COMPANY_REG()          { return this.co.regNumber; }
+
+  constructor(private clientConfig: ClientConfigService) { }
 
   // ─────────────────────────────────────────────────────────────────────────
   // SHARED LAYOUT BUILDER

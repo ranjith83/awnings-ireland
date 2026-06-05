@@ -3,12 +3,7 @@
   <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
     <!-- Logo Section -->
     <div class="sidebar-header" [class.sidebar-header--logo]="!isSidebarCollapsed">
-      <svg class="logo-generic" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="48" height="48" rx="12" fill="#5a9fd4"/>
-        <path d="M10 22L24 10L38 22V38H30V28H18V38H10V22Z" fill="white"/>
-        <rect x="20" y="28" width="8" height="10" rx="1" fill="#5a9fd4"/>
-      </svg>
-      <span class="logo-text" *ngIf="!isSidebarCollapsed">My App</span>
+      <img class="logo-generic" [src]="clientConfig.assets.logoUrl" [alt]="clientConfig.appName" />
     </div>
 
     <!-- Toggle Button — floats on the right border of the sidebar -->

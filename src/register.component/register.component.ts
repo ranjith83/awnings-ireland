@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractContro
 import { Router, RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AuthService, RegisterRequest } from '../service/auth.service';
+import { ClientConfigService } from '../service/client-config.service';
 
 @Component({
   selector: 'app-register',
@@ -36,6 +37,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    public clientConfig: ClientConfigService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {}
