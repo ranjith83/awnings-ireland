@@ -1,7 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import {
@@ -11,6 +10,7 @@ import {
   TaskService
 } from '../service/task.service';
 import { NotificationService } from '../service/notification.service';
+import { NavService } from '../service/nav.service';
 
 interface TaskDisplay extends Task {
   overdueState: boolean;
@@ -53,9 +53,9 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   constructor(
     private taskService: TaskService,
-    private router: Router,
     private fb: FormBuilder,
     private notificationService: NotificationService,
+    private nav: NavService,
     private cdr: ChangeDetectorRef
   ) {
     this.filterForm = this.fb.group({
@@ -164,11 +164,11 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
 
   openCreateTaskModal(): void {
-    this.router.navigate(['/tasks/create']);
+    this.nav.go(['/tasks/create']);
   }
 
   viewTaskDetails(task: Task): void {
-    this.router.navigate(['/tasks', task.taskId]);
+    this.nav.go(['/tasks', task.taskId]);
   }
 
   updateTaskStatus(task: Task, newStatus: TaskStatus): void {

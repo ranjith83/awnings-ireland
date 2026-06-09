@@ -17,6 +17,7 @@ import {
 } from '../service/task.service';
 
 import { NotificationService } from '../service/notification.service';
+import { NavService } from '../service/nav.service';
 @Component({
   selector: 'app-task-detail',
   standalone: true,
@@ -64,6 +65,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private notificationService: NotificationService,
+    private nav: NavService,
     private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
@@ -220,7 +222,7 @@ export class TaskDetailComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.router.navigate(['/tasks']);
+    this.nav.go(['/tasks']);
   }
 
   getStatusClass(status: TaskStatus): string {

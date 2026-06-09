@@ -19,6 +19,7 @@ import {
 } from '../service/workflow.service';
 import { ProductItemType, QuoteDto } from '../service/create-quote.service';
 import { NotificationService } from '../service/notification.service';
+import { NavService } from '../service/nav.service';
 import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
   ADDON_ITEM_IDS, ADDON_SLOT, ADDON_SLOT_ORDER, AddonSlot,
@@ -170,6 +171,8 @@ export abstract class QuoteFormBase implements OnDestroy {
   private optionLookupService = inject(OptionLookupService);
 
   protected destroy$ = new Subject<void>();
+
+  protected nav = inject(NavService);
 
   constructor(
     protected workflowService: WorkflowService,
@@ -1060,7 +1063,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   close() {
-    this.router.navigate(['/workflow'], {
+    this.nav.go(['/workflow'], {
       queryParams: { customerId: this.customerId, customerName: this.customerName }
     });
   }

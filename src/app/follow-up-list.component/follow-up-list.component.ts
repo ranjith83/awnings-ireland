@@ -10,6 +10,7 @@ import { takeUntil, finalize } from 'rxjs/operators';
 import { FollowUpDto, FollowUpService } from '../../service/follow-up.service';
 
 import { NotificationService } from '../../service/notification.service';
+import { NavService } from '../../service/nav.service';
 @Component({
   selector: 'app-follow-up-list.component',
   imports: [CommonModule, FormsModule],
@@ -54,7 +55,8 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
     private followUpService: FollowUpService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private notificationService: NotificationService) {}
+    private notificationService: NotificationService,
+    private nav: NavService) {}
 
   ngOnInit(): void {
     this.generateAndLoad();
@@ -136,7 +138,7 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
    */
   navigateToEnquiry(followUp: FollowUpDto): void {
     if (followUp.isDismissed) return;
-    this.router.navigate(['/workflow/initial-enquiry'], {
+    this.nav.go(['/workflow/initial-enquiry'], {
       queryParams: {
         workflowId:    followUp.workflowId,
         customerId:    followUp.customerId ?? '',

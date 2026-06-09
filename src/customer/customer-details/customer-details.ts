@@ -3,13 +3,14 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { CompanyDto, CompanyWithContactDto, CustomerMainViewDto, CustomerService, SalespersonDto } from '../../service/customer-service';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { BehaviorSubject, Observable, Subject, combineLatest } from 'rxjs';
 import { map, shareReplay, tap } from 'rxjs/operators';
 import { EmailTask, EmailTaskService } from '../../service/email-task.service';
 import { AuditTrailService, AuditAction, AuditEntityType } from '../../service/audit-trail.service';
 
 import { NotificationService } from '../../service/notification.service';
+import { NavService } from '../../service/nav.service';
 @Component({
   selector: 'app-customer-details',
   standalone: true,
@@ -118,11 +119,11 @@ export class CustomerDetails implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private customerService: CustomerService,
-    private router: Router,
     private emailTaskService: EmailTaskService,
     private auditService: AuditTrailService,
     private route: ActivatedRoute,
-    private notificationService: NotificationService) {
+    private notificationService: NotificationService,
+    private nav: NavService) {
     this.customerForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
       companyNumber: [''],
@@ -484,7 +485,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
           this.emailTaskService.linkCustomerToTask(this.linkedTaskId, response.customerId)
             .subscribe(() => {
               this.notificationService.success(`Customer created and linked to task successfully`);
-              this.router.navigate(['/task']); // Go back to tasks
+              this.nav.go(['/task']);
             });
         } else {
           this.notificationService.success(`Customer added successfully`);
@@ -598,7 +599,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
   }
 
   navigateToWorkflow(customer: CustomerMainViewDto): void {
-    this.router.navigate(['/workflow'], {
+    this.nav.go(['/workflow'], {
       queryParams: {
         customerId:    customer.customerId,
         customerName:  customer.companyName,
@@ -647,7 +648,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     this.emailTaskService.getExtractedCustomerData(task.taskId).subscribe({
       next: (data) => {
         // Navigate to customer details page with pre-filled data
-        this.router.navigate(['/customers/new'], {
+        this.nav.go(['/customers/new'], {
           queryParams: {
             taskId: task.taskId,
             email: data.email,

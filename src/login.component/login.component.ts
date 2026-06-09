@@ -2,10 +2,11 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { AuthService } from '../service/auth.service';
+import { NavService } from '../service/nav.service';
 
 @Component({
   selector: 'app-login',
@@ -27,12 +28,12 @@ export class LoginComponent implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router,
+    private nav: NavService,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {
     if (this.authService.isAuthenticated) {
-      this.router.navigate(['/']);
+      this.nav.go(['/']);
     }
 
     this.loginForm = this.fb.group({
@@ -91,7 +92,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         console.log('Login successful', response);
         this.isLoading = false;
         this.cdr.markForCheck();
-        this.router.navigate(['/']);
+        this.nav.go(['/']);
       },
       error: (error) => {
         console.error('Login error', error);

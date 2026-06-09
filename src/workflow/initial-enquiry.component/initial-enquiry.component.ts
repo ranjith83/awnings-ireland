@@ -114,6 +114,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   isSendingEmail$     = new BehaviorSubject<boolean>(false);
   isLoadingSigs$      = new BehaviorSubject<boolean>(false);
   isSavingSig$        = new BehaviorSubject<boolean>(false);
+  sendingDraftId: number | null = null;
+  generatingAutoReply: number | null = null;
+  autoReplyLoaded      = false;  // tracks whether comments were loaded from a draft
   
   
 
@@ -465,6 +468,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
   }
 
   private applyTemplateToEnquiryForm(): void {
+    if (this.autoReplyLoaded) return;   // keep draft content if user already loaded it
     const firstName   = (this.customerName || '').split(' ')[0].trim() || 'Customer';
     const model       = this.productName || '[Model Name]';
     const salesperson = this.userSignatures.find(s => s.isDefault)?.fullName?.trim()
@@ -562,7 +566,8 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .subscribe({
         next: (saved) => {
           this.enquiries = [saved, ...this.enquiries];
-          this.newComments = '';
+          this.newComments     = '';
+          this.autoReplyLoaded = false;
           const def = this.defaultSignature;
           this.newSignature     = def?.signatureText  ?? '';
           this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
@@ -811,6 +816,66 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       general_inquiry: 'General',         junk: 'Junk'
     };
     return map[value] ?? value;
+  }
+
+  // ── Auto-reply → load into Add Enquiry form ───────────────────────────────
+
+  get latestAutoReplyDraft(): InitialEnquiryDto | null {
+    return this.enquiries.find(e => e.autoReplyDraftId && e.autoReplyContent) ?? null;
+  }
+
+  loadAutoReplyIntoComments(): void {
+    const draft = this.latestAutoReplyDraft;
+    if (!draft) return;
+    this.newComments     = draft.autoReplyContent ?? '';
+    this.autoReplyLoaded = true;
+    this.cdr.markForCheck();
+    // Scroll to the Add Enquiry form
+    setTimeout(() => {
+      document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }
+
+  AMD(enq: InitialEnquiryDto): void {
+    if (!enq.enquiryId || this.generatingAutoReply !== null) return;
+    this.generatingAutoReply = enq.enquiryId;
+    this.cdr.markForCheck();
+
+    this.workflowService.generateAutoReply(enq.enquiryId).subscribe({
+      next: (result) => {
+        enq.autoReplyDraftId = result.draftId;
+        enq.autoReplyContent = result.content;
+        this.generatingAutoReply = null;
+        this.cdr.markForCheck();
+        this.showSuccess('Auto-reply draft generated successfully!');
+      },
+      error: () => {
+        this.generatingAutoReply = null;
+        this.cdr.markForCheck();
+        this.showError('Failed to generate auto-reply. Please try again.');
+      }
+    });
+  }
+
+  sendAutoReplyDraft(enq: InitialEnquiryDto): void {
+    if (!enq.enquiryId || this.sendingDraftId !== null) return;
+    this.sendingDraftId = enq.enquiryId;
+    this.cdr.markForCheck();
+
+    this.workflowService.sendAutoReplyDraft(enq.enquiryId).subscribe({
+      next: () => {
+        enq.autoReplyDraftId = null;
+        enq.autoReplyContent = null;
+        this.sendingDraftId = null;
+        this.cdr.markForCheck();
+        this.showSuccess('Auto-reply sent successfully!');
+      },
+      error: () => {
+        this.sendingDraftId = null;
+        this.cdr.markForCheck();
+        this.showError('Failed to send auto-reply. Please check Outlook Drafts and send manually.');
+      }
+    });
   }
 
   private showSuccess(msg: string) { this.notificationService.success(msg);  }

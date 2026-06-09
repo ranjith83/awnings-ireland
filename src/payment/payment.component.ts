@@ -24,6 +24,7 @@ interface PaymentTemplate {
 }
 
 import { NotificationService } from '../service/notification.service';
+import { NavService } from '../service/nav.service';
 @Component({
   selector: 'app-payment',
   standalone: true,
@@ -99,6 +100,7 @@ export class PaymentComponent implements OnInit, OnDestroy {
     private invoiceService: InvoiceService,
     private paymentScheduleService: PaymentScheduleService,
     private notificationService: NotificationService,
+    private nav: NavService,
     private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
@@ -416,10 +418,10 @@ export class PaymentComponent implements OnInit, OnDestroy {
   }
 
   close() {
-    this.router.navigate(['/workflow'], {
-      queryParams: { 
-        customerId: this.customerId, 
-        customerName: this.customerName 
+    this.nav.go(['/workflow'], {
+      queryParams: {
+        customerId: this.customerId,
+        customerName: this.customerName
       }
     });
   }

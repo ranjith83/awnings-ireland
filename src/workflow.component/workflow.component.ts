@@ -8,6 +8,7 @@ import { takeUntil } from 'rxjs/operators';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
 import { WorkflowStateService } from '../service/workflow-state.service';
 import { NotificationService } from '../service/notification.service';
+import { NavService } from '../service/nav.service';
 
 interface WorkflowTab {
   label: string;
@@ -69,7 +70,8 @@ export class WorkflowComponent implements OnInit, OnDestroy {
     private workflowService:      WorkflowService,
     private workflowStateService: WorkflowStateService,
     private notificationService:  NotificationService,
-    private cdr:                  ChangeDetectorRef
+    private cdr:                  ChangeDetectorRef,
+    private nav:                  NavService
   ) {}
 
   ngOnInit(): void {
@@ -212,7 +214,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
       if (!tab) continue;
       if (!this.getBlockingStep(stepDef.path)) {
         this.activeTab = stepDef.path;
-        this.router.navigate([tab.route], { queryParams: this._allParams });
+        this.nav.go([tab.route], { queryParams: this._allParams });
         return;
       }
     }
@@ -227,7 +229,7 @@ export class WorkflowComponent implements OnInit, OnDestroy {
       return;
     }
     this.activeTab = tab.path;
-    this.router.navigate([tab.route], { queryParams: this._allParams });
+    this.nav.go([tab.route], { queryParams: this._allParams });
   }
 
   isActive(tabPath: string): boolean {
@@ -235,6 +237,6 @@ export class WorkflowComponent implements OnInit, OnDestroy {
   }
 
   goBackToCustomers(): void {
-    this.router.navigate(['/customers']);
+    this.nav.go(['/customers']);
   }
 }

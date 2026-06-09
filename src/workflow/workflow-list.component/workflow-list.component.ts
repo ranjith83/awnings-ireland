@@ -27,6 +27,7 @@ import {
 export type StageStatus = 'pending' | 'completed';
 
 import { NotificationService } from '../../service/notification.service';
+import { NavService } from '../../service/nav.service';
 @Component({
   selector: 'app-workflow-list',
   standalone: true,
@@ -104,7 +105,8 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     private workflowStateService: WorkflowStateService,
     private workflowService: WorkflowService,
     private notificationService: NotificationService,
-    private cdr: ChangeDetectorRef) {}
+    private cdr: ChangeDetectorRef,
+    private nav: NavService) {}
 
   ngOnInit() {
     this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(params => {
@@ -429,7 +431,7 @@ export class WorkflowListComponent implements OnInit, OnDestroy {
     if (this.taskId)        qp['taskId']        = this.taskId;
     if (this.fromFollowUp)  qp['fromFollowUp']  = this.fromFollowUp;
     if (this.fromTask)      qp['fromTask']      = this.fromTask;
-    this.router.navigate(['/workflow/initial-enquiry'], { queryParams: qp });
+    this.nav.go(['/workflow/initial-enquiry'], { queryParams: qp });
   }
 
   // ── Pagination ────────────────────────────────────────────────────────────

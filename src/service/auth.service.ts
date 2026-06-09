@@ -6,6 +6,7 @@ import { BehaviorSubject, Observable, throwError } from 'rxjs';
 import { map, catchError, tap } from 'rxjs/operators';
 import { Router } from '@angular/router';
 import { environment } from '../app/environments/environment';
+import { NavService } from './nav.service';
 
 export interface LoginRequest {
   username: string;
@@ -58,6 +59,7 @@ export class AuthService {
   constructor(
     private http: HttpClient,
     private router: Router,
+    private nav: NavService,
     @Inject(PLATFORM_ID) platformId: Object
   ) {
     // Check if running in browser
@@ -134,7 +136,7 @@ export class AuthService {
     }
 
     this.clearAuthData();
-    this.router.navigate(['/login']);
+    this.nav.go(['/login']);
   }
 
   refreshToken(): Observable<AuthResponse> {
@@ -151,7 +153,7 @@ export class AuthService {
         }),
         catchError(error => {
           this.clearAuthData();
-          this.router.navigate(['/login']);
+          this.nav.go(['/login']);
           return throwError(() => error);
         })
       );

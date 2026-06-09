@@ -11,6 +11,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin, lastValueFrom } from 'rxjs';
 import { map, switchMap, catchError, shareReplay, take, filter, takeUntil } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
+import { NavService } from '../service/nav.service';
 
 export interface EmailAttachment {
   attachmentId:   number;
@@ -282,6 +283,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     private cdr:              ChangeDetectorRef,
     private http:             HttpClient,
     private sanitizer:        DomSanitizer,
+    private nav:              NavService,
     @Inject(PLATFORM_ID) platformId: Object
   ) { this.isBrowser = isPlatformBrowser(platformId); }
 
@@ -568,7 +570,7 @@ export class TaskComponent implements OnInit, OnDestroy {
       queryParams['siteVisitId'] = task.siteVisitId;
     }
     this.closeSiteVisitPanel();
-    this.router.navigate(['/workflow/setup-site-visit'], { queryParams });
+    this.nav.go(['/workflow/setup-site-visit'], { queryParams });
   }
   saveSiteVisitAssignment(): void {
     const task = this.selectedSiteVisitTask;
@@ -669,18 +671,18 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.pendingRefreshOnReturn = true;
     this._pendingWorkflowLinkTask = { taskId: task.taskId, category: task.taskType ?? task.category ?? '', incomingEmailId: task.incomingEmailId ?? 0 };
     this.closeEmailViewer();
-    this.router.navigate(['/workflow'], { queryParams: { customerId: task.customerId ?? null, customerName: task.customerName ?? '', customerEmail: task.fromEmail ?? '', taskId: task.taskId, mode: 'create' } });
+    this.nav.go(['/workflow'], { queryParams: { customerId: task.customerId ?? null, customerName: task.customerName ?? '', customerEmail: task.fromEmail ?? '', taskId: task.taskId, mode: 'create' } });
   }
   onInitialEnquiryClick(task: EmailTaskExtended): void {
     if (!task.customerId)         { alert('Please create a customer first.'); return; }
     if (!this.existingWorkflowId) { this.workflowMissingForAction = 'initial_enquiry'; this.showNoWorkflowBanner = true; return; }
     this.closeEmailViewer();
-    this.router.navigate(['/workflow/initial-enquiry'], { queryParams: { workflowId: this.existingWorkflowId, customerId: task.customerId, customerName: task.customerName ?? '', customerEmail: task.fromEmail ?? '', taskId: task.taskId, fromTask: task.taskId } });
+    this.nav.go(['/workflow/initial-enquiry'], { queryParams: { workflowId: this.existingWorkflowId, customerId: task.customerId, customerName: task.customerName ?? '', customerEmail: task.fromEmail ?? '', taskId: task.taskId, fromTask: task.taskId } });
   }
   navigateToExistingWorkflow(task: EmailTaskExtended): void {
     if (!task.customerId || !this.existingWorkflowId) return;
     this.closeEmailViewer();
-    this.router.navigate(['/workflow'], { queryParams: { customerId: task.customerId, customerName: task.customerName ?? '', workflowId: this.existingWorkflowId } });
+    this.nav.go(['/workflow'], { queryParams: { customerId: task.customerId, customerName: task.customerName ?? '', workflowId: this.existingWorkflowId } });
   }
   onGenerateQuoteClick(task: EmailTaskExtended): void {
     if (!task.customerId) { alert('Please create a customer first.'); return; }
@@ -688,7 +690,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     if (!this.workflowExists || !this.existingWorkflowId) { this.workflowMissingForAction = 'generate_quote'; this.showNoWorkflowBanner = true; return; }
     this._navToQuote(task, this.existingWorkflowId);
   }
-  private _navToQuote(task: EmailTaskExtended, workflowId: number): void { this.closeEmailViewer(); this.router.navigate(['/workflow/create-quote'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId } }); }
+  private _navToQuote(task: EmailTaskExtended, workflowId: number): void { this.closeEmailViewer(); this.nav.go(['/workflow/create-quote'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId } }); }
   onGenerateInvoiceClick(task: EmailTaskExtended): void {
     if (!task.customerId) { alert('Please create a customer first.'); return; }
     if (this.workflowExists === null) { this.workflowCheckInProgress = true; this.checkWorkflowExists(task).subscribe(r => { this.workflowCheckInProgress = false; r.ok ? (this.workflowStatus$.next({ exists: true, workflowId: r.workflowId, workflowName: this._ws.workflowName }), this._navToInvoice(task, r.workflowId)) : (this.workflowMissingForAction = 'generate_invoice', this.showNoWorkflowBanner = true); }); return; }
@@ -696,7 +698,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this._navToInvoice(task, this.existingWorkflowId);
   }
   private _navToInvoice(task: EmailTaskExtended, workflowId: number): void {
-    if (task.quoteId) { this.closeEmailViewer(); this.router.navigate(['/workflow/invoice'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId, quoteId: task.quoteId } }); }
+    if (task.quoteId) { this.closeEmailViewer(); this.nav.go(['/workflow/invoice'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId, quoteId: task.quoteId } }); }
     else if (confirm('No quote yet.\n\nClick OK to go to Generate Quote first.')) this._navToQuote(task, workflowId);
   }
   onAddSiteVisitClick(task: EmailTaskExtended): void {
@@ -707,7 +709,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
   private _navToSiteVisit(task: EmailTaskExtended, workflowId: number): void {
     this.closeEmailViewer();
-    this.router.navigate(['/workflow/setup-site-visit'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId, emailSubject: task.subject ?? '', emailBody: task.emailBody ?? '', fromName: task.fromName ?? '', fromEmail: task.fromEmail ?? '', mode: 'from-email' } });
+    this.nav.go(['/workflow/setup-site-visit'], { queryParams: { taskId: task.taskId, customerId: task.customerId, customerName: task.customerName ?? '', workflowId, emailSubject: task.subject ?? '', emailBody: task.emailBody ?? '', fromName: task.fromName ?? '', fromEmail: task.fromEmail ?? '', mode: 'from-email' } });
   }
   onCreateWorkflowFromBanner(): void { if (this.selectedTask) this.onCreateWorkflowClick(this.selectedTask); }
   dismissNoWorkflowBanner():    void { this.showNoWorkflowBanner = false; this.workflowMissingForAction = ''; }
@@ -721,7 +723,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
   openCustomerCreationModal(task: EmailTaskExtended): void {
     this.emailTaskService.getExtractedCustomerData(task.taskId).subscribe({
-      next:  (d) => { this.extractedCustomerData = d; this.showCustomerModal = true; this.pendingRefreshOnReturn = true; this.router.navigate(['/customers'], { queryParams: { taskId: d.taskId, email: d.email, contactFirstName: d.contactFirstName, mode: 'create' } }); },
+      next:  (d) => { this.extractedCustomerData = d; this.showCustomerModal = true; this.pendingRefreshOnReturn = true; this.nav.go(['/customers'], { queryParams: { taskId: d.taskId, email: d.email, contactFirstName: d.contactFirstName, mode: 'create' } }); },
       error: (err) => console.error('Error getting extracted data:', err)
     });
   }

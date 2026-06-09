@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -18,6 +18,7 @@ import {
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService, User } from '../../service/auth.service';
 import { ClientConfigService } from '../../service/client-config.service';
+import { InboxNotificationService, InboxNotification } from '../../service/inbox-notification.service';
 
 interface MenuItem {
   icon: any; // Changed from string to any for FontAwesome icons
@@ -41,6 +42,19 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   activeRoute = '';
   currentUser: User | null = null;
 
+  // ── Notification bell ─────────────────────────────────────────────
+  unreadCount = 0;
+  showNotifDropdown = false;
+  notifItems: InboxNotification[] = [];
+
+  @HostListener('document:click', ['$event'])
+  onDocClick(e: MouseEvent) {
+    const el = e.target as HTMLElement;
+    if (!el.closest('.notif-bell-wrapper')) {
+      this.showNotifDropdown = false;
+    }
+  }
+
   menuItems: MenuItem[] = [
     { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
     { icon: faUsers, label: 'Customers', route: '/customers' },
@@ -59,18 +73,47 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     private router: Router,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
-    public clientConfig: ClientConfigService
+    public clientConfig: ClientConfigService,
+    private inboxNotif: InboxNotificationService
   ) {
     this.activeRoute = this.router.url;
   }
 
   ngOnInit(): void {
     this.loadCurrentUser();
+    this.inboxNotif.startPolling();
+    this.inboxNotif.count$.pipe(takeUntil(this.destroy$)).subscribe(c => {
+      this.unreadCount = c;
+      this.cdr.markForCheck();
+    });
+    this.inboxNotif.items$.pipe(takeUntil(this.destroy$)).subscribe(items => {
+      this.notifItems = items;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnDestroy(): void {
+    this.inboxNotif.stopPolling();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  toggleNotifDropdown(): void {
+    this.showNotifDropdown = !this.showNotifDropdown;
+    if (this.showNotifDropdown) this.inboxNotif.loadItems();
+  }
+
+  markNotifRead(notif: InboxNotification): void {
+    this.inboxNotif.markRead(notif.id);
+    if (notif.workflowId) {
+      this.showNotifDropdown = false;
+      this.router.navigate([`/${this.clientConfig.routePrefix}/workflow`],
+        { queryParams: { customerId: notif.entityId } });
+    }
+  }
+
+  markAllNotifRead(): void {
+    this.inboxNotif.markAllRead();
   }
 
   loadCurrentUser(): void {

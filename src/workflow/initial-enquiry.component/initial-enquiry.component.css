@@ -657,3 +657,94 @@
 }
 
 .font-card--active .font-card-name { color: #2563eb; }
+
+/* ── Auto-reply draft row ─────────────────────────────────────────── */
+.auto-reply-row { background: #f0f9ff; }
+
+.auto-reply-cell { padding: 10px 16px !important; }
+
+.auto-reply-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.auto-reply-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auto-reply-label { color: #0369a1; }
+
+.auto-reply-chip {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.3px;
+}
+
+.auto-reply-open-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #fff;
+  transition: background 0.15s;
+}
+.auto-reply-open-link:hover { background: #eff6ff; }
+
+.auto-reply-preview {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #475569;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  background: #fff;
+  border: 1px solid #e0f2fe;
+  border-radius: 6px;
+  padding: 8px 12px;
+  max-height: 80px;
+  overflow: hidden;
+}
+
+.auto-reply-send-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: #0369a1; color: #fff;
+  border: none; border-radius: 6px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s; white-space: nowrap;
+}
+.auto-reply-send-btn:hover:not(:disabled) { background: #0284c7; }
+.auto-reply-send-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+.auto-reply-review-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; background: #0369a1; color: #fff;
+  border: none; border-radius: 6px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s; white-space: nowrap;
+  margin-left: 10px;
+}
+.auto-reply-review-btn:hover { background: #0284c7; }
+
+.auto-reply-loaded-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: 8px; padding: 2px 8px;
+  background: #dcfce7; color: #166534; border: 1px solid #bbf7d0;
+  border-radius: 10px; font-size: 11px; font-weight: 500;
+}
+
+.auto-reply-body-textarea { min-height: 280px; resize: vertical; font-family: inherit; font-size: 13px; line-height: 1.6; }

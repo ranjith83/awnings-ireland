@@ -53,13 +53,37 @@
         <h2 class="page-title">{{ pageTitle }}</h2>
       </div>
       <div class="top-bar-right">
-        <button class="icon-btn">
-          <span class="notification-icon">🔔</span>
-          <span class="notification-badge">3</span>
-        </button>
-        <button class="icon-btn">
-          <span class="search-icon">🔍</span>
-        </button>
+        <!-- ── Notification Bell ──────────────────────────────────── -->
+        <div class="notif-bell-wrapper">
+          <button class="icon-btn notif-bell-btn" (click)="toggleNotifDropdown()">
+            <span class="notification-icon">🔔</span>
+            <span class="notification-badge" *ngIf="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+          </button>
+
+          <div class="notif-dropdown" *ngIf="showNotifDropdown">
+            <div class="notif-dropdown-header">
+              <span class="notif-dropdown-title">Notifications</span>
+              <button class="notif-mark-all" (click)="markAllNotifRead()" *ngIf="notifItems.length">
+                Mark all read
+              </button>
+            </div>
+
+            <div class="notif-list" *ngIf="notifItems.length; else noNotifs">
+              <div class="notif-item" *ngFor="let n of notifItems" (click)="markNotifRead(n)">
+                <div class="notif-item-icon notif-icon--enquiry" *ngIf="n.type === 'new_enquiry'">📩</div>
+                <div class="notif-item-icon" *ngIf="n.type !== 'new_enquiry'">🔔</div>
+                <div class="notif-item-body">
+                  <div class="notif-item-title">{{ n.title }}</div>
+                  <div class="notif-item-msg">{{ n.message }}</div>
+                  <div class="notif-item-time">{{ n.createdAt | date:'dd MMM, HH:mm' }}</div>
+                </div>
+              </div>
+            </div>
+            <ng-template #noNotifs>
+              <div class="notif-empty">No new notifications</div>
+            </ng-template>
+          </div>
+        </div>
       </div>
     </header>
 

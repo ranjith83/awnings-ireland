@@ -96,6 +96,12 @@ export interface InitialEnquiryDto {
   /** IncomingEmail.Id that originated this enquiry (null for manual entries). */
   incomingEmailId?: number | null;
 
+  // ── Auto-reply draft (populated by the email processor via Claude) ──
+  /** Microsoft Graph draft message ID saved in the Drafts folder. */
+  autoReplyDraftId?: string | null;
+  /** Plain-text body of the generated auto-reply. */
+  autoReplyContent?: string | null;
+
   // ── Read-only audit fields (returned by GET, ignored by POST/PUT) ──
   dateCreated?: Date | string | null;
   createdBy?: string | null;
@@ -240,6 +246,18 @@ export class WorkflowService {
   /** DELETE /api/workflow/DeleteInitialEnquiry/{enquiryId} */
   deleteInitialEnquiry(enquiryId: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/DeleteInitialEnquiry/${enquiryId}`)
+      .pipe(catchError(this.handleError));
+  }
+
+  /** POST /api/workflow/GenerateAutoReply/{enquiryId} */
+  generateAutoReply(enquiryId: number): Observable<{ draftId: string; content: string }> {
+    return this.http.post<{ draftId: string; content: string }>(`${this.apiUrl}/GenerateAutoReply/${enquiryId}`, {})
+      .pipe(catchError(this.handleError));
+  }
+
+  /** POST /api/workflow/SendAutoReplyDraft/{enquiryId} */
+  sendAutoReplyDraft(enquiryId: number): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/SendAutoReplyDraft/${enquiryId}`, {})
       .pipe(catchError(this.handleError));
   }
 

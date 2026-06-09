@@ -1,10 +1,11 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { Subject } from 'rxjs';
 import { AuthService, RegisterRequest } from '../service/auth.service';
 import { ClientConfigService } from '../service/client-config.service';
+import { NavService } from '../service/nav.service';
 
 @Component({
   selector: 'app-register',
@@ -38,7 +39,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private authService: AuthService,
     public clientConfig: ClientConfigService,
-    private router: Router,
+    private nav: NavService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -144,7 +145,7 @@ export class RegisterComponent implements OnInit, OnDestroy {
           this.successMessage = 'Registration successful! Redirecting to dashboard...';
           this.isLoading = false;
           this.cdr.markForCheck();
-          setTimeout(() => this.router.navigate(['/dashboard']), 2000);
+          setTimeout(() => this.nav.go(['/dashboard']), 2000);
         },
         error: (error) => {
           console.error('❌ Registration error:', error);
