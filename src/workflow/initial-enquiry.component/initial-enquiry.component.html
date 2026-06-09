@@ -29,7 +29,7 @@
         </svg>
         <h3 class="section-title">Customer Emails</h3>
         <span class="badge-count">{{ customerEmails.length }}</span>
-        <button *ngIf="latestAutoReplyDraft" class="auto-reply-review-btn"
+        <button *ngIf="customerEmails.length" class="auto-reply-review-btn"
                 (click)="loadAutoReplyIntoComments()"
                 title="Load auto-reply draft into the reply form">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">

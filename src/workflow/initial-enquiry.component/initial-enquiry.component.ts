@@ -826,11 +826,15 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   loadAutoReplyIntoComments(): void {
     const draft = this.latestAutoReplyDraft;
-    if (!draft) return;
-    this.newComments     = draft.autoReplyContent ?? '';
+    if (draft?.autoReplyContent) {
+      this.newComments = draft.autoReplyContent;
+    } else {
+      // No draft — load the most recent enquiry's comments as the reply base
+      const latest = this.enquiries[0];
+      if (latest?.comments) this.newComments = latest.comments;
+    }
     this.autoReplyLoaded = true;
     this.cdr.markForCheck();
-    // Scroll to the Add Enquiry form
     setTimeout(() => {
       document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 50);
