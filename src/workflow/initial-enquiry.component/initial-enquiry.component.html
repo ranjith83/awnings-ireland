@@ -31,11 +31,17 @@
         <span class="badge-count">{{ customerEmails.length }}</span>
         <button *ngIf="customerEmails.length" class="auto-reply-review-btn"
                 (click)="loadAutoReplyIntoComments()"
-                title="Load auto-reply draft into the reply form">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
-            <line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/>
-          </svg>
-          Review &amp; Send
+                [disabled]="generatingAutoReply !== null"
+                title="Generate auto-reply and load into reply form">
+          <ng-container *ngIf="generatingAutoReply === null">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
+              <line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/>
+            </svg>
+            Review &amp; Send
+          </ng-container>
+          <ng-container *ngIf="generatingAutoReply !== null">
+            <span class="spinner-inline"></span> Generating…
+          </ng-container>
         </button>
       </div>
       <p class="section-subtitle">Emails linked to <strong>{{ customerName || 'this customer' }}</strong></p>

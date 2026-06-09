@@ -114,9 +114,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   isSendingEmail$     = new BehaviorSubject<boolean>(false);
   isLoadingSigs$      = new BehaviorSubject<boolean>(false);
   isSavingSig$        = new BehaviorSubject<boolean>(false);
-  sendingDraftId: number | null = null;
+  sendingDraftId:      number | null = null;
   generatingAutoReply: number | null = null;
-  autoReplyLoaded      = false;  // tracks whether comments were loaded from a draft
+  autoReplyLoaded      = false;
   
   
 
@@ -820,24 +820,39 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   // ── Auto-reply → load into Add Enquiry form ───────────────────────────────
 
-  get latestAutoReplyDraft(): InitialEnquiryDto | null {
-    return this.enquiries.find(e => e.autoReplyDraftId && e.autoReplyContent) ?? null;
+  get latestEnquiry(): InitialEnquiryDto | null {
+    return this.enquiries[0] ?? null;
   }
 
   loadAutoReplyIntoComments(): void {
-    const draft = this.latestAutoReplyDraft;
-    if (draft?.autoReplyContent) {
-      this.newComments = draft.autoReplyContent;
-    } else {
-      // No draft — load the most recent enquiry's comments as the reply base
-      const latest = this.enquiries[0];
-      if (latest?.comments) this.newComments = latest.comments;
+    const enq = this.latestEnquiry;
+    if (!enq?.enquiryId) return;
+
+    // Already have content cached — just load it
+    if (enq.autoReplyContent) {
+      this.newComments     = enq.autoReplyContent;
+      this.autoReplyLoaded = true;
+      this.cdr.markForCheck();
+      setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      return;
     }
-    this.autoReplyLoaded = true;
+
+    // Call the API to generate
+    this.generatingAutoReply = enq.enquiryId;
     this.cdr.markForCheck();
-    setTimeout(() => {
-      document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 50);
+    this.workflowService.generateAutoReply(enq.enquiryId)
+      .pipe(takeUntil(this.destroy$), finalize(() => { this.generatingAutoReply = null; this.cdr.markForCheck(); }))
+      .subscribe({
+        next: (result) => {
+          enq.autoReplyDraftId = result.draftId;
+          enq.autoReplyContent = result.content;
+          this.newComments     = result.content;
+          this.autoReplyLoaded = true;
+          this.cdr.markForCheck();
+          setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        },
+        error: () => this.showError('Failed to generate auto-reply. Please try again.')
+      });
   }
 
   AMD(enq: InitialEnquiryDto): void {
