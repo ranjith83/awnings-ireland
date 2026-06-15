@@ -81,7 +81,8 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCurrentUser();
-    this.inboxNotif.startPolling();
+    const token = this.authService.getToken() ?? '';
+    this.inboxNotif.startConnection(token);
     this.inboxNotif.count$.pipe(takeUntil(this.destroy$)).subscribe(c => {
       this.unreadCount = c;
       this.cdr.markForCheck();
@@ -93,7 +94,7 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.inboxNotif.stopPolling();
+    this.inboxNotif.stopConnection();
     this.destroy$.next();
     this.destroy$.complete();
   }

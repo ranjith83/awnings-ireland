@@ -42,6 +42,19 @@ export interface AppTaskSummaryDto {
   dateUpdated?:                 Date | null;
 }
 
+/** Lean DTO returned by GET /api/EmailTask/auto-response — tasks awaiting an AI-drafted reply. */
+export interface NeedsReplyTaskDto {
+  taskId:           number;
+  incomingEmailId?: number | null;
+  subject?:         string | null;
+  fromName?:        string | null;
+  fromEmail?:       string | null;
+  category?:        string | null;
+  status:           string;
+  dateAdded:        Date;
+  draftReply?:      string | null;
+}
+
 /** Full DTO returned by GET /api/EmailTask/{taskId} — includes body, attachments, history. */
 export interface EmailTask extends AppTaskSummaryDto {
   emailBody?:       string | null;
@@ -465,6 +478,15 @@ export class EmailTaskService {
 
   updateTaskCategory(taskId: number, category: string): Observable<EmailTask> {
     return this.http.patch<EmailTask>(`${this.apiUrl}/${taskId}/category`, { category });
+  }
+
+  // ==================== AI AUTO-REPLY ====================
+
+  /** GET /api/EmailTask/auto-response — paginated list of tasks awaiting an AI-drafted reply. */
+  getTasksNeedingReply(page = 1, pageSize = 20): Observable<PaginatedResponse<NeedsReplyTaskDto>> {
+    return this.http.get<PaginatedResponse<NeedsReplyTaskDto>>(`${this.apiUrl}/auto-response`, {
+      params: { page, pageSize }
+    });
   }
 
   // ==================== EMAIL SENDING ====================

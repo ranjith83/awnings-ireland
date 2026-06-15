@@ -387,6 +387,30 @@
   margin-left: 5px;
 }
 
+.ai-draft-badge {
+  display: inline-block;
+  font-size: 0.78em;
+  font-weight: 600;
+  color: #6a1b9a;
+  background: #f3e5f5;
+  border: 1px solid #ce93d8;
+  border-radius: 10px;
+  padding: 1px 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.ai-draft-loaded-banner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #f3e5f5;
+  border: 1px solid #ce93d8;
+  border-radius: 6px;
+  font-size: 0.9em;
+  color: #6a1b9a;
+  font-weight: 500;
+}
+
 /* ==================== PAGINATION ==================== */
 .pagination-container {
   display: flex;
@@ -504,6 +528,11 @@
   box-shadow: 0 20px 60px rgba(21, 101, 192, 0.18), 0 4px 16px rgba(0, 0, 0, 0.15);
   overflow: hidden;
   animation: emailModalIn 0.24s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* Lightweight single-purpose modal — AI Replies tab draft reply popup */
+.ai-reply-modal-container {
+  max-width: 640px;
 }
 
 @keyframes emailModalIn {
@@ -2264,6 +2293,11 @@
 .sub-tab--active {
   border-bottom-color: #1565c0;
   color: #1565c0;
+}
+
+.sub-tab--ai.sub-tab--active {
+  border-bottom-color: #6a1b9a;
+  color: #6a1b9a;
 }
 
 

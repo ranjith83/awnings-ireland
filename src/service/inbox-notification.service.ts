@@ -1,9 +1,10 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, interval, Subscription } from 'rxjs';
-import { catchError, switchMap, startWith } from 'rxjs/operators';
+import { BehaviorSubject } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '../app/environments/environment';
+import * as signalR from '@microsoft/signalr';
 
 export interface InboxNotification {
   id: number;
@@ -20,7 +21,7 @@ export interface InboxNotification {
 @Injectable({ providedIn: 'root' })
 export class InboxNotificationService implements OnDestroy {
   private apiUrl = `${environment.apiUrl}/api/notification`;
-  private pollSub?: Subscription;
+  private hubConnection?: signalR.HubConnection;
 
   private _count = new BehaviorSubject<number>(0);
   private _items = new BehaviorSubject<InboxNotification[]>([]);
@@ -30,20 +31,50 @@ export class InboxNotificationService implements OnDestroy {
 
   constructor(private http: HttpClient) {}
 
-  /** Start polling every 30 s. Call once from AppLayoutComponent. */
-  startPolling(): void {
-    if (this.pollSub) return;
-    this.pollSub = interval(30_000)
-      .pipe(startWith(0), switchMap(() =>
-        this.http.get<{ count: number }>(`${this.apiUrl}/count`)
-          .pipe(catchError(() => of({ count: 0 })))
-      ))
-      .subscribe(res => this._count.next(res.count));
+  /** Connect to SignalR hub. Call once from AppLayoutComponent after login. */
+  startConnection(token: string): void {
+    if (this.hubConnection) return;
+
+    this.hubConnection = new signalR.HubConnectionBuilder()
+      .withUrl(`${environment.apiUrl}/hubs/notifications`, {
+        accessTokenFactory: () => token
+      })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
+
+    // Push: backend sends updated count + notification
+    this.hubConnection.on('ReceiveNotification', (payload: { count: number; notification: InboxNotification }) => {
+      this._count.next(payload.count);
+      if (payload.notification) {
+        this._items.next([payload.notification, ...this._items.value]);
+      }
+    });
+
+    // Push: backend sends a count-only update
+    this.hubConnection.on('UpdateCount', (count: number) => {
+      this._count.next(count);
+    });
+
+    this.hubConnection
+      .start()
+      .then(() => this.loadInitialCount())
+      .catch(() => {
+        // SignalR unavailable — fall back to a single fetch, no polling
+        this.loadInitialCount();
+      });
   }
 
-  stopPolling(): void {
-    this.pollSub?.unsubscribe();
-    this.pollSub = undefined;
+  stopConnection(): void {
+    this.hubConnection?.stop();
+    this.hubConnection = undefined;
+  }
+
+  /** Fetch current count once on connect (not on a timer). */
+  private loadInitialCount(): void {
+    this.http.get<{ count: number }>(`${this.apiUrl}/count`)
+      .pipe(catchError(() => of({ count: 0 })))
+      .subscribe(res => this._count.next(res.count));
   }
 
   /** Load full list for the dropdown. */
@@ -72,6 +103,6 @@ export class InboxNotificationService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopPolling();
+    this.stopConnection();
   }
 }

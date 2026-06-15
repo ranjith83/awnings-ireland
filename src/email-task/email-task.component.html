@@ -69,6 +69,12 @@
       Junk
       <span class="tab-count" *ngIf="(activeTab$ | async) === 'junk' && (totalItems$ | async) as total">({{ total }})</span>
     </button>
+    <button class="sub-tab sub-tab--ai"
+            [class.sub-tab--active]="(activeTab$ | async) === 'ai-replies'"
+            (click)="setActiveTab('ai-replies')">
+      🤖 AI Replies
+      <span class="tab-count" *ngIf="(activeTab$ | async) === 'ai-replies' && (totalItems$ | async) as total">({{ total }})</span>
+    </button>
   </div>
 
   <!-- Role banner -->
@@ -141,6 +147,7 @@
           <td>
             {{ task.subject }}
             <span class="ai-confidence" *ngIf="task.aiConfidence">({{ (task.aiConfidence * 100).toFixed(0) }}%)</span>
+            <span class="ai-draft-badge" *ngIf="task.hasAutoReplyDraft" title="AI-generated reply draft ready for review">🤖 AI Draft</span>
           </td>
           <td>
             <span class="category-badge" [class]="'category-' + task.category">{{ getCategoryDisplay(task.category) }}</span>
@@ -470,6 +477,9 @@
       <!-- Send Email Tab -->
       <div class="send-email-content" *ngIf="activeEmailTab === 'send-email'">
         <div class="send-email-form">
+          <div class="ai-draft-loaded-banner" *ngIf="autoReplyDraftLoaded">
+            🤖 AI-generated reply draft loaded — review and edit before sending.
+          </div>
           <div class="form-group">
             <label>Subject</label>
             <input type="text" [(ngModel)]="sendEmailSubject" class="send-email-input" placeholder="Subject…">
@@ -568,6 +578,57 @@
           <div class="footer-bottom-right">
             <button class="save-btn"  (click)="save()">💾 Save</button>
             <button class="close-btn" (click)="closeEmailViewer()">✕ Close</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== AI REPLY MODAL (AI Replies tab double-click) ==================== -->
+  <div class="email-viewer-modal" *ngIf="showAiReplyModal && selectedAiReplyTask" (click)="closeAiReplyModal()">
+    <div class="email-viewer-container ai-reply-modal-container" (click)="$event.stopPropagation()">
+
+      <div class="email-modal-header">
+        <div class="email-modal-header-left">
+          <span class="email-modal-icon">🤖</span>
+          <div class="email-modal-title-block">
+            <h3 class="email-modal-title">{{ selectedAiReplyTask.fromName || selectedAiReplyTask.fromEmail }}</h3>
+            <p class="email-modal-subtitle">{{ selectedAiReplyTask.subject }}</p>
+          </div>
+        </div>
+        <button class="email-modal-close" (click)="closeAiReplyModal()" title="Close">✕</button>
+      </div>
+
+      <div class="send-email-content">
+        <div class="send-email-form">
+          <div class="ai-draft-loaded-banner">
+            🤖 AI-generated reply draft — review and edit before sending.
+          </div>
+          <div class="form-group">
+            <label>To</label>
+            <div class="customer-info">{{ selectedAiReplyTask.fromName }} &lt;{{ selectedAiReplyTask.fromEmail }}&gt;</div>
+          </div>
+          <div class="form-group">
+            <label>Subject</label>
+            <input type="text" [(ngModel)]="aiReplySubject" class="send-email-input" placeholder="Subject…">
+          </div>
+          <div class="form-group">
+            <label>Reply</label>
+            <textarea [(ngModel)]="aiReplyBody" class="send-email-textarea" rows="10" placeholder="Reply…"></textarea>
+          </div>
+          <p *ngIf="aiReplyError" class="send-email-error">{{ aiReplyError }}</p>
+        </div>
+      </div>
+
+      <div class="email-footer">
+        <div class="footer-bottom-row">
+          <div class="footer-bottom-right">
+            <button class="send-btn" (click)="sendAiReply()" [disabled]="isSendingAiReply">
+              <span *ngIf="!isSendingAiReply">✉ Send Reply</span>
+              <span *ngIf="isSendingAiReply">Sending…</span>
+            </button>
+            <button class="close-btn" (click)="closeAiReplyModal()">✕ Close</button>
           </div>
         </div>
       </div>

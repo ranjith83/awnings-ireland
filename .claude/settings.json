@@ -15,7 +15,10 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(grep \"component.ts$\")",
       "Bash(Get-Content \"c:\\\\Projects\\\\awnings-ireland\\\\src\\\\workflow\\\\create-quote.component\\\\create-quote.component.css\")",
-      "Bash(Select-Object -Last 15)"
+      "Bash(Select-Object -Last 15)",
+      "Bash(grep -n \"refresh\\\\|reload\\\\|loadPage\\\\|triggerRefresh\\\\|page\\\\$\\\\.next\\\\|filter\\\\$\\\\|refresh\" c:\\\\Projects\\\\awnings-ireland\\\\src\\\\email-task\\\\email-task.component.ts)",
+      "Bash(findstr /i \"bundle error ERROR\")",
+      "Bash(findstr /n \"fileReplacements\\\\|configurations\\\\|client\\\\|awnings\" c:\\\\Projects\\\\awnings-ireland\\\\angular.json)"
     ]
   }
 }

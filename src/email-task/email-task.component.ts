@@ -2,14 +2,14 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { environment } from '../app/environments/environment';
 import { isPlatformBrowser } from '@angular/common';
-import { AppTaskSummaryDto, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
+import { AppTaskSummaryDto, NeedsReplyTaskDto, User, PaginatedResponse, PageInfo, CustomerExistsResponse, ExtractedCustomerData, EmailTaskService } from '../service/email-task.service';
 import { WorkflowService, WorkflowDto } from '../service/workflow.service';
 import { CustomerService } from '../service/customer-service';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin, lastValueFrom } from 'rxjs';
-import { map, switchMap, catchError, shareReplay, take, filter, takeUntil } from 'rxjs/operators';
+import { map, switchMap, catchError, shareReplay, take, filter, takeUntil, tap } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
 import { NavService } from '../service/nav.service';
 
@@ -43,6 +43,9 @@ export interface EmailTaskExtended extends Omit<AppTaskSummaryDto, 'sourceType'>
   createdBy?:       string | null;
   updatedBy?:       string | null;
   assignedTo?:      string | null;
+  // AI auto-reply (populated for rows from the AI Replies tab)
+  hasAutoReplyDraft?: boolean | null;
+  draftReply?:        string | null;
 }
 
 type WorkflowGuardResult =
@@ -53,7 +56,7 @@ type WorkflowGuardResult =
 /** Top-level section selector */
 type TopTab = 'email' | 'site-visit';
 /** Sub-tabs shown only when topTab === 'email' */
-type EmailSubTab = 'tasks' | 'in-progress' | 'completed' | 'junk';
+type EmailSubTab = 'tasks' | 'in-progress' | 'completed' | 'junk' | 'ai-replies';
 
 @Component({
   selector: 'app-task',
@@ -113,7 +116,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   ]).pipe(
     map(([topTab, activeTab, page, pageSize, searchTerm, sortBy, sortDirection, priority, assignedUser, category]) => {
       const base = {
-        page, pageSize, sortBy, sortDirection,
+        topTab, activeTab, page, pageSize, sortBy, sortDirection,
         searchTerm:       searchTerm   || undefined,
         priority:         priority     || undefined,
         assignedToUserId: assignedUser || undefined,
@@ -123,6 +126,9 @@ export class TaskComponent implements OnInit, OnDestroy {
       }
       if (activeTab === 'junk') {
         return { ...base, sourceTypes: ['Email'], categories: ['junk', 'general'] };
+      }
+      if (activeTab === 'ai-replies') {
+        return { ...base, sourceTypes: ['Email'], status: undefined, statuses: undefined };
       }
       return {
         ...base,
@@ -135,7 +141,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     })
   );
 
-  private tasksResponse$!: Observable<PaginatedResponse<AppTaskSummaryDto>>;
+  private tasksResponse$!: Observable<PaginatedResponse<EmailTaskExtended>>;
   tasks$!:       Observable<EmailTaskExtended[]>;
   pageInfo$!:    Observable<PageInfo>;
   totalItems$!:  Observable<number>;
@@ -159,6 +165,17 @@ export class TaskComponent implements OnInit, OnDestroy {
   private _emailBodyBlobUrl: string | null = null;
   isLoadingEmailBody:  boolean = false;
   isLoadingTask:       boolean = false;
+
+  // ── AI auto-reply draft ───────────────────────────────────────────────────
+  autoReplyDraftLoaded: boolean = false;
+
+  // ── AI Reply modal (AI Replies tab double-click) ───────────────────────────
+  showAiReplyModal:    boolean = false;
+  selectedAiReplyTask: EmailTaskExtended | null = null;
+  aiReplySubject:      string  = '';
+  aiReplyBody:         string  = '';
+  isSendingAiReply:    boolean = false;
+  aiReplyError:        string  = '';
 
   readonly statusOptions = [
     { value: 'New',         label: 'New'         },
@@ -307,9 +324,18 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   private initializeDataStreams(): void {
     this.tasksResponse$ = this.filters$.pipe(
-      switchMap(filters => this.emailTaskService.getTasksPaginated(filters).pipe(
-        catchError(() => of({ tasks: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }))
-      )),
+      tap(() => { this.isLoading$.next(true); this.cdr.markForCheck(); }),
+      switchMap(filters => {
+        const source$: Observable<PaginatedResponse<EmailTaskExtended>> = filters.activeTab === 'ai-replies'
+          ? this.emailTaskService.getTasksNeedingReply(filters.page, filters.pageSize).pipe(
+              map(r => ({ ...r, tasks: r.tasks.map(t => this.mapNeedsReplyToTask(t)) }))
+            )
+          : this.emailTaskService.getTasksPaginated(filters);
+        return source$.pipe(
+          catchError(() => of({ tasks: [] as EmailTaskExtended[], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 })),
+          tap(() => { this.isLoading$.next(false); this.cdr.markForCheck(); })
+        );
+      }),
       shareReplay(1)
     );
     this.tasks$ = combineLatest([this.tasksResponse$, this.topTabSubject]).pipe(
@@ -398,7 +424,46 @@ export class TaskComponent implements OnInit, OnDestroy {
   // ── Row double-click routing ─────────────────────────────────────────────
   onRowDoubleClick(task: EmailTaskExtended): void {
     if (this.topTabSubject.value === 'site-visit') { this.openSiteVisitPanel(task); return; }
+    if (this.activeTabSubject.value === 'ai-replies') { this.openAiReplyModal(task); return; }
     this._openEmailViewer(task);
+  }
+
+  // ── AI Reply modal ────────────────────────────────────────────────────────
+  openAiReplyModal(task: EmailTaskExtended): void {
+    this.selectedAiReplyTask = task;
+    this.aiReplySubject      = `Re: ${task.subject ?? ''}`;
+    this.aiReplyBody         = task.draftReply ?? '';
+    this.aiReplyError        = '';
+    this.isSendingAiReply    = false;
+    this.showAiReplyModal    = true;
+    this.cdr.markForCheck();
+
+    this.emailTaskService.logEmailRead(task.taskId).pipe(take(1), catchError(() => of(null))).subscribe();
+  }
+
+  closeAiReplyModal(): void {
+    this.showAiReplyModal    = false;
+    this.selectedAiReplyTask = null;
+    this.aiReplySubject      = '';
+    this.aiReplyBody         = '';
+    this.aiReplyError        = '';
+    this.isSendingAiReply    = false;
+    this.cdr.markForCheck();
+  }
+
+  sendAiReply(): void {
+    if (!this.selectedAiReplyTask) return;
+    if (!this.aiReplyBody.trim()) { this.aiReplyError = 'Please enter a message body.'; this.cdr.markForCheck(); return; }
+    this.isSendingAiReply = true; this.aiReplyError = ''; this.cdr.markForCheck();
+    const task = this.selectedAiReplyTask;
+    this.emailTaskService.sendTaskEmail(task.taskId, {
+      toEmail: task.fromEmail ?? undefined, toName: task.fromName ?? undefined,
+      subject: this.aiReplySubject, body: this.aiReplyBody,
+      originalEmailGraphId: (task as any).emailGraphId ?? null
+    }).subscribe({
+      next:  () => { this.isSendingAiReply = false; this.closeAiReplyModal(); this.refreshTrigger.next(); this.showToast('success', 'Reply sent successfully!'); },
+      error: (err) => { this.isSendingAiReply = false; this.aiReplyError = err?.error?.error ?? 'Failed to send reply.'; this.cdr.markForCheck(); this.showToast('error', this.aiReplyError); }
+    });
   }
 
   // ── Email viewer ─────────────────────────────────────────────────────────
@@ -414,6 +479,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.selectedCategoryValue    = task.category ?? '';
     this.showNoWorkflowBanner     = false;
     this.workflowMissingForAction = '';
+    this.autoReplyDraftLoaded     = false;
     if (task.workflowId) this.workflowStatus$.next({ exists: true, workflowId: task.workflowId, workflowName: null });
     else                 this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this.loadWorkflowStatus(task);
@@ -421,6 +487,14 @@ export class TaskComponent implements OnInit, OnDestroy {
 
     // Log that this email was read
     this.emailTaskService.logEmailRead(task.taskId).pipe(take(1), catchError(() => of(null))).subscribe();
+
+    // AI auto-reply draft: load it straight into the reply box for review
+    if (task.draftReply) {
+      this.sendEmailBody       = task.draftReply;
+      this.sendEmailSubject    = `Re: ${task.subject ?? ''}`;
+      this.autoReplyDraftLoaded = true;
+      this.activeEmailTab      = 'send-email';
+    }
 
     // Phase 2: fetch full task (body, attachments, history)
     this.emailTaskService.getTaskById(task.taskId).pipe(
@@ -454,6 +528,27 @@ export class TaskComponent implements OnInit, OnDestroy {
         this.isLoadingEmailBody = false;
         this.cdr.markForCheck();
       });
+  }
+
+  /** Maps the lean auto-response DTO onto the table's row shape for the AI Replies tab. */
+  private mapNeedsReplyToTask(dto: NeedsReplyTaskDto): EmailTaskExtended {
+    return {
+      taskId:            dto.taskId,
+      sourceType:        'Email',
+      displayTitle:      dto.subject ?? '',
+      incomingEmailId:   dto.incomingEmailId,
+      fromName:          dto.fromName,
+      fromEmail:         dto.fromEmail,
+      subject:           dto.subject,
+      category:          dto.category,
+      dateAdded:         dto.dateAdded,
+      status:            dto.status,
+      priority:          'Normal',
+      hasAttachments:    false,
+      dateCreated:       dto.dateAdded,
+      hasAutoReplyDraft: true,
+      draftReply:        dto.draftReply,
+    };
   }
 
   private _revokeEmailBodyBlobUrl(): void {
@@ -519,6 +614,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.showEmailViewer = false; this.selectedTask = null; this.selectedAction = '';
     this.selectedAssignee = null; this.selectedStatus = '';
     this.showNoWorkflowBanner = false; this.workflowMissingForAction = '';
+    this.autoReplyDraftLoaded = false;
     this.workflowStatus$.next({ exists: null, workflowId: null, workflowName: null });
     this._revokeEmailBodyBlobUrl();
     this.clearSendEmail();
