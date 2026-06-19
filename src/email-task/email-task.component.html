@@ -93,6 +93,7 @@
              class="search-input" (keyup.enter)="applySearch()">
       <button class="search-btn" (click)="applySearch()">Search</button>
       <button class="clear-btn" (click)="clearSearch()" *ngIf="searchTerm">Clear</button>
+      <button class="refresh-btn" (click)="refresh()" title="Refresh" [class.refresh-btn--spinning]="isLoading$ | async">↻</button>
     </div>
     <div class="advanced-filters">
       <select [(ngModel)]="filterPriority" class="filter-select" (change)="applyFilters()">

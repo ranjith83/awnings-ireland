@@ -409,6 +409,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   clearSearch():  void { this.searchTermSubject.next(''); this.currentPageSubject.next(1); }
   applyFilters(): void { this.currentPageSubject.next(1); this.refreshTrigger.next(); }
   clearFilters(): void { this.filterPrioritySubject.next(''); this.filterAssignedUserSubject.next(null); this.currentPageSubject.next(1); }
+  refresh():      void { this.refreshTrigger.next(); }
   sortByColumn(column: string): void {
     if (this.sortBySubject.value === column) this.sortDirectionSubject.next(this.sortDirectionSubject.value === 'ASC' ? 'DESC' : 'ASC');
     else { this.sortBySubject.next(column); this.sortDirectionSubject.next('DESC'); }

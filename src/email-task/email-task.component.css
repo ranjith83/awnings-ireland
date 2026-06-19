@@ -112,6 +112,34 @@
   background: #d32f2f;
 }
 
+.refresh-btn {
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.refresh-btn--spinning {
+  animation: spin 0.6s linear infinite;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
 .advanced-filters {
   display: flex;
   gap: 10px;

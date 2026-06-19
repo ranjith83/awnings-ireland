@@ -169,6 +169,11 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   emailModalBodyHtml: SafeHtml | null = null;
   isLoadingEmailBody  = false;
 
+  // ── Enquiry HTML viewer ────────────────────────────────────────────────────
+  showEnquiryHtmlModal = false;
+  enquiryHtmlContent:  SafeHtml | null = null;
+  enquiryHtmlTitle:    string = '';
+
   // ── Send-email modal ───────────────────────────────────────────────────────
   showSendModal   = false;
   sendModalTaskId: number | null = null;
@@ -691,6 +696,24 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     }
   }
   closeEmailPreview() { this.showEmailModal = false; this.emailModalTask = null; this.emailModalBodyHtml = null; }
+
+  viewEnquiryHtml(enq: InitialEnquiryDto): void {
+    this.enquiryHtmlTitle   = enq.email || 'Enquiry';
+    this.enquiryHtmlContent = this.sanitizer.bypassSecurityTrustHtml(enq.comments);
+    this.showEnquiryHtmlModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeEnquiryHtmlModal(): void {
+    this.showEnquiryHtmlModal = false;
+    this.enquiryHtmlContent   = null;
+    this.enquiryHtmlTitle     = '';
+    this.cdr.markForCheck();
+  }
+
+  stripHtml(html: string): string {
+    return html.replace(/<[^>]*>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  }
 
   // ── Send-email modal ───────────────────────────────────────────────────────
 
