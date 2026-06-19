@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, OnDestro
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
+import { environment } from '../../app/environments/environment';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Subject, of } from 'rxjs';
 import { takeUntil, finalize, catchError } from 'rxjs/operators';
@@ -164,10 +165,12 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   sigPreview = '';
 
   // ── Email preview modal ────────────────────────────────────────────────────
-  showEmailModal      = false;
-  emailModalTask:     CustomerEmailRow | null = null;
-  emailModalBodyHtml: SafeHtml | null = null;
-  isLoadingEmailBody  = false;
+  showEmailModal       = false;
+  emailModalTask:      CustomerEmailRow | null = null;
+  emailModalBodyHtml:  SafeHtml | null = null;
+  emailModalSafeUrl:   SafeResourceUrl | null = null;
+  private _emailModalBlobUrl: string | null = null;
+  isLoadingEmailBody   = false;
 
   // ── Enquiry HTML viewer ────────────────────────────────────────────────────
   showEnquiryHtmlModal = false;
@@ -677,25 +680,38 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
   // ── Email preview ──────────────────────────────────────────────────────────
 
   openEmailPreview(row: CustomerEmailRow) {
-    this.emailModalTask    = row;
+    this.emailModalTask     = row;
     this.emailModalBodyHtml = null;
-    this.showEmailModal    = true;
+    this.emailModalSafeUrl  = null;
+    this._revokeEmailModalBlob();
+    this.isLoadingEmailBody = true;
+    this.showEmailModal     = true;
+    this.cdr.markForCheck();
 
-    if (row.bodyBlobUrl) {
-      this.isLoadingEmailBody = true;
-      this.http.get(row.bodyBlobUrl, { responseType: 'text' })
-        .pipe(takeUntil(this.destroy$), catchError(() => of(row.emailBody)))
-        .subscribe(html => {
-          this.emailModalBodyHtml = html ? this.sanitizer.bypassSecurityTrustHtml(html) : null;
-          this.isLoadingEmailBody = false;
-          this.cdr.markForCheck();
-        });
-    } else {
-      this.emailModalBodyHtml = row.emailBody ? this.sanitizer.bypassSecurityTrustHtml(row.emailBody) : null;
-      this.isLoadingEmailBody = false;
-    }
+    this.http.get(`${environment.apiUrl}/api/EmailTask/${row.taskId}/body`, { responseType: 'text' })
+      .pipe(takeUntil(this.destroy$), catchError(() => of(row.emailBody ?? '')))
+      .subscribe(html => {
+        if (html) {
+          const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+          this._emailModalBlobUrl = URL.createObjectURL(blob);
+          this.emailModalSafeUrl  = this.sanitizer.bypassSecurityTrustResourceUrl(this._emailModalBlobUrl);
+        }
+        this.isLoadingEmailBody = false;
+        this.cdr.markForCheck();
+      });
   }
-  closeEmailPreview() { this.showEmailModal = false; this.emailModalTask = null; this.emailModalBodyHtml = null; }
+
+  private _revokeEmailModalBlob(): void {
+    if (this._emailModalBlobUrl) { URL.revokeObjectURL(this._emailModalBlobUrl); this._emailModalBlobUrl = null; }
+    this.emailModalSafeUrl = null;
+  }
+
+  closeEmailPreview() {
+    this.showEmailModal     = false;
+    this.emailModalTask     = null;
+    this.emailModalBodyHtml = null;
+    this._revokeEmailModalBlob();
+  }
 
   viewEnquiryHtml(enq: InitialEnquiryDto): void {
     this.enquiryHtmlTitle   = enq.email || 'Enquiry';

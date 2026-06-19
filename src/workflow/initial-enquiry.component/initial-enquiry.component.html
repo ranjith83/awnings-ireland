@@ -531,7 +531,12 @@
       </div>
       <div class="email-body-box">
         <p class="email-body-label">Message</p>
-        <div class="email-body-content email-html-body" [innerHTML]="emailModalBodyHtml || '(No body content)'"></div>
+        <div *ngIf="isLoadingEmailBody" class="email-body-loading">Loading…</div>
+        <iframe *ngIf="!isLoadingEmailBody && emailModalSafeUrl"
+                [src]="emailModalSafeUrl"
+                sandbox="allow-same-origin allow-popups"
+                class="email-body-frame"></iframe>
+        <div *ngIf="!isLoadingEmailBody && !emailModalSafeUrl" class="email-body-content email-html-body">(No body content)</div>
       </div>
     </div>
     <div class="modal-footer">
