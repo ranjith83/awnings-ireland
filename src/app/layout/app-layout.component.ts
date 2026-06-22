@@ -106,10 +106,18 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
 
   markNotifRead(notif: InboxNotification): void {
     this.inboxNotif.markRead(notif.id);
-    if (notif.workflowId) {
-      this.showNotifDropdown = false;
-      this.router.navigate([`/${this.clientConfig.routePrefix}/workflow`],
-        { queryParams: { customerId: notif.entityId } });
+    this.showNotifDropdown = false;
+
+    if (notif.type === 'enquiry_reply_ready' && notif.workflowId) {
+      this.router.navigate(
+        [`/${this.clientConfig.routePrefix}/workflow/initial-enquiry`],
+        { queryParams: { workflowId: notif.workflowId, customerId: notif.entityId ?? '' } }
+      );
+    } else if (notif.workflowId) {
+      this.router.navigate(
+        [`/${this.clientConfig.routePrefix}/workflow`],
+        { queryParams: { customerId: notif.entityId } }
+      );
     }
   }
 

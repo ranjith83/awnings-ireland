@@ -515,9 +515,12 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
             status: t.status, taskType: t.taskType ?? '', priority: t.priority,
             emailBody: t.emailBody ?? '', bodyBlobUrl: t.bodyBlobUrl ?? null, category: t.category ?? ''
           }));
-          if (!this.newEmail && tasks.length) {
+          if (tasks.length) {
             const first = tasks.find(t => t.fromEmail);
-            if (first) { this.newEmail = first.fromEmail ?? ''; this.customerEmail = first.fromEmail ?? ''; }
+            if (first) {
+              if (!this.newEmail)      { this.newEmail = first.fromEmail ?? ''; this.customerEmail = first.fromEmail ?? ''; }
+              if (!this.customerName)  { this.customerName = first.fromName ?? ''; }
+            }
           }
           this.cdr.markForCheck();
         },
