@@ -29,7 +29,7 @@
         </svg>
         <h3 class="section-title">Customer Emails</h3>
         <span class="badge-count">{{ customerEmails.length }}</span>
-        <button *ngIf="customerEmails.length" class="auto-reply-review-btn"
+        <button *ngIf="customerEmails.length || latestEnquiry?.enquiryId" class="auto-reply-review-btn"
                 (click)="loadAutoReplyIntoComments()"
                 [disabled]="generatingAutoReply !== null"
                 title="Generate auto-reply and load into reply form">

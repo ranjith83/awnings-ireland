@@ -497,6 +497,13 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
             const first = data.find(e => e.email);
             if (first) { this.newEmail = first.email; this.customerEmail = first.email; }
           }
+          // If a saved draft reply exists, pre-load it so the user sees it immediately
+          // instead of the generic default template. The autoReplyLoaded flag prevents
+          // applyTemplateToEnquiryForm() from overwriting it.
+          if (!this.autoReplyLoaded && data.length && data[0].autoReplyContent) {
+            this.newComments     = data[0].autoReplyContent;
+            this.autoReplyLoaded = true;
+          }
           this.cdr.markForCheck();
         },
         error: () => this.showError('Failed to load initial enquiries.')
