@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -32,7 +32,7 @@ export class InboxNotificationService implements OnDestroy {
   /** Emits only when a brand-new notification arrives via SignalR push. */
   readonly newNotification$ = this._newNotif.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private ngZone: NgZone) {}
 
   /** Connect to SignalR hub. Call once from AppLayoutComponent after login. */
   startConnection(token: string): void {
@@ -47,17 +47,21 @@ export class InboxNotificationService implements OnDestroy {
       .build();
 
     // Push: backend sends updated count + notification
+    // NgZone.run ensures Angular's change detection fires after each SignalR push
+    // (SignalR callbacks execute outside Angular's zone by default)
     this.hubConnection.on('ReceiveNotification', (payload: { count: number; notification: InboxNotification }) => {
-      this._count.next(payload.count);
-      if (payload.notification) {
-        this._items.next([payload.notification, ...this._items.value]);
-        this._newNotif.next(payload.notification);
-      }
+      this.ngZone.run(() => {
+        this._count.next(payload.count);
+        if (payload.notification) {
+          this._items.next([payload.notification, ...this._items.value]);
+          this._newNotif.next(payload.notification);
+        }
+      });
     });
 
     // Push: backend sends a count-only update
     this.hubConnection.on('UpdateCount', (count: number) => {
-      this._count.next(count);
+      this.ngZone.run(() => this._count.next(count));
     });
 
     this.hubConnection
