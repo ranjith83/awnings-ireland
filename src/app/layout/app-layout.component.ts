@@ -47,6 +47,10 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   showNotifDropdown = false;
   notifItems: InboxNotification[] = [];
 
+  // ── Notification toast alert ───────────────────────────────────────
+  toastNotif: InboxNotification | null = null;
+  private toastTimer: any = null;
+
   @HostListener('document:click', ['$event'])
   onDocClick(e: MouseEvent) {
     const el = e.target as HTMLElement;
@@ -91,6 +95,9 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
       this.notifItems = items;
       this.cdr.markForCheck();
     });
+    this.inboxNotif.newNotification$.pipe(takeUntil(this.destroy$)).subscribe(notif => {
+      this._showToast(notif);
+    });
   }
 
   ngOnDestroy(): void {
@@ -123,6 +130,25 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
 
   markAllNotifRead(): void {
     this.inboxNotif.markAllRead();
+  }
+
+  private _showToast(notif: InboxNotification): void {
+    if (this.toastTimer) clearTimeout(this.toastTimer);
+    this.toastNotif = notif;
+    this.cdr.markForCheck();
+    this.toastTimer = setTimeout(() => { this.dismissToast(); }, 6000);
+  }
+
+  dismissToast(): void {
+    this.toastNotif = null;
+    if (this.toastTimer) { clearTimeout(this.toastTimer); this.toastTimer = null; }
+    this.cdr.markForCheck();
+  }
+
+  openToastNotif(): void {
+    if (!this.toastNotif) return;
+    this.markNotifRead(this.toastNotif);
+    this.dismissToast();
   }
 
   loadCurrentUser(): void {

@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '../app/environments/environment';
@@ -23,11 +23,14 @@ export class InboxNotificationService implements OnDestroy {
   private apiUrl = `${environment.apiUrl}/api/notification`;
   private hubConnection?: signalR.HubConnection;
 
-  private _count = new BehaviorSubject<number>(0);
-  private _items = new BehaviorSubject<InboxNotification[]>([]);
+  private _count  = new BehaviorSubject<number>(0);
+  private _items  = new BehaviorSubject<InboxNotification[]>([]);
+  private _newNotif = new Subject<InboxNotification>();
 
-  readonly count$ = this._count.asObservable();
-  readonly items$ = this._items.asObservable();
+  readonly count$           = this._count.asObservable();
+  readonly items$           = this._items.asObservable();
+  /** Emits only when a brand-new notification arrives via SignalR push. */
+  readonly newNotification$ = this._newNotif.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -48,6 +51,7 @@ export class InboxNotificationService implements OnDestroy {
       this._count.next(payload.count);
       if (payload.notification) {
         this._items.next([payload.notification, ...this._items.value]);
+        this._newNotif.next(payload.notification);
       }
     });
 
