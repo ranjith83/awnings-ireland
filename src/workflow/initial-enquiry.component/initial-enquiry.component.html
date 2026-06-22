@@ -104,14 +104,22 @@
       <div class="ie-two-col" style="margin-top:14px;">
         <!-- Comments -->
         <div class="form-group ie-col">
-          <label class="form-label">
-            Comments <span class="required">*</span>
-            <span *ngIf="autoReplyLoaded" class="auto-reply-loaded-badge">
-              <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" width="10" height="10"><line x1="11" y1="1" x2="4" y2="8"/><polygon points="11,1 7.5,11 4,8 1,5"/></svg>
-              Auto-reply draft loaded
-            </span>
-          </label>
-          <textarea class="form-input form-textarea ie-textarea-fill" [(ngModel)]="newComments"
+          <div class="form-label-row">
+            <label class="form-label">
+              Comments <span class="required">*</span>
+              <span *ngIf="autoReplyLoaded" class="auto-reply-loaded-badge">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" width="10" height="10"><line x1="11" y1="1" x2="4" y2="8"/><polygon points="11,1 7.5,11 4,8 1,5"/></svg>
+                Auto-reply draft loaded
+              </span>
+            </label>
+            <div *ngIf="autoReplyLoaded" class="preview-toggle-btns">
+              <button type="button" class="preview-toggle-btn" [class.active]="showCommentsPreview"  (click)="showCommentsPreview = true">👁 Preview</button>
+              <button type="button" class="preview-toggle-btn" [class.active]="!showCommentsPreview" (click)="showCommentsPreview = false">✏ Edit</button>
+            </div>
+          </div>
+          <div *ngIf="autoReplyLoaded && showCommentsPreview" class="auto-reply-html-preview" [innerHTML]="newCommentsHtml"></div>
+          <textarea *ngIf="!autoReplyLoaded || !showCommentsPreview"
+            class="form-input form-textarea ie-textarea-fill" [(ngModel)]="newComments"
             placeholder="Enter enquiry details…" rows="7" maxlength="2000"
             [disabled]="(isSaving$ | async) === true"></textarea>
           <span class="char-hint">{{ newComments.length }}/2000</span>

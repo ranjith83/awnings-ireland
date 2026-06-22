@@ -117,7 +117,9 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   isSavingSig$        = new BehaviorSubject<boolean>(false);
   sendingDraftId:      number | null = null;
   generatingAutoReply: number | null = null;
-  autoReplyLoaded      = false;
+  autoReplyLoaded       = false;
+  newCommentsHtml:      SafeHtml | null = null;
+  showCommentsPreview   = false;
   
   
 
@@ -584,8 +586,10 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .subscribe({
         next: (saved) => {
           this.enquiries = [saved, ...this.enquiries];
-          this.newComments     = '';
-          this.autoReplyLoaded = false;
+          this.newComments        = '';
+          this.autoReplyLoaded    = false;
+          this.newCommentsHtml    = null;
+          this.showCommentsPreview = false;
           const def = this.defaultSignature;
           this.newSignature     = def?.signatureText  ?? '';
           this.newSigFontFamily = def?.fontFamily     ?? 'georgia';
@@ -879,8 +883,10 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
     // Already have content cached — just load it
     if (enq.autoReplyContent) {
-      this.newComments     = enq.autoReplyContent;
-      this.autoReplyLoaded = true;
+      this.newComments       = enq.autoReplyContent;
+      this.autoReplyLoaded   = true;
+      this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(enq.autoReplyContent);
+      this.showCommentsPreview = true;
       this.cdr.markForCheck();
       setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
       return;
@@ -893,10 +899,12 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .pipe(takeUntil(this.destroy$), finalize(() => { this.generatingAutoReply = null; this.cdr.markForCheck(); }))
       .subscribe({
         next: (result) => {
-          enq.autoReplyDraftId = result.draftId;
-          enq.autoReplyContent = result.content;
-          this.newComments     = result.content;
-          this.autoReplyLoaded = true;
+          enq.autoReplyDraftId   = result.draftId;
+          enq.autoReplyContent   = result.content;
+          this.newComments       = result.content;
+          this.autoReplyLoaded   = true;
+          this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(result.content);
+          this.showCommentsPreview = true;
           this.cdr.markForCheck();
           setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
         },

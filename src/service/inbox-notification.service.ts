@@ -78,18 +78,33 @@ export class InboxNotificationService implements OnDestroy {
     this.hubConnection = undefined;
   }
 
-  /** Fetch current count once on connect (not on a timer). */
+  /** Fetch current count once on connect — handles both `number` and `{ count }` responses, falls back to item list. */
   private loadInitialCount(): void {
-    this.http.get<{ count: number }>(`${this.apiUrl}/count`)
-      .pipe(catchError(() => of({ count: 0 })))
-      .subscribe(res => this._count.next(res.count));
+    this.http.get(`${this.apiUrl}/count`)
+      .pipe(catchError(() => of(null)))
+      .subscribe((res: any) => {
+        if (res !== null && res !== undefined) {
+          const n = typeof res === 'number' ? res : (res?.count ?? res?.unreadCount ?? res?.total ?? null);
+          if (n !== null) { this._count.next(Number(n)); return; }
+        }
+        // Fallback: load items and derive count from the list
+        this.http.get<InboxNotification[]>(this.apiUrl)
+          .pipe(catchError(() => of([])))
+          .subscribe(items => {
+            this._items.next(items);
+            this._count.next(items.length);
+          });
+      });
   }
 
-  /** Load full list for the dropdown. */
+  /** Load full list for the dropdown — also refreshes the unread count. */
   loadItems(): void {
     this.http.get<InboxNotification[]>(this.apiUrl)
       .pipe(catchError(() => of([])))
-      .subscribe(items => this._items.next(items));
+      .subscribe(items => {
+        this._items.next(items);
+        this._count.next(items.length);
+      });
   }
 
   markRead(id: number): void {
