@@ -745,6 +745,10 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     return html.replace(/<[^>]*>/g, ' ').replace(/\s{2,}/g, ' ').trim();
   }
 
+  safeHtml(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
   // ── Send-email modal ───────────────────────────────────────────────────────
 
   openSendModal(row: CustomerEmailRow) {

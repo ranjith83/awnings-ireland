@@ -94,7 +94,10 @@
 .col-date      { white-space:nowrap; color:#6b7280; font-size:13px; }
 .col-actions   { text-align:center; white-space:nowrap; }
 .col-index     { width:36px; color:#9ca3af; font-size:12px; text-align:center; }
-.col-comments  { max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.col-comments  { max-width:300px; overflow:hidden; }
+.col-comments p, .col-comments div, .col-comments body { margin:0; padding:0; }
+.col-comments * { max-width:100%; font-size:13px; line-height:1.4; }
+.col-comments > * { display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .col-email-small { color:#6b7280; font-size:13px; min-width:140px; }
 .col-user      { color:#6b7280; font-size:13px; white-space:nowrap; }
 

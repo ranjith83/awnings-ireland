@@ -263,7 +263,7 @@
           <tr>
             <td class="col-index">{{ i + 1 }}</td>
             <td class="col-email-small">{{ enq.email }}</td>
-            <td class="col-comments" [title]="stripHtml(enq.comments)">{{ stripHtml(enq.comments) | slice:0:120 }}{{ enq.comments.length > 120 ? '…' : '' }}</td>
+            <td class="col-comments" [title]="stripHtml(enq.comments)" [innerHTML]="safeHtml(enq.comments)"></td>
             <td class="col-attachments">
               <ng-container *ngIf="getEnquiryAttachments(enq) as atts">
                 <span class="ie-no-attach" *ngIf="!atts.length">—</span>
