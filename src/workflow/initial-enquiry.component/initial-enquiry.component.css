@@ -94,10 +94,16 @@
 .col-date      { white-space:nowrap; color:#6b7280; font-size:13px; }
 .col-actions   { text-align:center; white-space:nowrap; }
 .col-index     { width:36px; color:#9ca3af; font-size:12px; text-align:center; }
-.col-comments  { max-width:300px; overflow:hidden; }
-.col-comments p, .col-comments div, .col-comments body { margin:0; padding:0; }
-.col-comments * { max-width:100%; font-size:13px; line-height:1.4; }
-.col-comments > * { display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.col-comments { max-width:300px; }
+.col-comments .comment-html-cell {
+  max-height: 80px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #374151;
+}
+.col-comments .comment-html-cell p  { margin: 0 0 4px; }
+.col-comments .comment-html-cell *  { font-size: 12px !important; font-family: inherit !important; max-width: 100%; }
 .col-email-small { color:#6b7280; font-size:13px; min-width:140px; }
 .col-user      { color:#6b7280; font-size:13px; white-space:nowrap; }
 
@@ -743,6 +749,34 @@
   margin-left: 10px;
 }
 .auto-reply-review-btn:hover { background: #0284c7; }
+
+/* ── Quill rich-text editor ────────────────────────────────────── */
+:host ::ng-deep .ie-quill-editor {
+  display: block;
+  width: 100%;
+}
+:host ::ng-deep .ie-quill-editor .ql-toolbar {
+  border: 1px solid #d1d5db;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: #f9fafb;
+  padding: 6px 8px;
+}
+:host ::ng-deep .ie-quill-editor .ql-container {
+  border: 1px solid #d1d5db;
+  border-radius: 0 0 6px 6px;
+  font-family: inherit;
+  font-size: 13px;
+  min-height: 160px;
+}
+:host ::ng-deep .ie-quill-editor .ql-editor {
+  min-height: 160px;
+  line-height: 1.6;
+  color: #111827;
+  padding: 10px 12px;
+}
+:host ::ng-deep .ie-quill-editor .ql-editor p { margin: 0 0 6px; }
+:host ::ng-deep .ie-quill-editor.ql-disabled .ql-toolbar { opacity: 0.5; pointer-events: none; }
 
 .auto-reply-loaded-badge {
   display: inline-flex; align-items: center; gap: 4px;

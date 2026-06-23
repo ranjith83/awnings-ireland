@@ -91,10 +91,11 @@ const LAYOUT_OPTIONS = [
 import { NotificationService } from '../../service/notification.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { QuickCalculatorComponent } from '../../app/quick-calculator.component/quick-calculator.component';
+import { QuillModule } from 'ngx-quill';
 @Component({
   selector: 'app-initial-enquiry',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuickCalculatorComponent],
+  imports: [CommonModule, FormsModule, QuickCalculatorComponent, QuillModule],
   templateUrl: './initial-enquiry.component.html',
   styleUrl: './initial-enquiry.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -131,8 +132,40 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
   // ── Exposed constants for template ────────────────────────────────────────
   readonly greetingPresets  = GREETING_PRESETS;
   readonly separatorOptions = SEPARATOR_OPTIONS;
+
+  readonly quillModules = {
+    toolbar: [
+      [{ font: [] }, { size: ['small', false, 'large', 'huge'] }],
+      ['bold', 'italic', 'underline'],
+      [{ color: [] }, { background: [] }],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['clean']
+    ]
+  };
   readonly layoutOptions    = LAYOUT_OPTIONS;
   readonly fontOptions      = FONT_OPTIONS;   // ← NEW
+
+  // ── Quill editor instance (add-form) — needed for programmatic content updates ──
+  private _quillEditor: any = null;
+
+  onQuillEditorCreated(editor: any): void {
+    this._quillEditor = editor;
+    // If content was already loaded before the editor initialised, apply it now.
+    // We use root.innerHTML directly so the browser parses <p> as block elements
+    // instead of going through Quill's clipboard Delta conversion which can flatten structure.
+    if (this.newComments) {
+      editor.root.innerHTML = this.newComments;
+    }
+  }
+
+  /** Sets newComments AND forces Quill to re-render with correct paragraph structure. */
+  private setNewCommentsHtml(html: string): void {
+    this.newComments = html;
+    if (this._quillEditor) {
+      this._quillEditor.root.innerHTML = html;
+    }
+    this.cdr.markForCheck();
+  }
 
   // ── Add form ───────────────────────────────────────────────────────────────
   newEmail          = '';
@@ -503,8 +536,8 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
           // instead of the generic default template. The autoReplyLoaded flag prevents
           // applyTemplateToEnquiryForm() from overwriting it.
           if (!this.autoReplyLoaded && data.length && data[0].autoReplyContent) {
-            this.newComments     = data[0].autoReplyContent;
             this.autoReplyLoaded = true;
+            this.setNewCommentsHtml(this.extractBodyHtml(data[0].autoReplyContent));
           }
           this.cdr.markForCheck();
         },
@@ -746,7 +779,13 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
   }
 
   safeHtml(html: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    return this.sanitizer.bypassSecurityTrustHtml(this.extractBodyHtml(html));
+  }
+
+  /** Strips <html>/<body> wrapper so Quill and [innerHTML] receive a clean HTML fragment. */
+  extractBodyHtml(html: string): string {
+    const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    return m ? m[1].trim() : html;
   }
 
   // ── Send-email modal ───────────────────────────────────────────────────────
@@ -887,11 +926,11 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
     // Already have content cached — just load it
     if (enq.autoReplyContent) {
-      this.newComments       = enq.autoReplyContent;
+      const html             = this.extractBodyHtml(enq.autoReplyContent);
       this.autoReplyLoaded   = true;
-      this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(enq.autoReplyContent);
+      this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(html);
       this.showCommentsPreview = true;
-      this.cdr.markForCheck();
+      this.setNewCommentsHtml(html);
       setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
       return;
     }
@@ -903,13 +942,13 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .pipe(takeUntil(this.destroy$), finalize(() => { this.generatingAutoReply = null; this.cdr.markForCheck(); }))
       .subscribe({
         next: (result) => {
+          const html             = this.extractBodyHtml(result.content);
           enq.autoReplyDraftId   = result.draftId;
           enq.autoReplyContent   = result.content;
-          this.newComments       = result.content;
           this.autoReplyLoaded   = true;
-          this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(result.content);
+          this.newCommentsHtml   = this.sanitizer.bypassSecurityTrustHtml(html);
           this.showCommentsPreview = true;
-          this.cdr.markForCheck();
+          this.setNewCommentsHtml(html);
           setTimeout(() => document.querySelector('.add-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
         },
         error: () => this.showError('Failed to generate auto-reply. Please try again.')

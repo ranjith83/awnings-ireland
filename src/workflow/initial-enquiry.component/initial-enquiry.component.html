@@ -112,17 +112,18 @@
                 Auto-reply draft loaded
               </span>
             </label>
-            <div *ngIf="autoReplyLoaded" class="preview-toggle-btns">
-              <button type="button" class="preview-toggle-btn" [class.active]="showCommentsPreview"  (click)="showCommentsPreview = true">👁 Preview</button>
-              <button type="button" class="preview-toggle-btn" [class.active]="!showCommentsPreview" (click)="showCommentsPreview = false">✏ Edit</button>
             </div>
-          </div>
-          <div *ngIf="autoReplyLoaded && showCommentsPreview" class="auto-reply-html-preview" [innerHTML]="newCommentsHtml"></div>
-          <textarea *ngIf="!autoReplyLoaded || !showCommentsPreview"
-            class="form-input form-textarea ie-textarea-fill" [(ngModel)]="newComments"
-            placeholder="Enter enquiry details…" rows="7" maxlength="2000"
-            [disabled]="(isSaving$ | async) === true"></textarea>
-          <span class="char-hint">{{ newComments.length }}/2000</span>
+          <quill-editor
+            [(ngModel)]="newComments"
+            [modules]="quillModules"
+            theme="snow"
+            format="html"
+            [sanitize]="false"
+            placeholder="Enter enquiry details…"
+            [readOnly]="(isSaving$ | async) === true"
+            (onEditorCreated)="onQuillEditorCreated($event)"
+            class="ie-quill-editor">
+          </quill-editor>
         </div>
 
         <!-- Signature -->
@@ -263,7 +264,9 @@
           <tr>
             <td class="col-index">{{ i + 1 }}</td>
             <td class="col-email-small">{{ enq.email }}</td>
-            <td class="col-comments" [title]="stripHtml(enq.comments)" [innerHTML]="safeHtml(enq.comments)"></td>
+            <td class="col-comments" [title]="stripHtml(enq.comments)">
+              <div class="comment-html-cell" [innerHTML]="safeHtml(enq.comments)"></div>
+            </td>
             <td class="col-attachments">
               <ng-container *ngIf="getEnquiryAttachments(enq) as atts">
                 <span class="ie-no-attach" *ngIf="!atts.length">—</span>
@@ -649,7 +652,13 @@
         <!-- Comments -->
         <div class="modal-field ie-col">
           <label class="modal-label">Comments <span class="required">*</span></label>
-          <textarea class="modal-input modal-textarea ie-textarea-fill" [(ngModel)]="editComments" rows="7" maxlength="2000" [disabled]="(isSaving$ | async) === true"></textarea>
+          <quill-editor
+            [(ngModel)]="editComments"
+            [modules]="quillModules"
+            placeholder="Enter enquiry details…"
+            [readOnly]="(isSaving$ | async) === true"
+            class="ie-quill-editor">
+          </quill-editor>
           <span class="char-hint">{{ editComments.length }}/2000</span>
         </div>
         <!-- Signature — font applied dynamically -->
