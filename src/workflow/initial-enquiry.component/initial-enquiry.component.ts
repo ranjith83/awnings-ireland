@@ -251,6 +251,16 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
       this.fromFollowUp  = params['fromFollowUp']  ? +params['fromFollowUp']  : null;
       this.fromTask      = params['fromTask']      ? +params['fromTask']      : null;
       this.newEmail      = this.customerEmail;
+
+      // Reset draft state so new workflow content always loads into the editor
+      this.autoReplyLoaded     = false;
+      this.newComments         = '';
+      this.newCommentsHtml     = null;
+      this.showCommentsPreview = false;
+      if (this._quillEditor) {
+        this._quillEditor.root.innerHTML = '';
+      }
+
       this.loadAll();
       this.cdr.markForCheck();
     });
