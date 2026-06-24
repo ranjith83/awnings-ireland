@@ -588,9 +588,11 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     if (!this.workflowId) { this.showError('No workflow selected.'); return; }
     if (!this.newComments.trim()) { this.showError('Please enter enquiry comments.'); return; }
 
+    // Capture pending task BEFORE the async save so it stays stable
+    const pendingTaskId = this.latestEnquiry?.pendingTaskId ?? null;
+
     // Build site visit PDF attachment if requested.
-    // Reuse already-generated base64 from the button click, or generate fresh.
-    const shouldAttachSiteVisit = this.includeSiteVisitInEmail && this.sendEmailOnAdd;
+    const shouldAttachSiteVisit = this.includeSiteVisitInEmail && (this.sendEmailOnAdd || !!pendingTaskId);
     if (shouldAttachSiteVisit && !this.siteVisitPdfBase64) {
       try {
         this.siteVisitPdfBase64 = await this.pdfGenerationService.generateQuotePdfAsBase64(
@@ -630,7 +632,8 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSaving$.next(false)))
       .subscribe({
         next: (saved) => {
-          this.enquiries = [saved, ...this.enquiries];
+          // Replace synthetic pending entry with the real saved record
+          this.enquiries = [saved, ...this.enquiries.filter(e => e.enquiryId != null)];
           this.newComments        = '';
           this.autoReplyLoaded    = false;
           this.newCommentsHtml    = null;
@@ -644,9 +647,26 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
           this.cdr.markForCheck();
           this.showSuccess('Enquiry added successfully!');
           this.workflowStateService.notifyStepCompleted('initial-enquiry');
-          if (shouldSend && emailToSend)
+
+          if (pendingTaskId) {
+            // Import-leads path: send via the linked task so NeedsReply is cleared and
+            // the notification badge is removed.
+            const body = this.buildEmailBody(commentsToSend, signatureToSend);
+            this.emailTaskService.sendTaskEmail(pendingTaskId, {
+              toEmail: emailToSend,
+              subject: `Re: Initial Enquiry – ${this.customerName}`,
+              body,
+              attachments: attachsToSend.length
+                ? attachsToSend.map(a => ({ fileName: a.fileName, base64Content: a.base64Content, contentType: a.contentType }))
+                : undefined
+            }).pipe(takeUntil(this.destroy$)).subscribe({
+              next: () => { this.inboxNotif.loadItems(); this.showSuccess('Reply email sent to customer!'); },
+              error: () => this.showError('Enquiry saved, but the reply email could not be sent.')
+            });
+          } else if (shouldSend && emailToSend) {
             this.dispatchDirectEmail(emailToSend, `Re: Initial Enquiry – ${this.customerName}`,
               this.buildEmailBody(commentsToSend, signatureToSend), attachsToSend);
+          }
         },
         error: () => this.showError('Failed to add enquiry.')
       });
@@ -935,6 +955,11 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   get latestEnquiry(): InitialEnquiryDto | null {
     return this.enquiries[0] ?? null;
+  }
+
+  /** Only real saved enquiries (email was sent); excludes the synthetic pending-task entry. */
+  get sentEnquiries(): InitialEnquiryDto[] {
+    return this.enquiries.filter(e => e.enquiryId != null);
   }
 
   loadAutoReplyIntoComments(): void {

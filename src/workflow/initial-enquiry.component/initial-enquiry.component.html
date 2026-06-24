@@ -29,20 +29,6 @@
         </svg>
         <h3 class="section-title">Customer Emails</h3>
         <span class="badge-count">{{ customerEmails.length }}</span>
-        <button *ngIf="customerEmails.length || latestEnquiry?.enquiryId || latestEnquiry?.pendingTaskId" class="auto-reply-review-btn"
-                (click)="loadAutoReplyIntoComments()"
-                [disabled]="generatingAutoReply !== null"
-                title="Generate auto-reply and load into reply form">
-          <ng-container *ngIf="generatingAutoReply === null">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">
-              <line x1="15" y1="1" x2="6" y2="10"/><polygon points="15,1 10,15 6,10 1,6"/>
-            </svg>
-            Review &amp; Send
-          </ng-container>
-          <ng-container *ngIf="generatingAutoReply !== null">
-            <span class="spinner-inline"></span> Generating…
-          </ng-container>
-        </button>
       </div>
       <p class="section-subtitle">Emails linked to <strong>{{ customerName || 'this customer' }}</strong></p>
     </div>
@@ -203,10 +189,13 @@
       </div>
 
       <div class="form-footer">
-        <label class="checkbox-label">
+        <label class="checkbox-label" *ngIf="!latestEnquiry?.pendingTaskId">
           <input type="checkbox" [(ngModel)]="sendEmailOnAdd" [disabled]="!newEmail.trim() || (isSaving$ | async) === true" />
           <span>Send email notification to customer on save</span>
         </label>
+        <span class="checkbox-label" *ngIf="latestEnquiry?.pendingTaskId" style="font-size:0.82rem;color:#555;">
+          ✉ Reply email will be sent automatically on save
+        </span>
 
         <div class="form-footer-actions">
           <label class="checkbox-label checkbox-label--sm">
@@ -241,7 +230,7 @@
   <!-- ═══════════════════════════════════════════════════════════════
        SECTION 3 — ENQUIRY HISTORY
   ═══════════════════════════════════════════════════════════════════ -->
-  <div class="section-card">
+  <div class="section-card" *ngIf="sentEnquiries.length || (isLoadingEnquiries$ | async)">
     <div class="section-header">
       <div class="section-title-row">
         <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -250,17 +239,17 @@
           <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
         </svg>
         <h3 class="section-title">Enquiry History</h3>
-        <span class="badge-count">{{ enquiries.length }}</span>
+        <span class="badge-count">{{ sentEnquiries.length }}</span>
       </div>
     </div>
     <div class="loading-row" *ngIf="isLoadingEnquiries$ | async"><div class="spinner"></div><span>Loading enquiries…</span></div>
     <div class="table-wrapper" *ngIf="(isLoadingEnquiries$ | async) === false">
-      <table class="data-table" *ngIf="enquiries.length; else noEnquiries">
+      <table class="data-table" *ngIf="sentEnquiries.length; else noEnquiries">
         <thead>
           <tr><th>#</th><th>EMAIL</th><th>COMMENTS</th><th>ATTACHMENTS</th><th>DATE ADDED</th><th>ADDED BY</th><th class="col-actions">ACTIONS</th></tr>
         </thead>
         <tbody>
-          <ng-container *ngFor="let enq of enquiries; let i = index; trackBy: trackByEnquiry">
+          <ng-container *ngFor="let enq of sentEnquiries; let i = index; trackBy: trackByEnquiry">
           <tr>
             <td class="col-index">{{ i + 1 }}</td>
             <td class="col-email-small">{{ enq.email }}</td>
