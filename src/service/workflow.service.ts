@@ -105,6 +105,11 @@ export interface InitialEnquiryDto {
   // ── Read-only audit fields (returned by GET, ignored by POST/PUT) ──
   dateCreated?: Date | string | null;
   createdBy?: string | null;
+
+  /** Set when no real InitialEnquiry exists yet (import-leads path). Points to the
+   *  task whose DraftReply is surfaced as autoReplyContent. Use sendTaskEmail
+   *  instead of sendAutoReplyDraft when this is present. */
+  pendingTaskId?: number | null;
 }
 
 // Product addon interfaces

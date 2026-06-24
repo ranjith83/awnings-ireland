@@ -804,7 +804,12 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   openSendModal(row: CustomerEmailRow) {
     this.sendModalTaskId = row.taskId; this.sendToEmail = row.fromEmail;
-    this.sendSubject = `Re: ${row.subject}`; this.sendBody = '';
+    this.sendSubject = `Re: ${row.subject}`;
+    // Pre-fill with Claude draft when this is the pending import-leads task
+    const pending = this.latestEnquiry;
+    this.sendBody = (pending?.pendingTaskId === row.taskId && pending?.autoReplyContent)
+      ? pending.autoReplyContent
+      : '';
     this.showSendModal = true; this.notificationService.error('');
   }
 
@@ -934,9 +939,10 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   loadAutoReplyIntoComments(): void {
     const enq = this.latestEnquiry;
-    if (!enq?.enquiryId) return;
+    // Allow pending-task entries (no enquiryId yet) as well as real enquiries
+    if (!enq?.enquiryId && !enq?.pendingTaskId) return;
 
-    // Already have content cached — just load it
+    // Already have content cached — just load it (covers both real and pending-task entries)
     if (enq.autoReplyContent) {
       const html             = this.extractBodyHtml(enq.autoReplyContent);
       this.autoReplyLoaded   = true;
@@ -947,10 +953,13 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
       return;
     }
 
-    // Call the API to generate
-    this.generatingAutoReply = enq.enquiryId;
+    // Pending-task path: content should already be set from the API — nothing more to do
+    if (enq.pendingTaskId) return;
+
+    // Call the API to generate (real enquiry without cached content)
+    this.generatingAutoReply = enq.enquiryId ?? null;
     this.cdr.markForCheck();
-    this.workflowService.generateAutoReply(enq.enquiryId)
+    this.workflowService.generateAutoReply(enq.enquiryId!)
       .pipe(takeUntil(this.destroy$), finalize(() => { this.generatingAutoReply = null; this.cdr.markForCheck(); }))
       .subscribe({
         next: (result) => {
@@ -969,7 +978,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
 
   AMD(enq: InitialEnquiryDto): void {
     if (!enq.enquiryId || this.generatingAutoReply !== null) return;
-    this.generatingAutoReply = enq.enquiryId;
+    this.generatingAutoReply = enq.enquiryId ?? null;
     this.cdr.markForCheck();
 
     this.workflowService.generateAutoReply(enq.enquiryId).subscribe({
