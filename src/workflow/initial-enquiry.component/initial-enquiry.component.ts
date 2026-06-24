@@ -12,6 +12,7 @@ import { WorkflowService, InitialEnquiryDto } from '../../service/workflow.servi
 import { EmailTaskService, EmailTask, SendTaskEmailPayload, SendDirectEmailPayload, TaskSourceType } from '../../service/email-task.service';
 import { SignatureService, UserSignatureDto } from '../../service/signature.service';
 import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
+import { InboxNotificationService } from '../../service/inbox-notification.service';
 
 export interface CustomerEmailRow {
   taskId: number; subject: string; fromEmail: string; fromName: string;
@@ -239,7 +240,8 @@ export class InitialEnquiryComponent implements OnInit, OnDestroy {
     private workflowStateService: WorkflowStateService,
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
-    private pdfGenerationService: PdfGenerationService) {}
+    private pdfGenerationService: PdfGenerationService,
+    private inboxNotif: InboxNotificationService) {}
 
   ngOnInit() {
     this.loadUserSignatures();
@@ -887,7 +889,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
     this.emailTaskService.sendTaskEmail(this.sendModalTaskId, payload)
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({
-        next: () => { this.showSuccess('Email sent successfully!'); this.closeSendModal(); },
+        next: () => { this.inboxNotif.loadItems(); this.showSuccess('Email sent successfully!'); this.closeSendModal(); },
         error: () => this.showError('Failed to send email.')
       });
   }
@@ -996,6 +998,7 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
         enq.autoReplyDraftId = null;
         enq.autoReplyContent = null;
         this.sendingDraftId = null;
+        this.inboxNotif.loadItems();
         this.cdr.markForCheck();
         this.showSuccess('Auto-reply sent successfully!');
       },

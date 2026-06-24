@@ -112,7 +112,6 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   }
 
   markNotifRead(notif: InboxNotification): void {
-    this.inboxNotif.markRead(notif.id);
     this.showNotifDropdown = false;
 
     if (notif.type === 'enquiry_reply_ready' && notif.workflowId) {
@@ -126,10 +125,6 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
         { queryParams: { customerId: notif.entityId } }
       );
     }
-  }
-
-  markAllNotifRead(): void {
-    this.inboxNotif.markAllRead();
   }
 
   private _showToast(notif: InboxNotification): void {

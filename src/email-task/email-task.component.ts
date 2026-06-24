@@ -12,6 +12,7 @@ import { Observable, BehaviorSubject, combineLatest, of, Subject, forkJoin, last
 import { map, switchMap, catchError, shareReplay, take, filter, takeUntil, tap } from 'rxjs/operators';
 import { Router, NavigationEnd } from '@angular/router';
 import { NavService } from '../service/nav.service';
+import { InboxNotificationService } from '../service/inbox-notification.service';
 
 export interface EmailAttachment {
   attachmentId:   number;
@@ -301,6 +302,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     private http:             HttpClient,
     private sanitizer:        DomSanitizer,
     private nav:              NavService,
+    private inboxNotif:       InboxNotificationService,
     @Inject(PLATFORM_ID) platformId: Object
   ) { this.isBrowser = isPlatformBrowser(platformId); }
 
@@ -636,7 +638,7 @@ export class TaskComponent implements OnInit, OnDestroy {
       subject: this.sendEmailSubject, body: this.sendEmailBody,
       originalEmailGraphId: (this.selectedTask as any).emailGraphId ?? null
     }).subscribe({
-      next:  () => { this.isSendingEmail = false; this.closeEmailViewer(); this.refreshTrigger.next(); this.showToast('success', 'Email sent successfully!'); },
+      next:  () => { this.isSendingEmail = false; this.inboxNotif.loadItems(); this.closeEmailViewer(); this.refreshTrigger.next(); this.showToast('success', 'Email sent successfully!'); },
       error: (err) => { this.isSendingEmail = false; this.sendEmailError = err?.error?.error ?? 'Failed to send email.'; this.showToast('error', this.sendEmailError); }
     });
   }

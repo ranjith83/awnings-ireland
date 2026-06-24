@@ -73,9 +73,6 @@
           <div class="notif-dropdown" *ngIf="showNotifDropdown">
             <div class="notif-dropdown-header">
               <span class="notif-dropdown-title">Notifications</span>
-              <button class="notif-mark-all" (click)="markAllNotifRead()" *ngIf="notifItems.length">
-                Mark all read
-              </button>
             </div>
 
             <div class="notif-list" *ngIf="notifItems.length; else noNotifs">
