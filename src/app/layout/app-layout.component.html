@@ -24,8 +24,8 @@
 
     <!-- Navigation Menu -->
     <nav class="sidebar-nav">
-      <div 
-        *ngFor="let item of menuItems" 
+      <div
+        *ngFor="let item of visibleMenuItems"
         class="nav-item" 
         [class.active]="isActive(item.route)"
         (click)="navigateTo(item.route)">

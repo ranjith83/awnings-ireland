@@ -125,7 +125,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     private notificationService: NotificationService,
     private nav: NavService) {
     this.customerForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(2)]],
+      name: ['', [Validators.minLength(2)]],
       companyNumber: [''],
       residential: [false],
       commercial: [false],
@@ -159,9 +159,11 @@ export class CustomerDetails implements OnInit, OnDestroy {
     this.loadCustomers();
     this.loadSalespeople();
 
-    // Auto-populate First/Last Name from Customer Name when adding
+    // Auto-populate First/Last Name from Company Name when adding a commercial customer.
+    // Residential customers type First/Last Name directly, so leave those alone.
     this.customerForm.get('name')?.valueChanges.subscribe((value: string) => {
       if (this.modalModeSubject.value !== 'add') return;
+      if (this.customerForm.get('residential')?.value) return;
       const parts = (value ?? '').trim().split(/\s+/);
       this.customerForm.patchValue({
         contactFirstName: parts[0] ?? '',
@@ -255,6 +257,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
       assignedSalespersonId: null,
       assignedSalespersonName: ''
     });
+    this.updateContactAndNameValidators();
     this.showModalSubject.next(true);
   }
 
@@ -290,8 +293,8 @@ export class CustomerDetails implements OnInit, OnDestroy {
           eircode: fullCustomer.eircode || '',
           assignedSalespersonId: fullCustomer.assignedSalespersonId || null,
           assignedSalespersonName: fullCustomer.assignedSalespersonName || '',
-          contactFirstName: contact?.firstName || '',
-          contactLastName: contact?.lastName || '',
+          contactFirstName: fullCustomer.firstName || contact?.firstName || '',
+          contactLastName: fullCustomer.lastName || contact?.lastName || '',
           contactPhone: contact?.phone || '',
           contactEmail: contact?.email || ''
         });
@@ -371,6 +374,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     if (this.customerForm.get('residential')?.value) {
       this.customerForm.patchValue({ commercial: false, taxNumber: '', vatNumber: '' });
     }
+    this.updateContactAndNameValidators();
     this.customerForm.updateValueAndValidity();
   }
 
@@ -378,27 +382,42 @@ export class CustomerDetails implements OnInit, OnDestroy {
     if (this.customerForm.get('commercial')?.value) {
       this.customerForm.patchValue({ residential: false });
     }
+    this.updateContactAndNameValidators();
     this.customerForm.updateValueAndValidity();
   }
 
   onAddNewContactChange(): void {
-    const contactFields = ['contactFirstName', 'contactLastName', 'contactPhone', 'contactEmail'];
-    if (this.addNewContact) {
-      contactFields.forEach(field => {
-        const ctrl = this.customerForm.get(field)!;
-        const validators = field === 'contactEmail' ? [Validators.email] : [Validators.required];
-        ctrl.setValidators(validators);
-        ctrl.updateValueAndValidity();
-      });
-    } else {
-      contactFields.forEach(field => {
-        const ctrl = this.customerForm.get(field)!;
-        const validators = field === 'contactEmail' ? [Validators.email] : [];
-        ctrl.setValidators(validators);
-        ctrl.markAsUntouched();
-        ctrl.updateValueAndValidity();
-      });
+    this.updateContactAndNameValidators();
+  }
+
+  // Company Name is mandatory for commercial customers; First/Last Name is
+  // mandatory for residential customers (or whenever a contact is being added).
+  private updateContactAndNameValidators(): void {
+    const residential = this.customerForm.get('residential')?.value;
+
+    const nameCtrl = this.customerForm.get('name')!;
+    nameCtrl.setValidators(residential ? [Validators.minLength(2)] : [Validators.required, Validators.minLength(2)]);
+
+    const contactNameRequired = residential || this.addNewContact;
+    const firstCtrl = this.customerForm.get('contactFirstName')!;
+    const lastCtrl = this.customerForm.get('contactLastName')!;
+    const phoneCtrl = this.customerForm.get('contactPhone')!;
+    const emailCtrl = this.customerForm.get('contactEmail')!;
+
+    firstCtrl.setValidators(contactNameRequired ? [Validators.required] : []);
+    lastCtrl.setValidators(contactNameRequired ? [Validators.required] : []);
+    phoneCtrl.setValidators(this.addNewContact ? [Validators.required] : []);
+    emailCtrl.setValidators([Validators.email]);
+
+    if (!contactNameRequired) {
+      firstCtrl.markAsUntouched();
+      lastCtrl.markAsUntouched();
     }
+    if (!this.addNewContact) {
+      phoneCtrl.markAsUntouched();
+    }
+
+    [nameCtrl, firstCtrl, lastCtrl, phoneCtrl, emailCtrl].forEach(c => c.updateValueAndValidity({ emitEvent: false }));
   }
 
   onSalespersonChange(): void {
@@ -437,8 +456,14 @@ export class CustomerDetails implements OnInit, OnDestroy {
     const formValue = this.customerForm.getRawValue();
     
     const isResidential = formValue.residential || false;
+    const computedName = isResidential
+      ? (formValue.name || `${formValue.contactFirstName} ${formValue.contactLastName}`.trim())
+      : formValue.name;
+
     const newCustomer: CompanyWithContactDto = {
-      name: formValue.name,
+      name: computedName,
+      firstName: formValue.contactFirstName,
+      lastName: formValue.contactLastName,
       companyNumber: formValue.companyNumber,
       residential: isResidential,
       taxNumber: isResidential ? null : formValue.taxNumber,
@@ -454,7 +479,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
       eircode: formValue.eircode,
       assignedSalespersonId: formValue.assignedSalespersonId,
       assignedSalespersonName: formValue.assignedSalespersonName,
-      contacts: this.addNewContact ? [{
+      contacts: (formValue.contactFirstName || formValue.contactLastName) ? [{
         firstName: formValue.contactFirstName,
         lastName: formValue.contactLastName,
         phone: formValue.contactPhone,
@@ -532,9 +557,15 @@ export class CustomerDetails implements OnInit, OnDestroy {
     }
 
     const isResidential = formValue.residential || false;
+    const computedName = isResidential
+      ? (formValue.name || `${formValue.contactFirstName} ${formValue.contactLastName}`.trim())
+      : formValue.name;
+
     const updateData: CompanyDto = {
       customerId: this.currentCustomerId,
-      name: formValue.name,
+      name: computedName,
+      firstName: formValue.contactFirstName,
+      lastName: formValue.contactLastName,
       companyNumber: formValue.companyNumber,
       residential: isResidential,
       taxNumber: isResidential ? null : formValue.taxNumber,

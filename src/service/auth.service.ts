@@ -52,6 +52,7 @@ export interface User {
 })
 export class AuthService {
   private apiUrl = `${environment.apiUrl}/api/auth`;
+  private usersApiUrl = `${environment.apiUrl}/api/users`;
   private currentUserSubject: BehaviorSubject<User | null>;
   public currentUser: Observable<User | null>;
   private isBrowser: boolean;
@@ -208,31 +209,31 @@ export class AuthService {
 
   // Get all users (Admin only)
   getAllUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${this.apiUrl}/users`)
+    return this.http.get<User[]>(this.usersApiUrl)
       .pipe(catchError(this.handleError));
   }
 
   // Update user (Admin only)
   updateUser(userId: number, updateData: any): Observable<User> {
-    return this.http.put<User>(`${this.apiUrl}/${userId}`, updateData)
+    return this.http.put<User>(`${this.usersApiUrl}/${userId}`, updateData)
       .pipe(catchError(this.handleError));
   }
 
   // Deactivate user (Admin only)
   deactivateUser(userId: number): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${userId}/deactivate`, {})
+    return this.http.patch(`${this.usersApiUrl}/${userId}/deactivate`, {})
       .pipe(catchError(this.handleError));
   }
 
   // Activate user (Admin only)
   activateUser(userId: number): Observable<any> {
-    return this.http.patch(`${this.apiUrl}/${userId}/activate`, {})
+    return this.http.patch(`${this.usersApiUrl}/${userId}/activate`, {})
       .pipe(catchError(this.handleError));
   }
 
   // Delete user (Admin only)
   deleteUser(userId: number): Observable<any> {
-    return this.http.delete(`${this.apiUrl}/${userId}`)
+    return this.http.delete(`${this.usersApiUrl}/${userId}`)
       .pipe(catchError(this.handleError));
   }
 

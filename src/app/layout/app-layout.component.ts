@@ -21,10 +21,11 @@ import { ClientConfigService } from '../../service/client-config.service';
 import { InboxNotificationService, InboxNotification } from '../../service/inbox-notification.service';
 
 interface MenuItem {
-  icon: any; // Changed from string to any for FontAwesome icons
+  icon: any;
   label: string;
   route: string;
   badge?: number;
+  adminOnly?: boolean;
 }
 
 @Component({
@@ -67,8 +68,8 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
    // { icon: faCog, label: 'Settings', route: '/settings' },
     { icon: faCog, label: 'Task', route: '/task' },
     { icon: faBell, label: 'Follow Ups', route: '/followups' },
-    { icon: faUserPlus, label: 'User Register', route: '/user-management' },
-    { icon: faFileSignature, label: 'Audit', route: '/audit' },
+    { icon: faUserPlus, label: 'User Register', route: '/user-management', adminOnly: true },
+    { icon: faFileSignature, label: 'Audit', route: '/audit', adminOnly: true },
     { icon: faSlidersH, label: 'Configuration', route: '/configuration' }
   ];
 
@@ -153,6 +154,14 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
       this.currentUser = user;
       this.cdr.markForCheck();
     });
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.isAdmin;
+  }
+
+  get visibleMenuItems(): MenuItem[] {
+    return this.menuItems.filter(item => !item.adminOnly || this.isAdmin);
   }
 
   get userDisplayName(): string {

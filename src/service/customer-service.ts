@@ -23,6 +23,8 @@ export interface CustomerMainViewDto {
 export interface Customer {
   customerId: number;
   name: string;
+  firstName?: string;
+  lastName?: string;
   companyNumber?: string;
   residential?: boolean;
   registrationNumber?: string;
@@ -61,6 +63,8 @@ export interface CustomerContact {
 export interface CompanyWithContactDto {
   customerId?: number;
   name: string;
+  firstName?: string;
+  lastName?: string;
   companyNumber?: string;
   residential?: boolean;
   registrationNumber?: string;
@@ -95,6 +99,8 @@ export interface CustomerContactDto {
 export interface CompanyDto {
   customerId: number;
   name: string;
+  firstName?: string;
+  lastName?: string;
   companyNumber?: string;
   residential?: boolean;
   registrationNumber?: string;
