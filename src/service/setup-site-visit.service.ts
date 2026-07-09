@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../app/environments/environment';
 
 // DTOs
@@ -136,13 +136,72 @@ export interface SiteVisitDropdownValues {
   [category: string]: string[];
 }
 
+/** A booked-but-not-yet-carried-out showroom/site-visit calendar event. */
+export interface ScheduledShowroomInviteDto {
+  showroomInviteId: number;
+  workflowId: number;
+  customerId: number;
+  customerName: string;
+  customerEmail: string;
+  customerAddress?: string | null;
+  customerPhone?: string | null;
+  salesPersonName?: string | null;
+  eventDate: string;
+  endDate: string;
+  notes?: string | null;
+  status: string;
+  createdBy: string;
+}
+
+export interface ScheduledSiteVisitsResponse {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  items: ScheduledShowroomInviteDto[];
+}
+
+export interface SiteVisitPendingCount {
+  count: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class SetupSiteVisitService {
   private apiUrl = `${environment.apiUrl}/api/SiteVisit`;
 
+  /** Live count of site-visit tasks scheduled but not yet carried out — feeds the Site Survey menu badge. */
+  private pendingCountSubject = new BehaviorSubject<number>(0);
+  pendingCount$ = this.pendingCountSubject.asObservable();
+
   constructor(private http: HttpClient) {}
+
+  /**
+   * Upcoming showroom/site-visit bookings — powers the Site Survey "Scheduled" tab.
+   * GET /api/SiteVisit/scheduled
+   */
+  getScheduledSiteVisits(page: number, pageSize: number): Observable<ScheduledSiteVisitsResponse> {
+    return this.http.get<ScheduledSiteVisitsResponse>(`${this.apiUrl}/scheduled`, {
+      params: { page, pageSize }
+    }).pipe(catchError(this.handleError));
+  }
+
+  /**
+   * GET /api/SiteVisit/pending-count — count of scheduled-but-not-carried-out site surveys.
+   * Also pushes the value into pendingCount$ so the sidebar badge updates.
+   */
+  refreshPendingCount(): void {
+    this.getPendingCount().subscribe();
+  }
+
+  getPendingCount(): Observable<SiteVisitPendingCount> {
+    return this.http.get<SiteVisitPendingCount>(`${this.apiUrl}/pending-count`)
+      .pipe(
+        tap(result => this.pendingCountSubject.next(result.count)),
+        catchError(this.handleError)
+      );
+  }
 
   /**
    * Get all site visits for a workflow

@@ -468,6 +468,15 @@
           rows="3"></textarea>
       </div>
 
+      <!-- Assigned To -->
+      <div class="cal-modal-field">
+        <label>Assigned To</label>
+        <select class="form-control" [(ngModel)]="newEventForm.assignedToUserId">
+          <option [ngValue]="null">Unassigned</option>
+          <option *ngFor="let u of assignableUsers" [ngValue]="u.userId">{{ u.firstName }} {{ u.lastName }}</option>
+        </select>
+      </div>
+
       <!-- Start & End Time -->
       <div class="cal-modal-time-row">
         <div class="cal-modal-field">

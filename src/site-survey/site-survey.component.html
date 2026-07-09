@@ -1,0 +1,92 @@
+<div class="site-survey-container">
+
+  <div class="page-header">
+    <h1>Site Survey</h1>
+  </div>
+
+  <!-- ==================== TABS ==================== -->
+  <div class="tab-bar">
+    <button class="tab" [class.tab--active]="tab === 'all'" (click)="setTab('all')">
+      All Site Surveys
+      <span class="tab-count" *ngIf="tab === 'all' && (totalItems$ | async) as total">({{ total }})</span>
+    </button>
+    <button class="tab" [class.tab--active]="tab === 'scheduled'" (click)="setTab('scheduled')">
+      Scheduled
+      <span class="tab-count" *ngIf="tab === 'scheduled' && (totalItems$ | async) as total">({{ total }})</span>
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    <div class="loading-overlay" *ngIf="isLoading$ | async">Loading…</div>
+
+    <!-- ==================== TAB 1: ALL SITE SURVEYS ==================== -->
+    <table class="site-survey-table" *ngIf="tab === 'all'">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Customer</th>
+          <th>Completed Date</th>
+          <th>Assigned To</th>
+          <th>Workflow</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of items$ | async">
+          <td>{{ item.displayTitle }}</td>
+          <td>{{ item.customerName || '—' }}</td>
+          <td>{{ item.completedDate ? (item.completedDate | date:'mediumDate') : '—' }}</td>
+          <td>{{ item.assignedToUserName || 'Unassigned' }}</td>
+          <td>{{ item.workflowId || '—' }}</td>
+          <td>
+            <button class="link-btn" (click)="openSiteVisit(item)">View Survey →</button>
+          </td>
+        </tr>
+        <tr *ngIf="(items$ | async)?.length === 0">
+          <td colspan="6" class="empty-row">No completed site surveys yet.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ==================== TAB 2: SCHEDULED ==================== -->
+    <table class="site-survey-table" *ngIf="tab === 'scheduled'">
+      <thead>
+        <tr>
+          <th>Booked By</th>
+          <th>Customer Name</th>
+          <th>Customer Address</th>
+          <th>Phone</th>
+          <th>Sales Person</th>
+          <th>Event Date</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let item of scheduledItems$ | async">
+          <td>{{ item.createdBy || '—' }}</td>
+          <td>{{ item.customerName || '—' }}</td>
+          <td>{{ item.customerAddress || '—' }}</td>
+          <td>{{ item.customerPhone || '—' }}</td>
+          <td>{{ item.salesPersonName || '—' }}</td>
+          <td>{{ item.eventDate | date:'medium' }}</td>
+          <td>{{ item.notes || '—' }}</td>
+          <td>
+            <button class="link-btn" (click)="openScheduledSiteVisit(item)">Carry out survey →</button>
+          </td>
+        </tr>
+        <tr *ngIf="(scheduledItems$ | async)?.length === 0">
+          <td colspan="8" class="empty-row">No site surveys scheduled.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== PAGINATION ==================== -->
+  <div class="pagination" *ngIf="(totalPages$ | async) as totalPages">
+    <button (click)="prevPage()" [disabled]="(page$ | async) === 1">← Prev</button>
+    <span>Page {{ page$ | async }} of {{ totalPages || 1 }}</span>
+    <button (click)="nextPage()" [disabled]="(page$ | async)! >= totalPages">Next →</button>
+  </div>
+
+</div>

@@ -12,13 +12,15 @@ import {
   faFileSignature,
   faUserPlus,
   faBell,
-  faSlidersH
+  faSlidersH,
+  faClipboardList
 } from '@fortawesome/free-solid-svg-icons';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AuthService, User } from '../../service/auth.service';
 import { ClientConfigService } from '../../service/client-config.service';
 import { InboxNotificationService, InboxNotification } from '../../service/inbox-notification.service';
+import { SetupSiteVisitService } from '../../service/setup-site-visit.service';
 
 interface MenuItem {
   icon: any;
@@ -65,6 +67,7 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     { icon: faUsers, label: 'Customers', route: '/customers' },
     { icon: faProjectDiagram, label: 'Workflow', route: '/workflow' },
     { icon: faFileAlt, label: 'Reports', route: '/reports' },
+    { icon: faClipboardList, label: 'Site Survey', route: '/site-survey' },
    // { icon: faCog, label: 'Settings', route: '/settings' },
     { icon: faCog, label: 'Task', route: '/task' },
     { icon: faBell, label: 'Follow Ups', route: '/followups' },
@@ -79,7 +82,8 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     public clientConfig: ClientConfigService,
-    private inboxNotif: InboxNotificationService
+    private inboxNotif: InboxNotificationService,
+    private siteVisitService: SetupSiteVisitService
   ) {
     this.activeRoute = this.router.url;
   }
@@ -99,6 +103,13 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     this.inboxNotif.newNotification$.pipe(takeUntil(this.destroy$)).subscribe(notif => {
       this._showToast(notif);
     });
+
+    this.siteVisitService.pendingCount$.pipe(takeUntil(this.destroy$)).subscribe(count => {
+      const item = this.menuItems.find(m => m.route === '/site-survey');
+      if (item) item.badge = count;
+      this.cdr.markForCheck();
+    });
+    this.siteVisitService.refreshPendingCount();
   }
 
   ngOnDestroy(): void {

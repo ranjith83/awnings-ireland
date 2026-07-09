@@ -14,6 +14,7 @@ import { WorkflowService, WorkflowDto } from '../../service/workflow.service';
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { CustomerService } from '../../service/customer-service';
 import { OutlookCalendarService, ShowroomInvite } from '../../service/outlook-calendar.service';
+import { EmailTaskService, User } from '../../service/email-task.service';
 
 interface ProductModel {
   id: string;
@@ -112,10 +113,15 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   // ── Calendar event creation modal ──────────────────────────────────────────
   showAddEventModal = false;
-  newEventForm = { subject: '', date: '', startTime: '', endTime: '', location: '', description: '' };
+  newEventForm: { subject: string; date: string; startTime: string; endTime: string; location: string; description: string; assignedToUserId: number | null } =
+    { subject: '', date: '', startTime: '', endTime: '', location: '', description: '', assignedToUserId: null };
   isCreatingEvent$ = new BehaviorSubject<boolean>(false);
   createEventError$ = new BehaviorSubject<string>('');
   createEventSuccess$ = new BehaviorSubject<string>('');
+
+  // ── Assignable users (for the "Assigned To" field on the booking modal) ────
+  assignableUsers: User[] = [];
+  private currentUserId: number | null = null;
 
   readonly modalTimeSlots: string[] = [
     '08:00 AM', '08:30 AM', '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM',
@@ -221,6 +227,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     private workflowStateService: WorkflowStateService,
     private outlookCalendarService: OutlookCalendarService,
     private notificationService: NotificationService,
+    private emailTaskService: EmailTaskService,
     private cdr: ChangeDetectorRef) {
     this.siteVisitForm = this.fb.group({
       workflow: ['', Validators.required],
@@ -323,6 +330,23 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       });
     this.loadDropdownValues();
     this.setupFormSubscriptions();
+    this.loadAssignableUsers();
+  }
+
+  private loadAssignableUsers(): void {
+    this.emailTaskService.getCurrentUser()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: user => { this.currentUserId = user.userId; this.cdr.markForCheck(); },
+        error: () => { /* not fatal — Assigned To will just default to unset */ }
+      });
+
+    this.emailTaskService.getUsers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: users => { this.assignableUsers = users; this.cdr.markForCheck(); },
+        error: () => { /* not fatal — Assigned To dropdown will just be empty */ }
+      });
   }
 
   /**
@@ -949,7 +973,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       startTime: '',
       endTime: '',
       location: this.customerEircode || '',
-      description: addressParts.join(', ')
+      description: addressParts.join(', '),
+      assignedToUserId: this.currentUserId
     };
     this.createEventError$.next('');
     this.createEventSuccess$.next('');
@@ -971,7 +996,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const { date, startTime, endTime, subject, location, description } = this.newEventForm;
+    const { date, startTime, endTime, subject, location, description, assignedToUserId } = this.newEventForm;
     const baseDate = this.parseDateKey(date);
     const startDateTime = this.parseTimeSlot(baseDate, startTime);
     const endDateTime   = this.parseTimeSlot(baseDate, endTime);
@@ -1001,6 +1026,11 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.createEventSuccess$.next('Event created successfully!');
+
+          // create-showroom-invite already wrote the ShowroomInvite row that
+          // powers the Site Survey "Scheduled" tab — just refresh the badge.
+          this.siteVisitService.refreshPendingCount();
+
           // Delay so Graph API has time to index the new event before re-fetching
           setTimeout(() => this.loadCalendarMonth(this.calendarViewDate), 800);
           setTimeout(() => {

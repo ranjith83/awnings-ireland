@@ -372,7 +372,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
 
   onResidentialChange(): void {
     if (this.customerForm.get('residential')?.value) {
-      this.customerForm.patchValue({ commercial: false, taxNumber: '', vatNumber: '' });
+      this.customerForm.patchValue({ commercial: false, taxNumber: '', vatNumber: '', name: '' });
     }
     this.updateContactAndNameValidators();
     this.customerForm.updateValueAndValidity();
@@ -457,7 +457,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
     
     const isResidential = formValue.residential || false;
     const computedName = isResidential
-      ? (formValue.name || `${formValue.contactFirstName} ${formValue.contactLastName}`.trim())
+      ? `${formValue.contactFirstName} ${formValue.contactLastName}`.trim()
       : formValue.name;
 
     const newCustomer: CompanyWithContactDto = {
@@ -558,7 +558,7 @@ export class CustomerDetails implements OnInit, OnDestroy {
 
     const isResidential = formValue.residential || false;
     const computedName = isResidential
-      ? (formValue.name || `${formValue.contactFirstName} ${formValue.contactLastName}`.trim())
+      ? `${formValue.contactFirstName} ${formValue.contactLastName}`.trim()
       : formValue.name;
 
     const updateData: CompanyDto = {

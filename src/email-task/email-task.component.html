@@ -17,34 +17,14 @@
     <button class="toast-close" (click)="dismissToast()">✕</button>
   </div>
 
-  <!-- ==================== TOP-LEVEL TABS ==================== -->
-  <!--
-    Two primary tabs that select the major section:
-      📧 Email     – shows email tasks with sub-tabs below
-      🏗️ Site Visits – shows only SiteVisit-source tasks
-  -->
+  <!-- ==================== TOP BAR ==================== -->
+  <!-- Site-visit tasks now live on their own page (/site-survey) — this page only shows Email tasks. -->
   <div class="top-tab-bar">
-    <div class="top-tabs">
-      <button class="top-tab"
-              [class.top-tab--active]="(topTab$ | async) === 'email'"
-              (click)="setTopTab('email')">
-        📧 Email
-      </button>
-      <button class="top-tab top-tab--sv"
-              [class.top-tab--active]="(topTab$ | async) === 'site-visit'"
-              (click)="setTopTab('site-visit')">
-        🏗️ Site Visits
-        <span class="top-tab-count"
-              *ngIf="(topTab$ | async) === 'site-visit' && (totalItems$ | async) as total">
-          ({{ total }})
-        </span>
-      </button>
-    </div>
     <button class="new-task-btn" (click)="createNewTask()">+ New Task</button>
   </div>
 
-  <!-- ==================== EMAIL SUB-TABS (visible only under Email top tab) ==================== -->
-  <div class="sub-tab-bar" *ngIf="(topTab$ | async) === 'email'">
+  <!-- ==================== EMAIL SUB-TABS ==================== -->
+  <div class="sub-tab-bar">
     <button class="sub-tab"
             [class.sub-tab--active]="(activeTab$ | async) === 'tasks'"
             (click)="setActiveTab('tasks')">
@@ -86,10 +66,9 @@
   <!-- Search / filter bar -->
   <div class="filter-section" *ngIf="!showEmailViewer">
     <div class="search-bar">
-      <span class="search-context-label" *ngIf="(topTab$ | async) === 'email'">📧 Filtering emails</span>
-      <span class="search-context-label search-context-label--sv" *ngIf="(topTab$ | async) === 'site-visit'">🏗️ Filtering site visits</span>
+      <span class="search-context-label">📧 Filtering emails</span>
       <input type="text" [(ngModel)]="searchTerm"
-             [placeholder]="(topTab$ | async) === 'site-visit' ? 'Search site visits...' : 'Search emails...'"
+             placeholder="Search emails..."
              class="search-input" (keyup.enter)="applySearch()">
       <button class="search-btn" (click)="applySearch()">Search</button>
       <button class="clear-btn" (click)="clearSearch()" *ngIf="searchTerm">Clear</button>
@@ -105,7 +84,7 @@
       </select>
       <!-- Assigned-user filter: admins only — non-admins auto-filtered to their own tasks -->
       <select [(ngModel)]="filterAssignedUser" class="filter-select" (change)="applyFilters()"
-              *ngIf="(topTab$ | async) === 'email' && isAdmin">
+              *ngIf="isAdmin">
         <option [value]="null">All Users</option>
         <option *ngFor="let user of users$ | async" [value]="user.userId">{{ user.username }}</option>
       </select>
@@ -120,9 +99,8 @@
   </div>
 
   <!-- ==================== EMAIL TASKS TABLE ==================== -->
-  <!-- Shown when: Email top tab + no viewer open -->
   <div class="tasks-table-container"
-       *ngIf="(topTab$ | async) === 'email' && !showEmailViewer">
+       *ngIf="!showEmailViewer">
     <table class="tasks-table">
       <thead>
         <tr>
@@ -175,182 +153,6 @@
         </tr>
       </tbody>
     </table>
-  </div>
-
-  <!-- ==================== SITE VISIT TABLE ==================== -->
-  <!-- Shown when: Site Visit top tab + assign panel not open -->
-  <div class="tasks-table-container sv-table-container"
-       *ngIf="(topTab$ | async) === 'site-visit'">
-
-    <div class="sv-table-hint">
-      💡 Double-click a row to assign the site visit to a team member.
-    </div>
-
-    <table class="tasks-table">
-      <thead>
-        <tr>
-          <th (click)="sortByColumn('Title')"       class="sortable">Title {{ getSortIndicator('Title') }}</th>
-          <th (click)="sortByColumn('CustomerName')" class="sortable">Customer {{ getSortIndicator('CustomerName') }}</th>
-          <th (click)="sortByColumn('DateAdded')"   class="sortable">Created {{ getSortIndicator('DateAdded') }}</th>
-          <th>Status</th>
-          <th>Assigned To</th>
-          <th>Priority</th>
-          <th>Workflow</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let task of tasks$ | async"
-            (dblclick)="onRowDoubleClick(task)"
-            (keydown)="onKeyDown($event, task)"
-            tabindex="0"
-            class="task-row sv-row"
-            [class.sv-row--assigned]="task.assignedToUserId"
-            [class.sv-row--unassigned]="!task.assignedToUserId">
-          <td class="sv-title-cell">
-            <span class="sv-icon">🏗️</span>
-            {{ task.displayTitle || task.subject || '(No title)' }}
-          </td>
-          <td>
-            <span *ngIf="task.customerName">{{ task.customerName }}</span>
-            <span *ngIf="!task.customerName" class="unassigned">—</span>
-          </td>
-          <td>{{ formatDate(task.dateAdded) }}</td>
-          <td>
-            <span class="status-badge" [class]="'status-' + (task.status || 'new').toLowerCase().replace(' ', '-')">{{ task.status || 'New' }}</span>
-          </td>
-          <td>
-            <span *ngIf="task.assignedToUserName || task.assignedTo" class="sv-assignee sv-assignee--set">
-              👤 {{ task.assignedToUserName || task.assignedTo }}
-            </span>
-            <span *ngIf="!task.assignedToUserName && !task.assignedTo" class="sv-assignee sv-assignee--empty">
-              ⬜ Unassigned
-            </span>
-          </td>
-          <td>
-            <span class="priority-badge" [class]="'priority-' + (task.priority || 'normal').toLowerCase()">{{ task.priority || 'Normal' }}</span>
-          </td>
-          <td>
-            <span *ngIf="task.workflowName">{{ task.workflowName }}</span>
-            <span *ngIf="!task.workflowName" class="unassigned">—</span>
-          </td>
-        </tr>
-        <tr *ngIf="(tasks$ | async)?.length === 0 && !(isLoading$ | async)">
-          <td colspan="7" class="empty-state">
-            <div class="empty-message">
-              <p>No site visits found</p>
-              <p class="empty-hint" *ngIf="searchTerm || filterPriority || filterAssignedUser">Try adjusting your filters</p>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- ==================== SITE VISIT ASSIGN MODAL (mirrors email-viewer-modal) ==================== -->
-  <div class="sv-modal-overlay" *ngIf="showSiteVisitPanel && selectedSiteVisitTask" (click)="closeSiteVisitPanel()">
-    <div class="sv-modal-container" (click)="$event.stopPropagation()">
-
-      <!-- Modal header tab-bar — mirrors .email-tabs -->
-      <div class="sv-modal-header">
-        <div class="sv-modal-header-left">
-          <span class="sv-modal-icon">🏗️</span>
-          <div class="sv-modal-title-block">
-            <h3 class="sv-modal-title">{{ selectedSiteVisitTask.displayTitle || selectedSiteVisitTask.subject || 'Site Visit' }}</h3>
-            <p class="sv-modal-subtitle" *ngIf="selectedSiteVisitTask.customerName">
-              Customer: <strong>{{ selectedSiteVisitTask.customerName }}</strong>
-            </p>
-          </div>
-        </div>
-        <button class="sv-modal-close" (click)="closeSiteVisitPanel()" title="Close">✕</button>
-      </div>
-
-      <!-- Status pill row -->
-      <div class="sv-modal-status-row">
-        <ng-container *ngIf="selectedSiteVisitTask.assignedToUserId; else svUnassigned">
-          <span class="sv-status-pill sv-status-pill--assigned">
-            ✅ Assigned to <strong>{{ selectedSiteVisitTask.assignedToUserName || 'a user' }}</strong>
-          </span>
-        </ng-container>
-        <ng-template #svUnassigned>
-          <span class="sv-status-pill sv-status-pill--unassigned">⬜ Not yet assigned</span>
-        </ng-template>
-      </div>
-
-      <!-- Meta info grid — mirrors .email-header-box -->
-      <div class="sv-modal-body">
-        <div class="sv-modal-meta-box">
-          <div class="sv-modal-meta-row">
-            <div class="sv-modal-meta-item">
-              <span class="sv-modal-meta-label">Status</span>
-              <span class="status-badge" [class]="'status-' + (selectedSiteVisitTask.status || 'new').toLowerCase().replace(' ', '-')">
-                {{ selectedSiteVisitTask.status || 'New' }}
-              </span>
-            </div>
-            <div class="sv-modal-meta-item">
-              <span class="sv-modal-meta-label">Priority</span>
-              <span class="priority-badge" [class]="'priority-' + (selectedSiteVisitTask.priority || 'normal').toLowerCase()">
-                {{ selectedSiteVisitTask.priority || 'Normal' }}
-              </span>
-            </div>
-            <div class="sv-modal-meta-item">
-              <span class="sv-modal-meta-label">Created</span>
-              <span>{{ formatDate(selectedSiteVisitTask.dateAdded) }}</span>
-            </div>
-            <div class="sv-modal-meta-item" *ngIf="selectedSiteVisitTask.workflowId">
-              <span class="sv-modal-meta-label">Workflow</span>
-              <span class="sv-workflow-chip">{{ selectedSiteVisitTask.workflowName || ('#' + selectedSiteVisitTask.workflowId) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Status section -->
-        <div class="sv-modal-assign-box">
-          <div class="sv-modal-assign-title">Status</div>
-          <div class="sv-modal-assign-body">
-            <div class="sv-modal-assign-row">
-              <select id="svStatusSelect" class="sv-panel__assign-select" [(ngModel)]="siteVisitStatus">
-                <option *ngFor="let s of siteVisitStatuses" [value]="s">{{ s }}</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Assign section — mirrors .email-body-box -->
-        <div class="sv-modal-assign-box">
-          <div class="sv-modal-assign-title">Assign to a team member</div>
-          <div class="sv-modal-assign-body">
-            <div class="sv-modal-assign-row">
-              <select id="svAssigneeSelect" class="sv-panel__assign-select" [(ngModel)]="siteVisitAssignee">
-                <option [value]="null">— Unassigned —</option>
-                <option *ngFor="let user of users$ | async" [value]="user.userId">
-                  {{ user.username }}
-                  <ng-container *ngIf="user.firstName || user.lastName"> ({{ user.firstName }} {{ user.lastName }})</ng-container>
-                </option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer — mirrors .email-footer footer-bottom-row -->
-      <div class="sv-modal-footer">
-        <button
-          class="sv-modal-open-btn"
-          (click)="openSiteVisitPage(selectedSiteVisitTask)"
-          *ngIf="selectedSiteVisitTask?.siteVisitId || selectedSiteVisitTask?.workflowId"
-          title="Open full Site Visit form">
-          📋 Open Site Visit
-        </button>
-        <div class="sv-modal-footer-right">
-          <button class="sv-panel__save-btn" (click)="saveSiteVisitAssignment()" [disabled]="isSiteVisitSaving">
-            <span *ngIf="!isSiteVisitSaving">💾 Save Assignment</span>
-            <span *ngIf="isSiteVisitSaving">Saving…</span>
-          </button>
-          <button class="sv-modal-cancel-btn" (click)="closeSiteVisitPanel()">✕ Close</button>
-        </div>
-      </div>
-
-    </div>
   </div>
 
   <!-- ==================== PAGINATION ==================== -->

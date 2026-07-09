@@ -32,6 +32,9 @@ export interface AppTaskSummaryDto {
   customerId?:                  number | null;
   customerName?:                string | null;
   customerEmail?:               string | null;
+  customerAddress?:             string | null;
+  customerPhone?:               string | null;
+  salesPersonName?:             string | null;
   workflowId?:                  number | null;
   siteVisitId?:                 number | null;
   dueDate?:                     Date | null;
