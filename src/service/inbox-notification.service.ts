@@ -1,10 +1,18 @@
 import { Injectable, OnDestroy, NgZone } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { environment } from '../app/environments/environment';
 import * as signalR from '@microsoft/signalr';
+
+/**
+ * Notification types surfaced as the "New Leads" badge, split out of the general inbox:
+ *   - new_enquiry         — EmailProcessorService, fired once an InitialEnquiry record exists.
+ *   - enquiry_reply_ready — ImportLeadsService, fired for an imported lead before any
+ *                           InitialEnquiry exists yet, once its draft reply is ready to review.
+ */
+const NEW_LEAD_TYPES = ['new_enquiry', 'enquiry_reply_ready'];
 
 export interface InboxNotification {
   id: number;
@@ -31,6 +39,13 @@ export class InboxNotificationService implements OnDestroy {
   readonly items$           = this._items.asObservable();
   /** Emits only when a brand-new notification arrives via SignalR push. */
   readonly newNotification$ = this._newNotif.asObservable();
+
+  /** New-lead items and count — powers the sidebar "New Leads" badge. */
+  readonly newLeadItems$ = this._items.pipe(map(items => items.filter(n => NEW_LEAD_TYPES.includes(n.type))));
+  readonly newLeadsCount$ = this.newLeadItems$.pipe(map(items => items.length));
+
+  /** Everything else — powers the bell dropdown, excluding whatever New Leads already covers. */
+  readonly otherItems$ = this._items.pipe(map(items => items.filter(n => !NEW_LEAD_TYPES.includes(n.type))));
 
   constructor(private http: HttpClient, private ngZone: NgZone) {}
 
@@ -59,42 +74,24 @@ export class InboxNotificationService implements OnDestroy {
       });
     });
 
-    // Push: backend sends a count-only update
-    this.hubConnection.on('UpdateCount', (count: number) => {
-      this.ngZone.run(() => this._count.next(count));
+    // Push: backend sends a count-only update — re-fetch the full list so the
+    // per-type (New Leads) breakdown stays accurate, not just the raw total.
+    this.hubConnection.on('UpdateCount', () => {
+      this.ngZone.run(() => this.loadItems());
     });
 
     this.hubConnection
       .start()
-      .then(() => this.loadInitialCount())
+      .then(() => this.loadItems())
       .catch(() => {
         // SignalR unavailable — fall back to a single fetch, no polling
-        this.loadInitialCount();
+        this.loadItems();
       });
   }
 
   stopConnection(): void {
     this.hubConnection?.stop();
     this.hubConnection = undefined;
-  }
-
-  /** Fetch current count once on connect — handles both `number` and `{ count }` responses, falls back to item list. */
-  private loadInitialCount(): void {
-    this.http.get(`${this.apiUrl}/count`)
-      .pipe(catchError(() => of(null)))
-      .subscribe((res: any) => {
-        if (res !== null && res !== undefined) {
-          const n = typeof res === 'number' ? res : (res?.count ?? res?.unreadCount ?? res?.total ?? null);
-          if (n !== null) { this._count.next(Number(n)); return; }
-        }
-        // Fallback: load items and derive count from the list
-        this.http.get<InboxNotification[]>(this.apiUrl)
-          .pipe(catchError(() => of([])))
-          .subscribe(items => {
-            this._items.next(items);
-            this._count.next(items.length);
-          });
-      });
   }
 
   /** Load full list for the dropdown — also refreshes the unread count. */

@@ -45,6 +45,7 @@ export const routes: Routes = [
       },
 
       { path: 'reports',         loadComponent: () => import('../reports/reports.component').then(m => m.ReportsComponent) },
+      { path: 'new-leads',       loadComponent: () => import('../new-leads/new-leads.component').then(m => m.NewLeadsComponent) },
       { path: 'site-survey',     loadComponent: () => import('../site-survey/site-survey.component').then(m => m.SiteSurveyComponent) },
       { path: 'task',            loadComponent: () => import('../email-task/email-task.component').then(m => m.TaskComponent) },
       { path: 'tasks/:id',       loadComponent: () => import('../task-detail.component/task-detail.component').then(m => m.TaskDetailComponent) },

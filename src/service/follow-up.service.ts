@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { BehaviorSubject, Observable, throwError } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 import { environment } from '../app/environments/environment';
 
 export interface FollowUpDto {
@@ -33,12 +33,24 @@ export interface FollowUpDto {
 export class FollowUpService {
   private apiUrl = `${environment.apiUrl}/api/followup`;
 
+  /** Live count of active follow-ups — feeds the sidebar menu badge, same as SetupSiteVisitService.pendingCount$. */
+  private pendingCountSubject = new BehaviorSubject<number>(0);
+  pendingCount$ = this.pendingCountSubject.asObservable();
+
   constructor(private http: HttpClient) {}
 
   /** GET /api/followup — active (non-dismissed) follow-ups */
   getActiveFollowUps(): Observable<FollowUpDto[]> {
     return this.http.get<FollowUpDto[]>(this.apiUrl)
-      .pipe(catchError(this.handleError));
+      .pipe(
+        tap(list => this.pendingCountSubject.next(list.length)),
+        catchError(this.handleError)
+      );
+  }
+
+  /** Refreshes pendingCount$ — call after generating/dismissing follow-ups so the sidebar badge stays in sync. */
+  refreshPendingCount(): void {
+    this.getActiveFollowUps().subscribe();
   }
 
   /** GET /api/followup/all — all including dismissed */

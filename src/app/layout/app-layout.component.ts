@@ -13,7 +13,8 @@ import {
   faUserPlus,
   faBell,
   faSlidersH,
-  faClipboardList
+  faClipboardList,
+  faEnvelopeOpenText
 } from '@fortawesome/free-solid-svg-icons';
 
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
@@ -21,6 +22,7 @@ import { AuthService, User } from '../../service/auth.service';
 import { ClientConfigService } from '../../service/client-config.service';
 import { InboxNotificationService, InboxNotification } from '../../service/inbox-notification.service';
 import { SetupSiteVisitService } from '../../service/setup-site-visit.service';
+import { FollowUpService } from '../../service/follow-up.service';
 
 interface MenuItem {
   icon: any;
@@ -67,6 +69,7 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     { icon: faUsers, label: 'Customers', route: '/customers' },
     { icon: faProjectDiagram, label: 'Workflow', route: '/workflow' },
     { icon: faFileAlt, label: 'Reports', route: '/reports' },
+    { icon: faEnvelopeOpenText, label: 'New Leads', route: '/new-leads' },
     { icon: faClipboardList, label: 'Site Survey', route: '/site-survey' },
    // { icon: faCog, label: 'Settings', route: '/settings' },
     { icon: faCog, label: 'Task', route: '/task' },
@@ -76,14 +79,15 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     { icon: faSlidersH, label: 'Configuration', route: '/configuration' }
   ];
 
-  
+
   constructor(
     private router: Router,
     private authService: AuthService,
     private cdr: ChangeDetectorRef,
     public clientConfig: ClientConfigService,
     private inboxNotif: InboxNotificationService,
-    private siteVisitService: SetupSiteVisitService
+    private siteVisitService: SetupSiteVisitService,
+    private followUpService: FollowUpService
   ) {
     this.activeRoute = this.router.url;
   }
@@ -92,12 +96,15 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
     this.loadCurrentUser();
     const token = this.authService.getToken() ?? '';
     this.inboxNotif.startConnection(token);
-    this.inboxNotif.count$.pipe(takeUntil(this.destroy$)).subscribe(c => {
-      this.unreadCount = c;
+    // New Leads has its own menu badge below, so the bell excludes those types.
+    this.inboxNotif.otherItems$.pipe(takeUntil(this.destroy$)).subscribe(items => {
+      this.notifItems = items;
+      this.unreadCount = items.length;
       this.cdr.markForCheck();
     });
-    this.inboxNotif.items$.pipe(takeUntil(this.destroy$)).subscribe(items => {
-      this.notifItems = items;
+    this.inboxNotif.newLeadsCount$.pipe(takeUntil(this.destroy$)).subscribe(count => {
+      const item = this.menuItems.find(m => m.route === '/new-leads');
+      if (item) item.badge = count;
       this.cdr.markForCheck();
     });
     this.inboxNotif.newNotification$.pipe(takeUntil(this.destroy$)).subscribe(notif => {
@@ -110,6 +117,13 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
     this.siteVisitService.refreshPendingCount();
+
+    this.followUpService.pendingCount$.pipe(takeUntil(this.destroy$)).subscribe(count => {
+      const item = this.menuItems.find(m => m.route === '/followups');
+      if (item) item.badge = count;
+      this.cdr.markForCheck();
+    });
+    this.followUpService.refreshPendingCount();
   }
 
   ngOnDestroy(): void {

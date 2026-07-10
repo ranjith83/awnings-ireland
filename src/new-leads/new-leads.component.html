@@ -1,0 +1,24 @@
+<div class="new-leads-container">
+
+  <div class="page-header">
+    <h1>New Leads</h1>
+    <span class="lead-count" *ngIf="leads.length">{{ leads.length }}</span>
+  </div>
+
+  <div class="leads-list" *ngIf="leads.length; else empty">
+    <div class="lead-item" *ngFor="let lead of leads">
+      <div class="lead-item-icon">📩</div>
+      <div class="lead-item-body">
+        <div class="lead-item-title">{{ lead.title }}</div>
+        <div class="lead-item-msg">{{ lead.message }}</div>
+        <div class="lead-item-time">{{ lead.createdAt | date:'dd MMM, HH:mm' }}</div>
+      </div>
+      <button class="link-btn" (click)="openLead(lead)">View Enquiry →</button>
+    </div>
+  </div>
+
+  <ng-template #empty>
+    <div class="empty-state">No new leads.</div>
+  </ng-template>
+
+</div>

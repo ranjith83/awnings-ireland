@@ -817,7 +817,75 @@ Showroom: Unit 2, 52 Bracken Road, Sandyford, Dublin 18, D18 XF83`;
   /** Strips <html>/<body> wrapper so Quill and [innerHTML] receive a clean HTML fragment. */
   extractBodyHtml(html: string): string {
     const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    return m ? m[1].trim() : html;
+    const inner = m ? m[1].trim() : html;
+    return this.stripBlankParagraphs(this.stripInterTagWhitespace(this.stripRiskyInlineStyles(inner)));
+  }
+
+  /**
+   * Removes whitespace-only text nodes that contain a newline (indentation artifacts
+   * from server-side HTML templates like `<p>...</p>\n  <p>...</p>`). Quill's editor
+   * renders with white-space:pre-wrap, so unlike normal HTML these literal newlines
+   * don't collapse — they show as an extra blank line between every paragraph.
+   * Only touches nodes containing an actual \n, so genuine single-space separators
+   * between inline elements (e.g. "Hello</strong> <em>World") are left alone.
+   */
+  private stripInterTagWhitespace(html: string): string {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    const walker = document.createTreeWalker(wrapper, NodeFilter.SHOW_TEXT);
+    const toRemove: Text[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const text = node as Text;
+      if (text.textContent && /\n/.test(text.textContent) && /^\s+$/.test(text.textContent)) {
+        toRemove.push(text);
+      }
+    }
+    toRemove.forEach(t => t.remove());
+
+    return wrapper.innerHTML;
+  }
+
+  /** Removes empty <p> / <div> spacers (only whitespace, &nbsp;, or a lone <br>). */
+  private stripBlankParagraphs(html: string): string {
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+    wrapper.querySelectorAll('p, div').forEach(el => {
+      if (el.querySelectorAll('img, table').length) return;
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.querySelectorAll('br').forEach(br => br.remove());
+      const text = (clone.textContent ?? '').replace(/ /g, '').trim();
+      if (text === '') el.remove();
+    });
+    return wrapper.innerHTML;
+  }
+
+  /**
+   * Auto-reply drafts (AI-generated or templated) are injected as raw HTML with
+   * [sanitize]="false" so Quill's colour/background formatting survives. Nothing else
+   * constrains that HTML though, so a draft with e.g. a large inline margin/padding/
+   * font-size on a header or spacer element renders at full size inside the compact
+   * comment box — this strips just those spacing/sizing properties, leaving normal
+   * formatting (bold/italic/colour/lists) untouched.
+   */
+  private stripRiskyInlineStyles(html: string): string {
+    const RISKY_PROPS = [
+      'margin', 'margin-top', 'margin-bottom', 'margin-left', 'margin-right',
+      'padding', 'padding-top', 'padding-bottom', 'padding-left', 'padding-right',
+      'font-size', 'line-height', 'height', 'min-height'
+    ];
+
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = html;
+
+    wrapper.querySelectorAll('style, script').forEach(el => el.remove());
+    wrapper.querySelectorAll<HTMLElement>('[style]').forEach(el => {
+      RISKY_PROPS.forEach(prop => el.style.removeProperty(prop));
+      if (!el.getAttribute('style')?.trim()) el.removeAttribute('style');
+    });
+
+    return wrapper.innerHTML;
   }
 
   // ── Send-email modal ───────────────────────────────────────────────────────

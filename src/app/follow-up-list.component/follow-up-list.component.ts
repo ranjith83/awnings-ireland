@@ -203,6 +203,7 @@ export class FollowUpListComponent implements OnInit, OnDestroy {
         next: () => {
           this.followUps = this.followUps.filter(f => f.followUpId !== id);
           if (this.previewFollowUp?.followUpId === id) this.previewFollowUp = null;
+          this.followUpService.refreshPendingCount();
           this.showSuccess('Follow-up dismissed successfully.');
           this.closeDismissModal();
           this.cdr.markForCheck();
