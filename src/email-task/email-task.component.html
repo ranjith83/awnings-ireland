@@ -20,7 +20,7 @@
   <!-- ==================== TOP BAR ==================== -->
   <!-- Site-visit tasks now live on their own page (/site-survey) — this page only shows Email tasks. -->
   <div class="top-tab-bar">
-    <button class="new-task-btn" (click)="createNewTask()">+ New Task</button>
+    <button class="new-task-btn" *ngIf="false" (click)="createNewTask()">+ New Task</button>
   </div>
 
   <!-- ==================== EMAIL SUB-TABS ==================== -->
@@ -432,6 +432,73 @@
               <span *ngIf="isSendingAiReply">Sending…</span>
             </button>
             <button class="close-btn" (click)="closeAiReplyModal()">✕ Close</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ==================== NEW TASK MODAL ==================== -->
+  <div class="email-viewer-modal" *ngIf="showNewTaskModal" (click)="closeNewTaskModal()">
+    <div class="email-viewer-container ai-reply-modal-container" (click)="$event.stopPropagation()">
+
+      <div class="email-modal-header">
+        <div class="email-modal-header-left">
+          <span class="email-modal-icon">📝</span>
+          <div class="email-modal-title-block">
+            <h3 class="email-modal-title">New Task</h3>
+          </div>
+        </div>
+        <button class="email-modal-close" (click)="closeNewTaskModal()" title="Close">✕</button>
+      </div>
+
+      <div class="send-email-content">
+        <div class="send-email-form">
+          <div class="form-group">
+            <label>Title *</label>
+            <input type="text" [(ngModel)]="newTask.title" class="send-email-input" placeholder="Task title…">
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select [(ngModel)]="newTask.category" class="send-email-input">
+              <option value="">— None —</option>
+              <option *ngFor="let cat of TASK_CATEGORIES" [value]="cat.value">{{ cat.label }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select [(ngModel)]="newTask.priority" class="send-email-input">
+              <option value="Low">Low</option>
+              <option value="Normal">Normal</option>
+              <option value="High">High</option>
+              <option value="Urgent">Urgent</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" [(ngModel)]="newTask.dueDate" class="send-email-input">
+          </div>
+          <div class="form-group">
+            <label>Customer Name</label>
+            <input type="text" [(ngModel)]="newTask.customerName" class="send-email-input" placeholder="Customer name (optional)…">
+          </div>
+          <div class="form-group">
+            <label>Customer Email</label>
+            <input type="email" [(ngModel)]="newTask.customerEmail" class="send-email-input" placeholder="Customer email (optional)…">
+          </div>
+          <p *ngIf="newTaskError" class="send-email-error">{{ newTaskError }}</p>
+        </div>
+      </div>
+
+      <div class="email-footer">
+        <div class="footer-bottom-row">
+          <div class="footer-bottom-right">
+            <button class="send-btn" (click)="submitNewTask()" [disabled]="isCreatingTask">
+              <span *ngIf="!isCreatingTask">✓ Create Task</span>
+              <span *ngIf="isCreatingTask">Creating…</span>
+            </button>
+            <button class="close-btn" (click)="closeNewTaskModal()">✕ Close</button>
           </div>
         </div>
       </div>

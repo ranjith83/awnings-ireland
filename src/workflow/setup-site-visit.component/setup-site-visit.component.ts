@@ -301,10 +301,18 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
           return;
         }
 
-        // Resolve customerId/workflowId from workflow state service if available
+        // Resolve customerId/workflowId from workflow state service — but only when
+        // it actually matches the workflow we're deep-linking to (or no workflowId was
+        // given at all, e.g. the guided in-wizard flow). Otherwise a stale globally
+        // "selected workflow" from browsing the Workflow list elsewhere in the app
+        // would silently clobber the customerId passed explicitly via the URL
+        // (e.g. from the Site Survey page's Scheduled/All tabs).
         const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-        this.customerId = selectedWorkflow?.customerId || this.customerId;
-        this.selectedWorkflowId = selectedWorkflow?.id || paramWorkflowId || 0;
+        const selectedWorkflowMatches = !paramWorkflowId || selectedWorkflow?.id === paramWorkflowId;
+        if (selectedWorkflowMatches) {
+          this.customerId = selectedWorkflow?.customerId || this.customerId;
+        }
+        this.selectedWorkflowId = (selectedWorkflowMatches && selectedWorkflow?.id) || paramWorkflowId || 0;
 
         this.loadWorkflows();
         if (this.customerId) this.loadCustomerAddress(this.customerId);
@@ -914,7 +922,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
           finalize(() => this.isSaving$.next(false))
         )
         .subscribe({
-          next: () => { this.showSuccess('Site visit saved successfully'); this.workflowStateService.notifyStepCompleted('setup-site-visit'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); },
+          next: () => { this.showSuccess('Site visit saved successfully'); this.workflowStateService.notifyStepCompleted('setup-site-visit'); this.resetForm(); if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId); this.siteVisitService.refreshPendingCount(); },
           error: (error) => this.showError('Failed to create site visit: ' + error.message)
         });
     }

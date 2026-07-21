@@ -55,7 +55,6 @@
           <th>Booked By</th>
           <th>Customer Name</th>
           <th>Customer Address</th>
-          <th>Phone</th>
           <th>Sales Person</th>
           <th>Event Date</th>
           <th>Notes</th>
@@ -67,7 +66,6 @@
           <td>{{ item.createdBy || '—' }}</td>
           <td>{{ item.customerName || '—' }}</td>
           <td>{{ item.customerAddress || '—' }}</td>
-          <td>{{ item.customerPhone || '—' }}</td>
           <td>{{ item.salesPersonName || '—' }}</td>
           <td>{{ item.eventDate | date:'medium' }}</td>
           <td>{{ item.notes || '—' }}</td>
@@ -76,7 +74,7 @@
           </td>
         </tr>
         <tr *ngIf="(scheduledItems$ | async)?.length === 0">
-          <td colspan="8" class="empty-row">No site surveys scheduled.</td>
+          <td colspan="7" class="empty-row">No site surveys scheduled.</td>
         </tr>
       </tbody>
     </table>

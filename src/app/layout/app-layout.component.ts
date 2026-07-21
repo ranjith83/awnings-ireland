@@ -65,18 +65,17 @@ export class AppLayoutComponent implements OnInit, OnDestroy {
   }
 
   menuItems: MenuItem[] = [
-    { icon: faChartLine, label: 'Dashboard', route: '/dashboard' },
-    { icon: faUsers, label: 'Customers', route: '/customers' },
-    { icon: faProjectDiagram, label: 'Workflow', route: '/workflow' },
-    { icon: faFileAlt, label: 'Reports', route: '/reports' },
-    { icon: faEnvelopeOpenText, label: 'New Leads', route: '/new-leads' },
-    { icon: faClipboardList, label: 'Site Survey', route: '/site-survey' },
-   // { icon: faCog, label: 'Settings', route: '/settings' },
-    { icon: faCog, label: 'Task', route: '/task' },
-    { icon: faBell, label: 'Follow Ups', route: '/followups' },
-    { icon: faUserPlus, label: 'User Register', route: '/user-management', adminOnly: true },
-    { icon: faFileSignature, label: 'Audit', route: '/audit', adminOnly: true },
-    { icon: faSlidersH, label: 'Configuration', route: '/configuration' }
+    { icon: faChartLine,        label: 'Dashboard',     route: '/dashboard' },
+    { icon: faUsers,            label: 'Customers',     route: '/customers' },
+    { icon: faProjectDiagram,   label: 'Workflow',      route: '/workflow' },
+    { icon: faEnvelopeOpenText, label: 'New Leads',     route: '/new-leads' },
+    { icon: faBell,             label: 'Follow Ups',    route: '/followups' },
+    { icon: faClipboardList,    label: 'Site Surveys',  route: '/site-survey' },
+    { icon: faCog,              label: 'Tasks',         route: '/task' },
+    { icon: faFileAlt,          label: 'Reports',       route: '/reports' },
+    { icon: faUserPlus,         label: 'User Register', route: '/user-management', adminOnly: true },
+    { icon: faSlidersH,         label: 'Configuration', route: '/configuration' },
+    { icon: faFileSignature,    label: 'Audit',         route: '/audit', adminOnly: true },
   ];
 
 

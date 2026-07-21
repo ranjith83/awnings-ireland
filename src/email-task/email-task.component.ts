@@ -165,6 +165,19 @@ export class TaskComponent implements OnInit, OnDestroy {
   isSendingAiReply:    boolean = false;
   aiReplyError:        string  = '';
 
+  // ── New Task modal ───────────────────────────────────────────────────────
+  showNewTaskModal:    boolean = false;
+  isCreatingTask:      boolean = false;
+  newTaskError:        string  = '';
+  newTask = {
+    title:         '',
+    category:      '',
+    priority:      'Normal',
+    dueDate:       '',
+    customerName:  '',
+    customerEmail: ''
+  };
+
   readonly statusOptions = [
     { value: 'New',         label: 'New'         },
     { value: 'In Progress', label: 'In Progress' },
@@ -632,7 +645,39 @@ export class TaskComponent implements OnInit, OnDestroy {
         URL.revokeObjectURL(url);
       });
   }
-  createNewTask(): void { console.log('Create new task'); }
+  // ── New Task modal ────────────────────────────────────────────────────────
+  createNewTask(): void {
+    this.newTask = { title: '', category: '', priority: 'Normal', dueDate: '', customerName: '', customerEmail: '' };
+    this.newTaskError     = '';
+    this.isCreatingTask   = false;
+    this.showNewTaskModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeNewTaskModal(): void {
+    this.showNewTaskModal = false;
+    this.newTaskError     = '';
+    this.isCreatingTask   = false;
+    this.cdr.markForCheck();
+  }
+
+  submitNewTask(): void {
+    if (!this.newTask.title.trim()) { this.newTaskError = 'Please enter a title.'; this.cdr.markForCheck(); return; }
+    this.isCreatingTask = true; this.newTaskError = ''; this.cdr.markForCheck();
+
+    this.emailTaskService.createTask({
+      sourceType:    'Manual',
+      title:         this.newTask.title.trim(),
+      category:      this.newTask.category || null,
+      priority:      this.newTask.priority,
+      dueDate:       this.newTask.dueDate || null,
+      customerName:  this.newTask.customerName.trim() || null,
+      customerEmail: this.newTask.customerEmail.trim() || null
+    }).subscribe({
+      next:  () => { this.isCreatingTask = false; this.closeNewTaskModal(); this.refreshTrigger.next(); this.showToast('success', 'Task created successfully!'); },
+      error: (err) => { this.isCreatingTask = false; this.newTaskError = err?.error?.error ?? 'Failed to create task.'; this.cdr.markForCheck(); this.showToast('error', this.newTaskError); }
+    });
+  }
 
   // ── Workflow guard ────────────────────────────────────────────────────────
   private checkWorkflowExists(task: EmailTaskExtended): Observable<WorkflowGuardResult> {
