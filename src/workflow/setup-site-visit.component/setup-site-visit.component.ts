@@ -827,6 +827,20 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     }
   }
 
+  completeSiteVisit(siteVisitId: number): void {
+    if (!confirm('Mark this site survey as complete? It will move to the Completed tab.')) return;
+    this.siteVisitService.completeSiteVisit(siteVisitId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.showSuccess('Site visit marked as complete');
+          this.siteVisitService.refreshPendingCount();
+          if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId);
+        },
+        error: (error) => this.showError('Failed to complete site visit: ' + error.message)
+      });
+  }
+
   onSubmit(): void {
     if (!this.currentWorkflowId) { this.showError('Please select a workflow'); return; }
     if (!this.siteVisitForm.get('productModel')?.value) { this.showError('Please select a product model'); return; }

@@ -318,7 +318,8 @@ textarea.form-control {
 .action-buttons { display: flex; gap: 6px; }
 
 .btn-edit,
-.btn-delete {
+.btn-delete,
+.btn-complete {
   padding: 4px 8px;
   border: none;
   border-radius: 5px;
@@ -330,8 +331,9 @@ textarea.form-control {
   &:hover { transform: scale(1.12); }
 }
 
-.btn-edit   { background: #eff6ff; &:hover { background: #dbeafe; } }
-.btn-delete { background: #fef2f2; &:hover { background: #fee2e2; } }
+.btn-edit     { background: #eff6ff; &:hover { background: #dbeafe; } }
+.btn-delete   { background: #fef2f2; &:hover { background: #fee2e2; } }
+.btn-complete { background: #f0fdf4; color: #166534; font-size: 12px; font-weight: 600; &:hover { background: #dcfce7; } }
 
 .loading-message,
 .no-data-message {

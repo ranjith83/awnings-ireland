@@ -679,51 +679,32 @@
 }
 
 
-/* ── Main split: always a 2-column grid ──────────────────────── */
+/* ── Main split: full width by default, panel alongside when open ── */
 .content-split {
   display: grid;
-  /* Table always gets remaining space; panel slot is always 280px */
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: start;
-  /* Prevent the grid from collapsing when panel is absent */
   min-height: 0;
 }
 
-/* When panel is absent (*ngIf removes it), hold the column with a ghost */
-.content-split::after {
-  content: '';
-  display: block;
-  /* Fills the grid's second column when the panel isn't rendered,
-     preventing the table from expanding and causing a jump */
-  width: 280px;
-  grid-column: 2;
-  /* Only present when panel is NOT showing */
+.content-split.has-preview {
+  grid-template-columns: 1fr 300px;
 }
 
-/* When the real panel IS rendered, the ::after ghost is displaced
-   (it sits behind the panel in the same grid cell — no extra space needed) */
-.content-split.has-preview::after {
-  display: none;
-}
-
-/* ── Preview panel: fixed width, no layout impact ────────────── */
-.preview-panel {
-  width: 280px;
-  /* Stick to top of viewport as user scrolls */
-  position: sticky;
-  top: 80px;
-  /* Smooth appear, no jump */
-  animation: panelFadeIn 0.15s ease-out;
-  /* Prevent panel from causing column resize */
-  min-width: 0;
-  flex-shrink: 0;
-}
-
-/* ── Table card: don't let it grow into panel space ─────────────*/
+/* ── Table card ──────────────────────────────────────────────── */
 .table-card {
   min-width: 0;
   overflow: hidden;
+}
+
+/* ── Preview panel ───────────────────────────────────────────── */
+.preview-panel {
+  width: 300px;
+  position: sticky;
+  top: 80px;
+  animation: panelFadeIn 0.15s ease-out;
+  min-width: 0;
 }
 
 @keyframes panelFadeIn {
@@ -731,13 +712,12 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ── Mobile: stack, no panel column reserved ─────────────────── */
+/* ── Mobile ──────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .content-split,
   .content-split.has-preview {
     grid-template-columns: 1fr;
   }
-  .content-split::after { display: none; }
   .preview-panel {
     width: 100%;
     position: static;

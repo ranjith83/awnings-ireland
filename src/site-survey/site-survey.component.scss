@@ -102,9 +102,25 @@
   cursor: pointer;
   font-size: 0.9rem;
   padding: 0;
+  margin-right: 12px;
 
   &:hover {
     text-decoration: underline;
+  }
+}
+
+.complete-btn {
+  background: #dcfce7;
+  border: none;
+  color: #166534;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 5px;
+
+  &:hover {
+    background: #bbf7d0;
   }
 }
 

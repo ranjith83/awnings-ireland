@@ -6,10 +6,13 @@ import { AppTaskSummaryDto, EmailTaskService } from '../service/email-task.servi
 import { ScheduledShowroomInviteDto, SetupSiteVisitService } from '../service/setup-site-visit.service';
 import { NavService } from '../service/nav.service';
 
-type SiteSurveyTab = 'all' | 'scheduled';
+type SiteSurveyTab = 'all' | 'scheduled' | 'completed';
 
 /** Statuses considered "carried out" — matches AppTask.TaskStatusValue on the backend. */
 const COMPLETED_STATUSES = ['Completed'];
+
+/** Everything else — matches AppTask.TaskStatusValue on the backend, excluding Completed. */
+const ACTIVE_STATUSES = ['New', 'In Progress', 'More Info', 'Reopened'];
 
 interface SiteSurveyPage {
   totalCount: number;
@@ -43,7 +46,8 @@ export class SiteSurveyComponent implements OnInit, OnDestroy {
   isLoading$ = new BehaviorSubject<boolean>(false);
 
   /**
-   * "All" reads completed AppTasks (SourceType=SiteVisit); "Scheduled" reads upcoming
+   * "Site Surveys" reads active AppTasks (SourceType=SiteVisit, not yet completed);
+   * "Completed" reads the same source filtered to Completed; "Scheduled" reads upcoming
    * ShowroomInvite bookings directly — that table is written atomically by
    * create-showroom-invite, so it's the source of truth for what's booked.
    */
@@ -66,7 +70,7 @@ export class SiteSurveyComponent implements OnInit, OnDestroy {
       }
       return this.emailTaskService.getTasksPaginated({
         sourceTypes: ['SiteVisit'],
-        statuses: COMPLETED_STATUSES,
+        statuses: tab === 'completed' ? COMPLETED_STATUSES : ACTIVE_STATUSES,
         page,
         pageSize: this.pageSize,
         sortBy: 'DateAdded',
@@ -139,5 +143,18 @@ export class SiteSurveyComponent implements OnInit, OnDestroy {
         workflowId: invite.workflowId ?? null,
       }
     });
+  }
+
+  /** Marks a survey complete without leaving the list — moves it to the Completed tab. */
+  completeSiteVisit(task: AppTaskSummaryDto): void {
+    if (!task.siteVisitId) return;
+    if (!confirm('Mark this site survey as complete?')) return;
+
+    this.siteVisitService.completeSiteVisit(task.siteVisitId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => { this.refreshTrigger.next(); this.siteVisitService.refreshPendingCount(); },
+        error: (err) => alert('Failed to complete site visit: ' + (err?.message ?? 'Unknown error'))
+      });
   }
 }

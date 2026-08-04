@@ -240,6 +240,15 @@ export class SetupSiteVisitService {
   }
 
   /**
+   * Mark a site visit as carried out — moves it from "Site Surveys" to "Completed"
+   * POST /api/SiteVisit/{id}/complete
+   */
+  completeSiteVisit(id: number): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/${id}/complete`, {})
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
    * Delete a site visit
    * DELETE /api/SiteVisit/{id}
    */
