@@ -124,6 +124,83 @@
   }
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.modal-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  width: 420px;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.modal-body {
+  padding: 18px 20px;
+  color: #374151;
+  font-size: 0.95rem;
+
+  p { margin: 0 0 6px; }
+}
+
+.modal-customer {
+  color: #111827;
+  margin-top: 8px !important;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.modal-btn {
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  &--cancel {
+    background: #f3f4f6;
+    color: #374151;
+
+    &:hover { background: #e5e7eb; }
+  }
+
+  &--confirm {
+    background: #16a34a;
+    color: #fff;
+
+    &:hover { background: #15803d; }
+  }
+}
+
 .pagination {
   display: flex;
   align-items: center;

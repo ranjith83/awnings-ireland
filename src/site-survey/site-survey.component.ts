@@ -1,10 +1,11 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BehaviorSubject, Observable, Subject, combineLatest } from 'rxjs';
 import { map, switchMap, takeUntil, tap } from 'rxjs/operators';
 import { AppTaskSummaryDto, EmailTaskService } from '../service/email-task.service';
 import { ScheduledShowroomInviteDto, SetupSiteVisitService } from '../service/setup-site-visit.service';
 import { NavService } from '../service/nav.service';
+import { NotificationService } from '../service/notification.service';
 
 type SiteSurveyTab = 'all' | 'scheduled' | 'completed';
 
@@ -92,11 +93,14 @@ export class SiteSurveyComponent implements OnInit, OnDestroy {
   totalItems$ = this.response$.pipe(map(r => r.totalCount));
   totalPages$ = this.response$.pipe(map(r => r.totalPages));
 
+  showCompleteModal = false;
+  taskToComplete: AppTaskSummaryDto | null = null;
+
   constructor(
     private emailTaskService: EmailTaskService,
     private siteVisitService: SetupSiteVisitService,
     private nav: NavService,
-    private cdr: ChangeDetectorRef
+    private notification: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -145,16 +149,31 @@ export class SiteSurveyComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Marks a survey complete without leaving the list — moves it to the Completed tab. */
-  completeSiteVisit(task: AppTaskSummaryDto): void {
+  openCompleteModal(task: AppTaskSummaryDto): void {
     if (!task.siteVisitId) return;
-    if (!confirm('Mark this site survey as complete?')) return;
+    this.taskToComplete = task;
+    this.showCompleteModal = true;
+  }
 
-    this.siteVisitService.completeSiteVisit(task.siteVisitId)
+  closeCompleteModal(): void {
+    this.showCompleteModal = false;
+    this.taskToComplete = null;
+  }
+
+  confirmComplete(): void {
+    if (!this.taskToComplete?.siteVisitId) return;
+    const id = this.taskToComplete.siteVisitId;
+    this.closeCompleteModal();
+
+    this.siteVisitService.completeSiteVisit(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: () => { this.refreshTrigger.next(); this.siteVisitService.refreshPendingCount(); },
-        error: (err) => alert('Failed to complete site visit: ' + (err?.message ?? 'Unknown error'))
+        next: () => {
+          this.notification.success('Site survey marked as complete.');
+          this.refreshTrigger.next();
+          this.siteVisitService.refreshPendingCount();
+        },
+        error: (err) => this.notification.error('Failed to complete site visit: ' + (err?.message ?? 'Unknown error'))
       });
   }
 }

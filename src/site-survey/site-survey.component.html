@@ -44,7 +44,7 @@
           <td>{{ item.workflowId || '—' }}</td>
           <td>
             <button class="link-btn" (click)="openSiteVisit(item)">Edit</button>
-            <button class="complete-btn" (click)="completeSiteVisit(item)">Complete</button>
+            <button class="complete-btn" (click)="openCompleteModal(item)">Complete</button>
           </td>
         </tr>
         <tr *ngIf="(items$ | async)?.length === 0">
@@ -121,4 +121,22 @@
     <button (click)="nextPage()" [disabled]="(page$ | async)! >= totalPages">Next →</button>
   </div>
 
+</div>
+
+<!-- ==================== COMPLETE CONFIRMATION MODAL ==================== -->
+<div class="modal-backdrop" *ngIf="showCompleteModal" (click)="closeCompleteModal()"></div>
+<div class="modal-card" *ngIf="showCompleteModal">
+  <div class="modal-header">
+    <span class="modal-title">Mark as Complete</span>
+  </div>
+  <div class="modal-body">
+    <p>Are you sure you want to mark this site survey as complete?</p>
+    <p class="modal-customer" *ngIf="taskToComplete?.customerName">
+      <strong>{{ taskToComplete?.customerName }}</strong>
+    </p>
+  </div>
+  <div class="modal-footer">
+    <button class="modal-btn modal-btn--cancel" (click)="closeCompleteModal()">Cancel</button>
+    <button class="modal-btn modal-btn--confirm" (click)="confirmComplete()">Mark Complete</button>
+  </div>
 </div>
