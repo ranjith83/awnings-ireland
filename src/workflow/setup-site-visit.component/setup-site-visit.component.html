@@ -212,7 +212,6 @@
               <td>
                 <div class="action-buttons">
                   <button type="button" class="btn-edit" (click)="editSiteVisit(siteVisit)" title="Edit">✏️</button>
-                  <button type="button" class="btn-complete" (click)="completeSiteVisit(siteVisit.siteVisitId!)" title="Mark Complete">✅ Complete</button>
                   <button type="button" class="btn-delete" (click)="deleteSiteVisit(siteVisit.siteVisitId!)" title="Delete">🗑️</button>
                 </div>
               </td>
@@ -414,9 +413,10 @@
         </div>
       </div>
 
-      <!-- Submit / Cancel -->
+      <!-- Submit / Cancel / Complete -->
       <div class="form-actions">
         <button type="button" class="btn-secondary" (click)="cancelForm()">Cancel</button>
+        <button type="button" class="btn-complete" *ngIf="editMode && editingSiteVisitId" (click)="completeSiteVisit(editingSiteVisitId!)" title="Mark Complete">✅ Mark Complete</button>
         <button type="submit" class="btn-primary" (click)="onSubmit()" [disabled]="isSaving$ | async">
           {{ (isSaving$ | async) ? 'Saving...' : (editMode ? 'Update Site Visit' : 'Submit Site Visit') }}
         </button>

@@ -835,6 +835,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
         next: () => {
           this.showSuccess('Site visit marked as complete');
           this.siteVisitService.refreshPendingCount();
+          this.resetForm();
           if (this.currentWorkflowId) this.loadSiteVisits(this.currentWorkflowId);
         },
         error: (error) => this.showError('Failed to complete site visit: ' + error.message)
