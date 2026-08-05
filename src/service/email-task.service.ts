@@ -428,7 +428,7 @@ export class EmailTaskService {
   }
 
   getUsers(): Observable<User[]> {
-    return this.http.get<User[]>(`${environment.apiUrl}/api/Auth/users`);
+    return this.http.get<User[]>(`${environment.apiUrl}/api/users`);
   }
 
   logEmailRead(taskId: number): Observable<void> {
