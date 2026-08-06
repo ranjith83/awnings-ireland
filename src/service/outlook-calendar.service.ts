@@ -43,6 +43,7 @@ export interface ShowroomInvite {
   endDate?: Date;
   timeSlot: string;
   emailClient: boolean;
+  assignedToUserId?: number | null;
 }
 
 @Injectable({

@@ -1035,7 +1035,8 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       eventDate:     startDateTime,
       endDate:       endDateTime,
       timeSlot:      startTime,
-      emailClient:   false
+      emailClient:   false,
+      assignedToUserId: assignedToUserId
     };
 
     this.isCreatingEvent$.next(true);
