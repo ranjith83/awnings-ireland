@@ -145,7 +145,7 @@ export interface ScheduledShowroomInviteDto {
   customerEmail: string;
   customerAddress?: string | null;
   customerPhone?: string | null;
-  salesPersonName?: string | null;
+  assignedToName?: string | null;
   eventDate: string;
   endDate: string;
   notes?: string | null;

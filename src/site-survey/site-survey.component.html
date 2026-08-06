@@ -59,7 +59,7 @@
           <th>Booked By</th>
           <th>Customer Name</th>
           <th>Customer Address</th>
-          <th>Sales Person</th>
+          <th>Assigned To</th>
           <th>Event Date</th>
           <th>Notes</th>
           <th></th>
@@ -70,7 +70,7 @@
           <td>{{ item.createdBy || '—' }}</td>
           <td>{{ item.customerName || '—' }}</td>
           <td>{{ item.customerAddress || '—' }}</td>
-          <td>{{ item.salesPersonName || '—' }}</td>
+          <td>{{ item.assignedToName || '—' }}</td>
           <td>{{ item.eventDate | date:'medium' }}</td>
           <td>{{ item.notes || '—' }}</td>
           <td>
