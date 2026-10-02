@@ -194,6 +194,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
   // ── Draft quote selection ──────────────────────────────────────────────────
 
   selectDraftQuote(quote: QuoteDto) {
+    this.syncWorkflowSelectionForQuote(quote);
     this.selectedDraftQuote = quote;
     this.editingFinalQuote  = null;
 
@@ -226,6 +227,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
   // ── Final quote actions ────────────────────────────────────────────────────
 
   editFinalQuote(fq: QuoteDto) {
+    this.syncWorkflowSelectionForQuote(fq);
     this.editingFinalQuote = fq;
     this.populateFormFromQuote(fq);
   }
@@ -550,13 +552,14 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
         contentType: 'application/pdf'
       });
     }
+    const brochureProductId = this.getBrochureProductIdForQuote(quote);
     const payload: SendDirectEmailPayload = {
       toEmail, toName: this.customerName,
       subject: `Your Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
       body,
       attachments:    attachments.length > 0 ? attachments : undefined,
       attachBrochure: this.includeBrochure,
-      productIds:     this.includeBrochure && this.selectedModelId ? [this.selectedModelId] : undefined
+      productIds:     this.includeBrochure && brochureProductId ? [brochureProductId] : undefined
     };
     this.isSendingEmail$.next(true);
     this.emailTaskService.sendDirectEmail(payload)

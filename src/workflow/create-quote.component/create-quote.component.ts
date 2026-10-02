@@ -164,6 +164,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   }
 
   editQuote(quote: QuoteDto) {
+    this.syncWorkflowSelectionForQuote(quote);
     this.editingQuote = quote;
     this.populateFormFromQuote(quote);
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
@@ -255,7 +256,8 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
         takeUntil(this.destroy$),
         tap(async (createdQuote) => {
           this.draftQuotesSubject$.next([...this.draftQuotesSubject$.value, createdQuote]);
-          this.notificationService.success(`Draft Quote ${createdQuote.quoteNumber} created successfully!`);
+          const quoteRef = createdQuote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '');
+          this.notificationService.success(`Quote ${quoteRef} created successfully!`);
           this.workflowStateService.notifyStepCompleted('create-quote');
           const pdfBase64 = await this.generatePdf(createdQuote);
           if (this.emailToCustomer) this.sendQuoteEmail(createdQuote, pdfBase64);
@@ -324,22 +326,24 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
 
     const body = this.buildQuoteEmailBody(quote);
     const attachments: EmailAttachmentPayload[] = [];
+    const quoteRef = quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '');
     if (pdfBase64) {
       attachments.push({
-        fileName:      `DraftQuote_${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')}_${this.customerName.replace(/\s+/g, '_')}.pdf`,
+        fileName:      `Quote_${quoteRef}_${this.customerName.replace(/\s+/g, '_')}.pdf`,
         base64Content: pdfBase64,
         contentType:   'application/pdf'
       });
     }
 
+    const brochureProductId = this.getBrochureProductIdForQuote(quote);
     const payload: SendDirectEmailPayload = {
       toEmail,
       toName:         this.customerName,
-      subject:        `Your Draft Quote ${quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '')} from Awnings Ireland`,
+      subject:        `Your Quote ${quoteRef} from Awnings Ireland`,
       body,
       attachments:    attachments.length > 0 ? attachments : undefined,
       attachBrochure: this.includeBrochure,
-      productIds:     this.includeBrochure && this.selectedModelId ? [this.selectedModelId] : undefined
+      productIds:     this.includeBrochure && brochureProductId ? [brochureProductId] : undefined
     };
 
     this.isSendingEmail$.next(true);
@@ -347,7 +351,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       .pipe(takeUntil(this.destroy$), finalize(() => this.isSendingEmail$.next(false)))
       .subscribe({
         next: () => this.notificationService.success(
-          `Draft Quote DRAFT-${quote.quoteNumber} emailed to ${toEmail}` +
+          `Quote ${quoteRef} emailed to ${toEmail}` +
           (attachments.length > 0 ? ' with PDF attached' : '')
         ),
         error: () => this.notificationService.error('Quote saved but email could not be sent.')
@@ -360,10 +364,11 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       `  - ${i.description} (Qty: ${i.quantity}) — €${(i.quantity * i.unitPrice).toFixed(2)}`
     ).join('\n');
 
+    const quoteRef = quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, '');
     return [
       `Dear ${this.customerName},`,
       '',
-      `Please find below your draft quote reference DRAFT-${quote.quoteNumber}.`,
+      `Please find below your quote reference ${quoteRef}.`,
       '',
       'Items:',
       lines,
@@ -407,7 +412,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
 
     const pdfData: QuotePdfData = {
       quoteNumber:        quote.quoteNumber.replace(/^(?:DRAFT-|FINAL-)?QUOTE-/i, ''),
-      fileNamePrefix:     'DraftQuote',
+      fileNamePrefix:     'Quote',
       quoteDate:          typeof quote.quoteDate === 'string'
                             ? quote.quoteDate
                             : (quote.quoteDate as Date).toISOString(),

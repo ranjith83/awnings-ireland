@@ -269,6 +269,25 @@ export abstract class QuoteFormBase implements OnDestroy {
   protected abstract loadExistingQuotes(workflowId: number): void;
   abstract resetFormPartial(): void;
 
+  protected syncWorkflowSelectionForQuote(quote: { workflowId?: number | null } | null | undefined): void {
+    if (!quote?.workflowId) return;
+    const matchingWorkflow = this.workflowsSubject$.value.find(w => w.workflowId === quote.workflowId);
+    if (!matchingWorkflow) return;
+
+    this.selectedWorkflowId = matchingWorkflow.workflowId;
+    this.workflowId = matchingWorkflow.workflowId;
+    this.selectedModelId = matchingWorkflow.productId;
+    this.selectedProductName = matchingWorkflow.productName;
+    this.loadProductWidthsAndProjections();
+    this.loadProductAddons();
+  }
+
+  protected getBrochureProductIdForQuote(quote?: { workflowId?: number | null } | null): number | undefined {
+    const workflowId = quote?.workflowId ?? this.workflowId ?? this.selectedWorkflowId;
+    const matchingWorkflow = this.workflowsSubject$.value.find(w => w.workflowId === workflowId);
+    return matchingWorkflow?.productId ?? this.selectedModelId ?? undefined;
+  }
+
   // ── Loaders ────────────────────────────────────────────────────────────────
 
   private loadWindSensorOptions() {
