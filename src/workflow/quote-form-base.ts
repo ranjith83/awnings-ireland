@@ -57,6 +57,9 @@ export abstract class QuoteFormBase implements OnDestroy {
   protected quoteItemsSubject$        = new BehaviorSubject<QuoteItemDisplay[]>([]);
   protected draftQuotesSubject$       = new BehaviorSubject<QuoteDto[]>([]);
   protected finalQuotesSubject$       = new BehaviorSubject<QuoteDto[]>([]);
+  protected quoteFormRestoreItems: QuoteItemDisplay[] | null = null;
+  protected quoteFormRestoreBaseItem: QuoteItemDisplay | null = null;
+  protected quoteFormSupplyFitIncluded = false;
 
   // ── Derived Observables ────────────────────────────────────────────────────
   workflows$!: Observable<WorkflowDto[]>;
@@ -276,6 +279,7 @@ export abstract class QuoteFormBase implements OnDestroy {
 
     this.selectedWorkflowId = matchingWorkflow.workflowId;
     this.workflowId = matchingWorkflow.workflowId;
+    this.selectedSupplierId = matchingWorkflow.supplierId;
     this.selectedModelId = matchingWorkflow.productId;
     this.selectedProductName = matchingWorkflow.productName;
     this.loadProductWidthsAndProjections();
@@ -380,14 +384,14 @@ export abstract class QuoteFormBase implements OnDestroy {
     this.hasFrameColour      = false;
     this.frameColourOptions  = [];
     this.selectedFrameColourId = null;
-    this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR);
+    if (!this.quoteFormRestoreItems) this.removeAddonLineItem(ADDON_SLOT.FRAMECOLOUR);
     this.shadePlusOptions = [];
     this.shadePlusAllRows = [];
     this.shadePlusHasMultiple = false;
     this.selectedShadePlusId = null;
     this.selectedShadePlusDescription = '';
     this.includeShadeplus = false;
-    this.removeAddonLineItem(ADDON_SLOT.SHADEPLUS);
+    if (!this.quoteFormRestoreItems) this.removeAddonLineItem(ADDON_SLOT.SHADEPLUS);
 
     this.workflowService.hasNonStandardRALColours(id)
       .pipe(takeUntil(this.destroy$))
@@ -425,6 +429,7 @@ export abstract class QuoteFormBase implements OnDestroy {
           this.selectedShadePlusId = this.shadePlusOptions[0].shadePlusId;
           this.selectedShadePlusDescription = this.shadePlusOptions[0].description;
         }
+        this.restoreQuoteAddonSelections();
       });
 
     this.workflowService.hasValanceStyles(id).pipe(takeUntil(this.destroy$)).subscribe(v => this.hasValanceStyle = v);
@@ -434,20 +439,27 @@ export abstract class QuoteFormBase implements OnDestroy {
       if (v && this.frameColourOptions.length === 0) {
         this.workflowService.getFrameColourOptions(id)
           .pipe(takeUntil(this.destroy$), catchError(() => of([])))
-          .subscribe(opts => { this.frameColourOptions = opts; });
+          .subscribe(opts => { this.frameColourOptions = opts; this.restoreQuoteAddonSelections(); });
       }
     });
 
     this.reloadArmTypeDependents();
-    this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.heatersSubject$.next(v)), catchError(() => of([]))).subscribe();
-    this.workflowService.getLightingCassettesForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.lightingCassettesSubject$.next(v)), catchError(() => of([]))).subscribe();
-    this.workflowService.getControlsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => this.controlsSubject$.next(v)), catchError(() => of([]))).subscribe();
+    this.workflowService.getHeatersForProduct(id).pipe(takeUntil(this.destroy$), tap(v => { this.heatersSubject$.next(v); this.restoreQuoteAddonSelections(); }), catchError(() => of([]))).subscribe();
+    this.workflowService.getLightingCassettesForProduct(id).pipe(takeUntil(this.destroy$), tap(v => { this.lightingCassettesSubject$.next(v); this.restoreQuoteAddonSelections(); }), catchError(() => of([]))).subscribe();
+    this.workflowService.getControlsForProduct(id).pipe(takeUntil(this.destroy$), tap(v => { this.controlsSubject$.next(v); this.restoreQuoteAddonSelections(); }), catchError(() => of([]))).subscribe();
   }
 
   protected loadProductWidthsAndProjections() {
     if (!this.selectedModelId) return;
     const id = this.selectedModelId;
-    this.workflowService.getStandardWidthsForProduct(id).pipe(takeUntil(this.destroy$), map(w => w.sort((a, b) => a - b)), tap(v => this.widthsSubject$.next(v)), catchError(() => of([]))).subscribe();
+    this.workflowService.getStandardWidthsForProduct(id).pipe(takeUntil(this.destroy$), map(w => w.sort((a, b) => a - b)), tap(v => {
+      this.widthsSubject$.next(v);
+      if (this.quoteFormRestoreItems) {
+        this.selectedWidthCm = this.resolveCeilingWidth(this.enteredWidthCm);
+        this.restoreQuoteInstallationFee();
+        this.reloadArmTypeDependents();
+      }
+    }), catchError(() => of([]))).subscribe();
     this.workflowService.getProjectionWidthsForProduct(id).pipe(takeUntil(this.destroy$), map(p => p.sort((a, b) => a - b)), tap(v => this.projectionsSubject$.next(v)), catchError(() => of([]))).subscribe();
   }
 
@@ -465,13 +477,17 @@ export abstract class QuoteFormBase implements OnDestroy {
                 takeUntil(this.destroy$),
                 tap(brackets => {
                   this.bracketsSubject$.next(brackets);
-                  if (this.selectedBrackets.length === 0) {
+                  if (this.quoteFormRestoreItems) {
+                    this.restoreQuoteAddonSelections();
+                  } else if (this.selectedBrackets.length === 0) {
                     const defaultBracket = brackets.find(b => b.isDefault);
                     if (defaultBracket) {
                       this.selectedBrackets = [defaultBracket.bracketName];
                     }
+                    this.onBracketChange();
+                  } else {
+                    this.onBracketChange();
                   }
-                  this.onBracketChange();
                 }),
                 catchError(() => of([]))
               ).subscribe();
@@ -481,7 +497,9 @@ export abstract class QuoteFormBase implements OnDestroy {
                 takeUntil(this.destroy$),
                 tap(motors => {
                   this.motorsSubject$.next(motors);
-                  if (this.selectedMotor && !motors.some(m => m.motorId.toString() === this.selectedMotor)) {
+                  if (this.quoteFormRestoreItems) {
+                    this.restoreQuoteAddonSelections();
+                  } else if (this.selectedMotor && !motors.some(m => m.motorId.toString() === this.selectedMotor)) {
                     this.selectedMotor = '';
                     this.onMotorChange();
                   }
@@ -497,7 +515,9 @@ export abstract class QuoteFormBase implements OnDestroy {
           takeUntil(this.destroy$),
           tap(brackets => {
             this.bracketsSubject$.next(brackets);
-            if (this.selectedBrackets.length === 0) {
+            if (this.quoteFormRestoreItems) {
+              this.restoreQuoteAddonSelections();
+            } else if (this.selectedBrackets.length === 0) {
               const defaultBracket = brackets.find(b => b.isDefault);
               if (defaultBracket) {
                 this.selectedBrackets = [defaultBracket.bracketName];
@@ -515,7 +535,9 @@ export abstract class QuoteFormBase implements OnDestroy {
           takeUntil(this.destroy$),
           tap(motors => {
             this.motorsSubject$.next(motors);
-            if (!this.selectedMotor) {
+            if (this.quoteFormRestoreItems) {
+              this.restoreQuoteAddonSelections();
+            } else if (!this.selectedMotor) {
               const defaultMotor = motors.find(m => {
                 const d = m.description.toLowerCase();
                 return d.includes('radio-contr') && d.includes('1 ch') && !d.includes('manual override');
@@ -1093,6 +1115,101 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  protected clearQuoteFormRestore(): void {
+    this.quoteFormRestoreItems = null;
+    this.quoteFormRestoreBaseItem = null;
+    this.quoteFormSupplyFitIncluded = false;
+  }
+
+  protected restoreQuoteInstallationFee(): void {
+    const baseItem = this.quoteFormRestoreBaseItem;
+    if (!baseItem || !this.quoteFormSupplyFitIncluded || !this.selectedModelId ||
+        !this.selectedWidthCm || !this.selectedAwning) {
+      this.installationFee = 0;
+      return;
+    }
+    this.workflowService.getProjectionPriceForProduct(this.selectedModelId, this.selectedWidthCm, this.selectedAwning)
+      .pipe(takeUntil(this.destroy$), catchError(() => of(0)))
+      .subscribe(basePrice => {
+        this.installationFee = Math.max(0, baseItem.unitPrice - basePrice);
+        this.cdr.markForCheck();
+      });
+  }
+
+  protected restoreQuoteAddonSelections(): void {
+    const items = this.quoteFormRestoreItems;
+    if (!items) return;
+    const findType = (type: ProductItemType) => items.find(item => Number(item.productItemId) === type);
+    const matches = (left: string, right: string) =>
+      this.stripSurchargePrefix(left).trim().toLowerCase() === this.stripSurchargePrefix(right).trim().toLowerCase();
+
+    const bracketItems = items.filter(item => Number(item.productItemId) === ProductItemType.Brackets);
+    this.selectedBrackets = bracketItems.map(item =>
+      this.bracketsSubject$.value.find(option => matches(option.bracketName, item.description))?.bracketName ?? item.description
+    );
+
+    const motorItem = findType(ProductItemType.Motors);
+    this.selectedMotor = motorItem
+      ? this.motorsSubject$.value.find(option => matches(option.description, motorItem.description))?.motorId.toString() ?? ''
+      : '';
+    const heaterItem = findType(ProductItemType.Heaters);
+    this.selectedHeater = heaterItem
+      ? this.heatersSubject$.value.find(option => matches(option.description, heaterItem.description))?.heaterId.toString() ?? ''
+      : '';
+    const controlItem = findType(ProductItemType.Controls);
+    this.selectedControl = controlItem
+      ? this.controlsSubject$.value.find(option => matches(option.description, controlItem.description))?.controlId.toString() ?? ''
+      : '';
+    const lightingItem = findType(ProductItemType.LightingCassettes);
+    this.selectedLightingCassette = lightingItem
+      ? this.lightingCassettesSubject$.value.find(option => matches(option.description, lightingItem.description))?.lightingId.toString() ?? ''
+      : '';
+
+    const shadeItem = findType(ProductItemType.ShadePlus);
+    this.includeShadeplus = !!shadeItem;
+    this.selectedShadePlusId = null;
+    this.selectedShadePlusDescription = '';
+    if (shadeItem) {
+      const shadeOption = this.shadePlusOptions.find(option => matches(option.description, shadeItem.description));
+      if (shadeOption) {
+        this.selectedShadePlusId = shadeOption.shadePlusId;
+        this.selectedShadePlusDescription = shadeOption.description;
+      }
+    }
+
+    const valanceItem = findType(ProductItemType.Valance);
+    this.includeValanceStyle = !!valanceItem;
+    this.selectedValanceType = valanceItem?.description.match(/valance style\s+(.+)$/i)?.[1] ?? '';
+    this.includeWallSealing = !!findType(ProductItemType.WallSealingProfile);
+
+    const frameItem = findType(ProductItemType.FrameColour);
+    this.selectedRalType = findType(ProductItemType.NonStandardRals) ? 'nonstandard' : '';
+    this.selectedFrameColourId = null;
+    this.ralCustomCode = '';
+    if (frameItem) {
+      const frameDescription = frameItem.description.replace(/^frame colour\s*-\s*/i, '').replace(/\s*\([^)]*\)\s*$/, '');
+      const frameOption = this.frameColourOptions.find(option => matches(option.description, frameDescription));
+      if (frameOption) {
+        this.selectedFrameColourId = frameOption.frameColourOptionId;
+        const nonStandard = frameOption.isNonStandardRAL as unknown;
+        this.selectedRalType = nonStandard === true || nonStandard === 1 || nonStandard === '1' ? 'nonstandard' : 'standard';
+      }
+      this.ralCustomCode = frameItem.description.match(/\(([^)]*)\)\s*$/)?.[1] ?? '';
+    }
+
+    const corrosionItem = items.find(item => /^corrosion protection$/i.test(item.description.trim()));
+    this.includeCorrosionProtection = !!corrosionItem;
+    this.corrosionProtectionPrice = corrosionItem?.unitPrice ?? 0;
+    this.over50Km = items.some(item => /travel surcharge\s*-\s*over 50km/i.test(item.description));
+    this.includeElectrician = items.some(item => /qualified electrician/i.test(item.description));
+    const baseItem = items.find(item => /\bwide x\b/i.test(item.description));
+    const extraItem = items.find(item => !item.productItemId && item !== baseItem &&
+      !/^(corrosion protection|travel surcharge|electric connection)/i.test(item.description));
+    this.extrasDescription = extraItem?.description ?? '';
+    this.extrasPrice = extraItem?.unitPrice ?? 0;
+    this.cdr.markForCheck();
+  }
 
   protected calculateAmount(qty: number, price: number, _taxRate: number, discPct: number): number {
     const sub  = qty * price;

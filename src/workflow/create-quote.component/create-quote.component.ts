@@ -119,6 +119,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   }
 
   resetFormPartial() {
+    this.clearQuoteFormRestore();
     this.quoteDate    = new Date().toISOString().split('T')[0];
     this.followUpDate = this.getDefaultFollowUpDate();
     this.notes        = '';
@@ -164,9 +165,11 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   }
 
   editQuote(quote: QuoteDto) {
-    this.syncWorkflowSelectionForQuote(quote);
     this.editingQuote = quote;
     this.populateFormFromQuote(quote);
+    this.syncWorkflowSelectionForQuote(quote);
+    this.restoreQuoteAddonSelections();
+    this.restoreQuoteInstallationFee();
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   }
 
@@ -201,7 +204,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedWindSensor = quote.windSensorOption || '';
     this.fabricCode         = quote.fabricCode        || '';
 
-    this.quoteItemsSubject$.next((quote.quoteItems || []).map(qi => ({
+    const items = (quote.quoteItems || []).map(qi => ({
       productItemId:      qi.productItemId,
       description:        qi.description,
       quantity:           qi.quantity,
@@ -209,7 +212,18 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       taxRate:            qi.taxRate,
       discountPercentage: qi.discountPercentage,
       amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
-    } as QuoteItemDisplay)));
+    } as QuoteItemDisplay));
+    this.quoteFormRestoreItems = items;
+    this.quoteItemsSubject$.next(items);
+
+    const baseItem = items.find(item => /\bwide x\b/i.test(item.description));
+    this.quoteFormRestoreBaseItem = baseItem ?? null;
+    const dimensions = baseItem?.description.match(/(\d+(?:\.\d+)?)m wide x (\d+(?:\.\d+)?)m projection\s+(Supply & Fit|Supply Only)/i);
+    this.enteredWidthCm = dimensions ? Number(dimensions[1]) * 100 : null;
+    this.selectedWidthCm = null;
+    this.selectedAwning = dimensions ? Number(dimensions[2]) * 100 : null;
+    this.quoteFormSupplyFitIncluded = dimensions?.[3].toLowerCase() === 'supply & fit';
+    this.installationFee = 0;
     this.onDiscountChange();
   }
 

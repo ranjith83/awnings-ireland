@@ -143,53 +143,55 @@ export class PdfGenerationService {
     // ===== CUSTOMER & QUOTE INFO SECTION =====
     yPosition = 65;
 
-    // Customer address (left side)
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.customerName, 20, yPosition);
-    yPosition += 5;
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.customerAddress, 20, yPosition);
-    yPosition += 5;
-    doc.text(data.customerCity, 20, yPosition);
-    yPosition += 5;
-    doc.text(data.customerPostalCode, 20, yPosition);
+    // Customer name and address (right side)
+    let customerYPos = 65;
+    const customerDetails = [
+      data.customerName,
+      data.customerAddress,
+      data.customerCity,
+      data.customerPostalCode
+    ].filter(detail => !!detail?.trim());
+    customerDetails.forEach((detail, index) => {
+      doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
+      const lines = doc.splitTextToSize(detail, 75);
+      doc.text(lines, pageWidth - 20, customerYPos, { align: 'right' });
+      customerYPos += Math.max(lines.length, 1) * 5;
+    });
 
-    // Quote details (right side)
-    yPosition = 65;
-    const labelX = pageWidth - 80;
-    const valueX = pageWidth - 20;
-
+    const customerLabelX = pageWidth - 80;
+    const customerValueX = pageWidth - 20;
     doc.setFont('helvetica', 'bold');
-    doc.text('Date', labelX, yPosition);
+    doc.text('Date', customerLabelX, customerYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.formatDate(data.quoteDate), valueX, yPosition, { align: 'right' });
-    yPosition += 5;
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('Expiry', labelX, yPosition);
-    doc.setFont('helvetica', 'normal');
-    doc.text(this.formatDate(data.expiryDate), valueX, yPosition, { align: 'right' });
-    yPosition += 5;
+    doc.text(this.formatDate(data.quoteDate), customerValueX, customerYPos, { align: 'right' });
+    customerYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Quote Number', labelX, yPosition);
+    doc.text('Expiry', customerLabelX, customerYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.quoteNumber, valueX, yPosition, { align: 'right' });
-    yPosition += 5;
+    doc.text(this.formatDate(data.expiryDate), customerValueX, customerYPos, { align: 'right' });
+    customerYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Reference', labelX, yPosition);
+    doc.text('Quote Number', customerLabelX, customerYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.reference, valueX, yPosition, { align: 'right' });
-    yPosition += 5;
+    doc.text(data.quoteNumber, customerValueX, customerYPos, { align: 'right' });
+    customerYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('VAT No:', labelX, yPosition);
+    doc.text('Reference', customerLabelX, customerYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.COMPANY_VAT, valueX, yPosition, { align: 'right' });
+    doc.text(data.reference, customerValueX, customerYPos, { align: 'right' });
+    customerYPos += 5;
+
+    doc.setFont('helvetica', 'bold');
+    doc.text('VAT No:', customerLabelX, customerYPos);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_VAT, customerValueX, customerYPos, { align: 'right' });
+    customerYPos += 5;
 
     // ===== ITEMS TABLE =====
-    yPosition += 15;
+    yPosition = customerYPos + 10;
 
     const tableData = data.items.map(item => [
       item.description,
