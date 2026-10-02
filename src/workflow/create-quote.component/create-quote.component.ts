@@ -82,6 +82,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
         const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
         this.customerId   = selectedWorkflow?.customerId   || this.customerId;
         this.customerName = selectedWorkflow?.customerName || this.customerName;
+        this.ensureDefaultDeliveryFee();
         const workflowId  = selectedWorkflow?.id           || paramWorkflowId || 0;
 
         this.loadWorkflowsForCustomer(workflowId);
@@ -155,6 +156,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedAwning = null;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
     this.quoteItemsSubject$.next(first ? [first] : []);
+    this.ensureDefaultDeliveryFee();
     this.notificationService.success('');
   }
 
@@ -213,10 +215,12 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
       discountPercentage: qi.discountPercentage,
       amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
     } as QuoteItemDisplay));
-    this.quoteFormRestoreItems = items;
     this.quoteItemsSubject$.next(items);
+    this.ensureDefaultDeliveryFee();
+    const restoredItems = this.quoteItemsSubject$.value;
+    this.quoteFormRestoreItems = restoredItems;
 
-    const baseItem = items.find(item => /\bwide x\b/i.test(item.description));
+    const baseItem = restoredItems.find(item => /\bwide x\b/i.test(item.description));
     this.quoteFormRestoreBaseItem = baseItem ?? null;
     const dimensions = baseItem?.description.match(/(\d+(?:\.\d+)?)m wide x (\d+(?:\.\d+)?)m projection\s+(Supply & Fit|Supply Only)/i);
     this.enteredWidthCm = dimensions ? Number(dimensions[1]) * 100 : null;
@@ -225,6 +229,22 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.quoteFormSupplyFitIncluded = dimensions?.[3].toLowerCase() === 'supply & fit';
     this.installationFee = 0;
     this.onDiscountChange();
+  }
+
+  private ensureDefaultDeliveryFee(): void {
+    const items = this.quoteItemsSubject$.value;
+    if (items.some(item => item.description.trim().toLowerCase() === 'delivery fee')) return;
+
+    const unitPrice = 950;
+    items.push({
+      description: 'Delivery Fee',
+      quantity: 1,
+      unitPrice,
+      taxRate: this.vatRate,
+      discountPercentage: 0,
+      amount: this.calculateAmount(1, unitPrice, this.vatRate, 0)
+    });
+    this.quoteItemsSubject$.next([...items]);
   }
 
   // ── Generate / Update quote ─────────────────────────────────────────────────
