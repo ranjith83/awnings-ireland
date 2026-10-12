@@ -290,7 +290,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -312,7 +312,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -330,7 +330,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -348,7 +348,7 @@
                 <label>{{ field.label }}</label>
                 <select *ngIf="field.type === 'dropdown'" [formControlName]="field.name" class="form-control">
                   <option value="">Select {{ field.label }}</option>
-                  <option *ngFor="let value of fieldValuesCache[field.name]" [value]="value">{{ value }}</option>
+                  <option *ngFor="let value of getFieldValues(field)" [value]="value">{{ value }}</option>
                 </select>
                 <input *ngIf="field.type === 'text'" type="text" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
                 <input *ngIf="field.type === 'number'" type="number" step="0.01" [formControlName]="field.name" class="form-control" [placeholder]="'Enter ' + field.label">
@@ -410,6 +410,37 @@
           <p class="upload-notice" *ngIf="selectedImages.length === 0">
             No images selected. Click "Browse Images" to attach site survey photos.
           </p>
+
+          <section class="bracket-sketch-section" aria-labelledby="bracket-sketch-title">
+            <div class="bracket-sketch-heading">
+              <div>
+                <h3 id="bracket-sketch-title" class="subsection-title">Custom Bracket Drawing</h3>
+                <p class="bracket-sketch-hint">Sketch the bracket shape, fixing points, or dimensions.</p>
+              </div>
+              <div class="bracket-sketch-tools">
+                <label class="sketch-tool-label" title="Pen colour">
+                  <span>Pen</span>
+                  <input type="color" [(ngModel)]="bracketPenColor" [ngModelOptions]="{ standalone: true }" aria-label="Pen colour">
+                </label>
+                <label class="sketch-tool-label sketch-width-label" title="Pen thickness">
+                  <span>Size {{ bracketPenWidth }}</span>
+                  <input type="range" min="1" max="10" [(ngModel)]="bracketPenWidth" [ngModelOptions]="{ standalone: true }" aria-label="Pen thickness">
+                </label>
+                <button type="button" class="sketch-tool-button" (click)="undoBracketStroke(bracketCanvas)"
+                  [disabled]="!canUndoBracketSketch" title="Undo last stroke">Undo</button>
+                <button type="button" class="sketch-tool-button" (click)="clearBracketSketch(bracketCanvas)"
+                  [disabled]="!hasBracketSketch" title="Clear drawing">Clear</button>
+                <button type="button" class="sketch-save-button" (click)="saveBracketSketch(bracketCanvas)"
+                  [disabled]="!hasBracketSketch" title="Add drawing to site visit images">Save drawing</button>
+              </div>
+            </div>
+            <canvas #bracketCanvas class="bracket-sketch-canvas" width="1200" height="440"
+              (pointerdown)="startBracketDrawing($event, bracketCanvas)"
+              (pointermove)="drawBracketStroke($event, bracketCanvas)"
+              (pointerup)="stopBracketDrawing()"
+              (pointercancel)="stopBracketDrawing()"
+              aria-label="Drawing pad for custom bracket designs"></canvas>
+          </section>
         </div>
       </div>
 

@@ -33,6 +33,7 @@ export interface OutlookEvent {
 
 export interface ShowroomInvite {
   workflowId: number;
+  productId: number;
   customerId: number;
   customerEmail: string;
   customerName: string;

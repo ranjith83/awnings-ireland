@@ -137,6 +137,15 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   selectedImages: File[] = [];        // new files pending upload
   existingImageUrls: string[] = [];   // URLs already saved on the server
   deletedImageUrls: string[] = [];    // URLs the user has removed (to send to backend)
+  bracketPenColor = '#203247';
+  bracketPenWidth = 3;
+  hasBracketSketch = false;
+  private bracketSketchDrawing = false;
+  private bracketSketchUndo: ImageData[] = [];
+
+  get canUndoBracketSketch(): boolean {
+    return this.bracketSketchUndo.length > 0;
+  }
 
   readonly WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   readonly MONTHS = [
@@ -163,22 +172,22 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   productModelFields: FieldConfig[] = [
     { name: 'structure', label: 'Structure', type: 'dropdown', category: 'Structure', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'passageHeight', label: 'Passage Height (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'passageHeight', label: 'Passage Height (m)', type: 'text', visibleFor: ['roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'width', label: 'Width (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'projection', label: 'Projection (m)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'heightAvailable', label: 'Height Available', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'wallType', label: 'Wall Type', type: 'dropdown', category: 'WallType', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'externalInsulation', label: 'External Insulation', type: 'dropdown', category: 'ExternalInsulation', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'wallFinish', label: 'Wall Finish', type: 'dropdown', category: 'WallFinish', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'wallThickness', label: 'Wall Thickness', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'specialBrackets', label: 'Special Brackets', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'sideInfills', label: 'Side Infills', type: 'dropdown', category: 'SideInfills', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'flashingRequired', label: 'Flashing Required', type: 'dropdown', category: 'FlashingRequired', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'flashingDimensions', label: 'Flashing Dimensions', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'standOfBrackets', label: 'Stand of Brackets', type: 'dropdown', category: 'StandOfBrackets', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'standOfBracketDimension', label: 'Stand of Bracket Dimension', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'wallThickness', label: 'Insulation Thickness', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'specialBrackets', label: 'Special Brackets', type: 'dropdown', values: ['Yes', 'No'], visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'sideInfills', label: 'Side Infills', type: 'dropdown', category: 'SideInfills', visibleFor: ['roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'flashingRequired', label: 'Wall Sealing Profile', type: 'dropdown', values: ['Yes', 'No'], visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'flashingDimensions', label: 'Flashing Dimensions', type: 'text', visibleFor: ['roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'standOfBrackets', label: 'Stand Off of Brackets', type: 'dropdown', category: 'StandOfBrackets', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'standOfBracketDimension', label: 'Stand Off Bracket Dimension', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'electrician', label: 'Electrician', type: 'dropdown', category: 'Electrician', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
-    { name: 'electricalConnection', label: 'Electrical Connection', type: 'dropdown', category: 'ElectricalConnection', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
+    { name: 'electricalConnection', label: 'Electrical Connection', type: 'dropdown', category: 'ElectricalConnection', visibleFor: ['roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'address', label: 'Address', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'location', label: 'Location (Eircode)', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] },
     { name: 'otherSiteSurveyNotes', label: 'Other Site Survey Notes', type: 'text', visibleFor: ['awning', 'roofSystem', 'blind', 'glassScreen', 'pergola', 'fabricWindBreaker', 'parasol', 'other'] }
@@ -746,6 +755,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   editSiteVisit(siteVisit: SiteVisitDto): void {
+    this.resetBracketSketchState();
     this.editMode = true;
     this.editingSiteVisitId = siteVisit.siteVisitId!;
     this.showForm = true;
@@ -944,6 +954,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
   }
 
   resetForm(): void {
+    this.resetBracketSketchState();
     this.editMode = false;
     this.editingSiteVisitId = null;
     this.showForm = false;
@@ -960,6 +971,7 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
 
   addNewSiteVisit(): void {
     if (!this.currentWorkflowId) { this.showError('Please select a workflow first'); return; }
+    this.resetBracketSketchState();
     const currentWorkflow = this.siteVisitForm.get('workflow')?.value;
     const currentProductModel = this.siteVisitForm.get('productModel')?.value;
     this.editMode = false;
@@ -1023,9 +1035,15 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
     const baseDate = this.parseDateKey(date);
     const startDateTime = this.parseTimeSlot(baseDate, startTime);
     const endDateTime   = this.parseTimeSlot(baseDate, endTime);
+    const workflow = this.workflowsSubject$.value.find(item => item.workflowId === this.currentWorkflowId);
+    if (!workflow?.productId) {
+      this.createEventError$.next('Could not determine the product for this workflow. Please reselect the workflow.');
+      return;
+    }
 
     const invite: ShowroomInvite = {
       workflowId:    this.currentWorkflowId || 0,
+      productId:     workflow.productId,
       customerId:    this.customerId || 0,
       customerEmail: this.customerEmail || '',
       customerName:  this.customerName || '',
@@ -1137,6 +1155,88 @@ export class SetupSiteVisitComponent implements OnInit, OnDestroy {
       }
       input.value = '';
     }
+  }
+
+  startBracketDrawing(event: PointerEvent, canvas: HTMLCanvasElement): void {
+    event.preventDefault();
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    if (!this.hasBracketSketch) {
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      this.hasBracketSketch = true;
+    }
+    this.bracketSketchUndo.push(context.getImageData(0, 0, canvas.width, canvas.height));
+    this.bracketSketchDrawing = true;
+    canvas.setPointerCapture(event.pointerId);
+    const point = this.getBracketCanvasPoint(event, canvas);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+  }
+
+  drawBracketStroke(event: PointerEvent, canvas: HTMLCanvasElement): void {
+    if (!this.bracketSketchDrawing) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const point = this.getBracketCanvasPoint(event, canvas);
+    context.strokeStyle = this.bracketPenColor;
+    context.lineWidth = this.bracketPenWidth * (canvas.width / canvas.getBoundingClientRect().width);
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.lineTo(point.x, point.y);
+    context.stroke();
+  }
+
+  stopBracketDrawing(): void {
+    this.bracketSketchDrawing = false;
+  }
+
+  undoBracketStroke(canvas: HTMLCanvasElement): void {
+    const context = canvas.getContext('2d');
+    const previous = this.bracketSketchUndo.pop();
+    if (!context || !previous) return;
+    context.putImageData(previous, 0, 0);
+    this.hasBracketSketch = this.bracketSketchUndo.length > 0;
+  }
+
+  clearBracketSketch(canvas: HTMLCanvasElement): void {
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    this.bracketSketchUndo = [];
+    this.hasBracketSketch = false;
+  }
+
+  private resetBracketSketchState(): void {
+    this.hasBracketSketch = false;
+    this.bracketSketchDrawing = false;
+    this.bracketSketchUndo = [];
+  }
+
+  saveBracketSketch(canvas: HTMLCanvasElement): void {
+    if (!this.hasBracketSketch) return;
+    canvas.toBlob(blob => {
+      if (!blob) {
+        this.showError('Could not save the bracket drawing. Please try again.');
+        return;
+      }
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      this.selectedImages.push(new File([blob], `custom-bracket-design-${timestamp}.png`, { type: 'image/png' }));
+      this.selectedImages = [...this.selectedImages];
+      this.clearBracketSketch(canvas);
+      this.showSuccess('Bracket drawing added to site visit images. Save the site visit to upload it.');
+      this.cdr.markForCheck();
+    }, 'image/png');
+  }
+
+  private getBracketCanvasPoint(event: PointerEvent, canvas: HTMLCanvasElement): { x: number; y: number } {
+    const bounds = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - bounds.left) * (canvas.width / bounds.width),
+      y: (event.clientY - bounds.top) * (canvas.height / bounds.height)
+    };
   }
 
   removeImage(index: number): void {

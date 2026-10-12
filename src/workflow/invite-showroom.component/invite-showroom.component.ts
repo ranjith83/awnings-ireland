@@ -681,17 +681,23 @@ export class InviteShowroomComponent implements OnInit, OnDestroy {
 
   onSave(): void {
     if (this.bookingForm.valid) {
+      const formData = this.bookingForm.value;
+      const workflowId = parseInt(formData.workflow, 10);
+      const selectedWorkflow = this.workflowsSubject$.value.find(workflow => workflow.workflowId === workflowId);
+      if (!selectedWorkflow?.productId) {
+        this.notificationService.error('Could not determine the product for the selected workflow. Please reselect the workflow.');
+        return;
+      }
+
       this.isLoadingSubject$.next(true);
 
 
-
-      const formData = this.bookingForm.value;
-      
       const startDateTime = this.parseTimeSlot(this.selectedDate!, formData.startTime);
       const endDateTime = this.parseTimeSlot(this.selectedDate!, formData.endTime);
       
       const invite: ShowroomInvite = {
-        workflowId: parseInt(formData.workflow),
+        workflowId,
+        productId: selectedWorkflow.productId,
         customerId: this.customerId,
         customerEmail: this.customerEmail,
         customerName: this.customerName,
