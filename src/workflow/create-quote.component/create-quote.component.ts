@@ -155,7 +155,9 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedWidthCm = null;
     this.selectedAwning = null;
     const first = this.quoteItemsSubject$.value.find(i => i.description.includes('wide x'));
+    this.quoteFormSupplyFitIncluded = !!first?.description.toLowerCase().includes('supply & fit');
     this.quoteItemsSubject$.next(first ? [first] : []);
+    this.updateQuoteItemsVatRate();
     this.ensureDefaultDeliveryFee();
     this.notificationService.success('');
   }
@@ -206,12 +208,14 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.selectedWindSensor = quote.windSensorOption || '';
     this.fabricCode         = quote.fabricCode        || '';
 
+    const baseQuoteItem = (quote.quoteItems || []).find(item => /\bwide x\b/i.test(item.description));
+    this.quoteFormSupplyFitIncluded = !!baseQuoteItem?.description.toLowerCase().includes('supply & fit');
     const items = (quote.quoteItems || []).map(qi => ({
       productItemId:      qi.productItemId,
       description:        qi.description,
       quantity:           qi.quantity,
       unitPrice:          qi.unitPrice,
-      taxRate:            qi.taxRate,
+      taxRate:            this.vatRate,
       discountPercentage: qi.discountPercentage,
       amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
     } as QuoteItemDisplay));
@@ -226,7 +230,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
     this.enteredWidthCm = dimensions ? Number(dimensions[1]) * 100 : null;
     this.selectedWidthCm = null;
     this.selectedAwning = dimensions ? Number(dimensions[2]) * 100 : null;
-    this.quoteFormSupplyFitIncluded = dimensions?.[3].toLowerCase() === 'supply & fit';
+    this.quoteFormSupplyFitIncluded = !!baseItem?.description.toLowerCase().includes('supply & fit');
     this.installationFee = 0;
     this.onDiscountChange();
   }
@@ -275,7 +279,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
         description:        item.description,
         quantity:           item.quantity,
         unitPrice:          item.unitPrice,
-        taxRate:            item.taxRate || this.vatRate,
+        taxRate:            this.vatRate,
         discountPercentage: item.discountPercentage || 0,
         productItemId:      item.productItemId
       }))
@@ -320,7 +324,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
         description:        item.description,
         quantity:           item.quantity,
         unitPrice:          item.unitPrice,
-        taxRate:            item.taxRate || this.vatRate,
+        taxRate:            this.vatRate,
         discountPercentage: item.discountPercentage || 0,
         productItemId:      item.productItemId
       })) as UpdateQuoteItemDto[]

@@ -23,7 +23,8 @@ import { NavService } from '../service/nav.service';
 import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
   ADDON_ITEM_IDS, ADDON_SLOT, ADDON_SLOT_ORDER, AddonSlot,
-  QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE, QUOTE_OVER_50KM_PRICE,
+  QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE,
+  QUOTE_SUPPLY_ONLY_VAT_RATE, QUOTE_OVER_50KM_PRICE,
 } from './quote.constants';
 
 export interface QuoteItemDisplay {
@@ -41,7 +42,11 @@ export interface QuoteItemDisplay {
 export abstract class QuoteFormBase implements OnDestroy {
 
   // ── Constants ──────────────────────────────────────────────────────────────
-  readonly vatRate          = QUOTE_VAT_RATE;
+  get vatRate(): number {
+    return this.quoteFormSupplyFitIncluded || this.installationFee > 0
+      ? QUOTE_VAT_RATE
+      : QUOTE_SUPPLY_ONLY_VAT_RATE;
+  }
   readonly electricianPrice = QUOTE_ELECTRICIAN_PRICE;
 
   // ── BehaviorSubjects ───────────────────────────────────────────────────────
@@ -654,6 +659,7 @@ export abstract class QuoteFormBase implements OnDestroy {
     const widthM      = (this.enteredWidthCm / 100).toFixed(2).replace(/\.?0+$/, '') + 'm';
     const projectionM = (this.selectedAwning  / 100).toFixed(0) + 'm';
     const suffix      = (this.installationFee && this.installationFee > 0) ? 'Supply & Fit' : 'Supply Only';
+    this.quoteFormSupplyFitIncluded = suffix === 'Supply & Fit';
     const description = `${this.selectedProductName} closed cassette awning ${widthM} wide x ${projectionM} projection ${suffix}`;
     const unitPrice   = this.calculatedPrice + (this.installationFee || 0);
     const item: QuoteItemDisplay = {
@@ -948,7 +954,9 @@ export abstract class QuoteFormBase implements OnDestroy {
 
   onInstallationFeeChange() {
     this.removeAddonLineItem(ADDON_SLOT.INSTALLATION);
+    this.quoteFormSupplyFitIncluded = this.installationFee > 0;
     this.generateFirstLineItem();
+    this.updateQuoteItemsVatRate();
   }
 
   onDiscountChange() {
@@ -1038,6 +1046,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   onItemChange(item: QuoteItemDisplay) {
+    item.taxRate = this.vatRate;
     item.amount = this.calculateAmount(item.quantity, item.unitPrice, item.taxRate || 0, item.discountPercentage || 0);
     this.quoteItemsSubject$.next([...this.quoteItemsSubject$.value]);
   }
@@ -1215,6 +1224,14 @@ export abstract class QuoteFormBase implements OnDestroy {
     const sub  = qty * price;
     const disc = sub * (discPct / 100);
     return sub - disc;
+  }
+
+  protected updateQuoteItemsVatRate(): void {
+    const items = this.quoteItemsSubject$.value;
+    for (const item of items) {
+      item.taxRate = this.vatRate;
+    }
+    this.quoteItemsSubject$.next([...items]);
   }
 
   protected addOrUpdateAddonLineItem(slot: AddonSlot, lineItem: QuoteItemDisplay) {

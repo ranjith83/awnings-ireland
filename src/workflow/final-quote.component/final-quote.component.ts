@@ -175,6 +175,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.discountType        = '';
     this.discountValue       = 0;
     this.editingFinalQuote   = null;
+    this.quoteFormSupplyFitIncluded = false;
     this.quoteItemsSubject$.next([]);
     this.notificationService.success('');
   }
@@ -221,6 +222,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
     this.extrasDescription = '';
     this.extrasPrice       = 0;
     this.installationFee   = 0;
+    this.quoteFormSupplyFitIncluded = false;
     this.resetAddonCheckboxes();
   }
 
@@ -266,6 +268,8 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
 
     // ── Parse width & projection from first line item description ──────────
     const firstItem = (quote.quoteItems || [])[0];
+    const baseQuoteItem = (quote.quoteItems || []).find(item => /\bwide x\b/i.test(item.description));
+    this.quoteFormSupplyFitIncluded = !!baseQuoteItem?.description.toLowerCase().includes('supply & fit');
     if (firstItem) {
       const dimMatch = firstItem.description.match(/(\d+\.?\d*)m\s+wide\s+x\s+(\d+\.?\d*)m\s+projection/i);
       if (dimMatch) {
@@ -284,7 +288,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
       description:        qi.description,
       quantity:           qi.quantity,
       unitPrice:          qi.unitPrice,
-      taxRate:            qi.taxRate,
+      taxRate:            this.vatRate,
       discountPercentage: qi.discountPercentage,
       amount:             this.calculateAmount(qi.quantity, qi.unitPrice, qi.taxRate, qi.discountPercentage)
     }));
@@ -427,7 +431,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
         description:        item.description,
         quantity:           item.quantity,
         unitPrice:          item.unitPrice,
-        taxRate:            item.taxRate || this.vatRate,
+        taxRate:            this.vatRate,
         discountPercentage: item.discountPercentage || 0,
         productItemId:      item.productItemId
       }))
@@ -493,7 +497,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
         description:        item.description,
         quantity:           item.quantity,
         unitPrice:          item.unitPrice,
-        taxRate:            item.taxRate || this.vatRate,
+        taxRate:            this.vatRate,
         discountPercentage: item.discountPercentage || 0,
         productItemId:      item.productItemId
       })) as UpdateQuoteItemDto[]
