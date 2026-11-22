@@ -44,6 +44,7 @@ interface InvoiceItemDisplay {
 
 import { NotificationService } from '../../service/notification.service';
 import { NavService } from '../../service/nav.service';
+import { CORROSION_PROTECTION_MULTIPLIER } from '../quote.constants';
 @Component({
   selector: 'app-invoice',
   standalone: true,
@@ -736,6 +737,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   private checkAndGenerateFirstLineItem() {
+    this.refreshCorrosionProtectionPrice();
     if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) {
       return;
     }
@@ -887,6 +889,43 @@ export class InvoiceComponent implements OnInit, OnDestroy {
   }
 
   onCorrosionProtectionChange() {
+    if (!this.includeCorrosionProtection) {
+      this.removeAddonLineItem('corrosionprotection');
+      return;
+    }
+    this.refreshCorrosionProtectionPrice();
+  }
+
+  private refreshCorrosionProtectionPrice() {
+    if (!this.includeCorrosionProtection) return;
+    if (!this.selectedModelId || !this.selectedWidthCm) {
+      this.corrosionProtectionPrice = 0;
+      this.removeAddonLineItem('corrosionprotection');
+      return;
+    }
+    const productId = this.selectedModelId;
+    const widthCm = this.selectedWidthCm;
+    this.corrosionProtectionPrice = 0;
+    this.removeAddonLineItem('corrosionprotection');
+    this.workflowService.getNonStandardRALColourPrice(productId, widthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: nonStandardRalPrice => {
+          if (!this.includeCorrosionProtection || this.selectedModelId !== productId ||
+              this.selectedWidthCm !== widthCm) return;
+          if (!Number.isFinite(nonStandardRalPrice) || nonStandardRalPrice < 0) {
+            this.notificationService.error('Could not calculate corrosion protection price from non-standard RAL pricing.');
+            return;
+          }
+          this.corrosionProtectionPrice =
+            Math.round(nonStandardRalPrice * CORROSION_PROTECTION_MULTIPLIER * 100) / 100;
+          this.updateCorrosionProtectionLineItem();
+        },
+        error: () => this.notificationService.error('Failed to calculate corrosion protection price.')
+      });
+  }
+
+  private updateCorrosionProtectionLineItem() {
     if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
       this.removeAddonLineItem('corrosionprotection');
       return;

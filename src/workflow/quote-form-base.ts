@@ -23,7 +23,7 @@ import { NavService } from '../service/nav.service';
 import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
   ADDON_ITEM_IDS, ADDON_SLOT, ADDON_SLOT_ORDER, AddonSlot,
-  QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE,
+  CORROSION_PROTECTION_MULTIPLIER, QUOTE_BRACKET_ID_OFFSET, QUOTE_ELECTRICIAN_PRICE, QUOTE_VAT_RATE,
   QUOTE_SUPPLY_ONLY_VAT_RATE, QUOTE_OVER_50KM_PRICE,
 } from './quote.constants';
 
@@ -563,6 +563,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   onWidthInput() {
     if (!this.enteredWidthCm || String(Math.floor(Math.abs(this.enteredWidthCm))).length < 3) {
       this.selectedWidthCm = null;
+      this.refreshCorrosionProtectionPrice();
       this.widthError = '';
       this.cdr.markForCheck();
       return;
@@ -577,6 +578,7 @@ export abstract class QuoteFormBase implements OnDestroy {
       if (this.enteredWidthCm > maxW) {
         this.widthError = `Width ${this.enteredWidthCm}cm exceeds the maximum of ${maxW}cm (${(maxW / 100).toFixed(0)}m).`;
         this.selectedWidthCm = null;
+        this.refreshCorrosionProtectionPrice();
         this.dimensionError = '';
         this.removeFirstDimensionLineItem();
         this.cdr.markForCheck();
@@ -586,6 +588,7 @@ export abstract class QuoteFormBase implements OnDestroy {
       if (this.enteredWidthCm < minW) {
         this.widthError = `Width ${this.enteredWidthCm}cm is below the minimum of ${minW}cm (${(minW / 100).toFixed(0)}m).`;
         this.selectedWidthCm = null;
+        this.refreshCorrosionProtectionPrice();
         this.dimensionError = '';
         this.removeFirstDimensionLineItem();
         this.cdr.markForCheck();
@@ -619,6 +622,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   protected checkAndGenerateFirstLineItem() {
+    this.refreshCorrosionProtectionPrice();
     if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedModelId) return;
     const productId = this.selectedModelId;
     const widthcm   = this.selectedWidthCm;
@@ -775,6 +779,43 @@ export abstract class QuoteFormBase implements OnDestroy {
   }
 
   onCorrosionProtectionChange() {
+    if (!this.includeCorrosionProtection) {
+      this.removeAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION);
+      return;
+    }
+    this.refreshCorrosionProtectionPrice();
+  }
+
+  protected refreshCorrosionProtectionPrice() {
+    if (!this.includeCorrosionProtection) return;
+    if (!this.selectedModelId || !this.selectedWidthCm) {
+      this.corrosionProtectionPrice = 0;
+      this.removeAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION);
+      return;
+    }
+    const productId = this.selectedModelId;
+    const widthCm = this.selectedWidthCm;
+    this.corrosionProtectionPrice = 0;
+    this.removeAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION);
+    this.workflowService.getNonStandardRALColourPrice(productId, widthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: nonStandardRalPrice => {
+          if (!this.includeCorrosionProtection || this.selectedModelId !== productId ||
+              this.selectedWidthCm !== widthCm) return;
+          if (!Number.isFinite(nonStandardRalPrice) || nonStandardRalPrice < 0) {
+            this.notificationService.error('Could not calculate corrosion protection price from non-standard RAL pricing.');
+            return;
+          }
+          this.corrosionProtectionPrice =
+            Math.round(nonStandardRalPrice * CORROSION_PROTECTION_MULTIPLIER * 100) / 100;
+          this.updateCorrosionProtectionLineItem();
+        },
+        error: () => this.notificationService.error('Failed to calculate corrosion protection price.')
+      });
+  }
+
+  private updateCorrosionProtectionLineItem() {
     if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
       this.removeAddonLineItem(ADDON_SLOT.CORROSIONPROTECTION);
       return;
@@ -954,6 +995,10 @@ export abstract class QuoteFormBase implements OnDestroy {
 
   onInstallationFeeChange() {
     this.removeAddonLineItem(ADDON_SLOT.INSTALLATION);
+    const items = this.quoteItemsSubject$.value.filter(item =>
+      !/^installation fee$/i.test(item.description.trim())
+    );
+    this.quoteItemsSubject$.next(items);
     this.quoteFormSupplyFitIncluded = this.installationFee > 0;
     this.generateFirstLineItem();
     this.updateQuoteItemsVatRate();

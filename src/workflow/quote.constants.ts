@@ -3,6 +3,7 @@ export const QUOTE_SUPPLY_ONLY_VAT_RATE = 23;
 export const QUOTE_ELECTRICIAN_PRICE = 280.00;
 export const QUOTE_BRACKET_ID_OFFSET = 200000;
 export const QUOTE_OVER_50KM_PRICE   = 350.00;
+export const CORROSION_PROTECTION_MULTIPLIER = 2.5;
 
 export const ADDON_SLOT = {
   BRACKET:             'bracket',

@@ -409,11 +409,10 @@
               <label class="checkbox-label shadeplus-checkbox">
                 <input type="checkbox" class="checkbox-input"
                   [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
-                <span>Corrosion Protection</span>
+                <span>Corrosion Protection (2.5x non-standard RAL)</span>
               </label>
               <input *ngIf="includeCorrosionProtection" type="number" class="form-input corrosion-price-input"
-                     [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
-                     placeholder="€" min="0" step="0.01">
+                     [(ngModel)]="corrosionProtectionPrice" placeholder="€" min="0" step="0.01" readonly>
             </div>
           </div>
           <div class="form-group extras-addon-check" *ngIf="hasWallSealing">
@@ -555,6 +554,15 @@
       <!-- ══════════════════════ SUMMARY ══════════════════════════════════ -->
       <div class="summary-section">
         <div class="summary-left">
+          <div class="customer-details-block">
+            <h4>Customer Details</h4>
+            <div class="customer-detail-name">{{ customerName || 'Name not provided' }}</div>
+            <div>{{ customerAddress || 'Address not provided' }}</div>
+            <div *ngIf="customerCity || customerPostalCode">
+              {{ customerCity }}{{ customerCity && customerPostalCode ? ', ' : '' }}{{ customerPostalCode }}
+            </div>
+          </div>
+
           <div class="email-customer-block">
             <label class="checkbox-label large">
               <input type="checkbox" class="checkbox-input" [(ngModel)]="emailToCustomer">

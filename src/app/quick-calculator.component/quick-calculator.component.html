@@ -47,6 +47,84 @@
         </div>
       </section>
 
+      <section class="calc-section quote-link-section">
+        <h3 class="section-title">Customer &amp; Workflow</h3>
+        <div class="customer-workflow-row">
+          <div class="selection-control">
+            <div class="form-group">
+              <label class="form-label">Customer</label>
+              <select *ngIf="!isAddingCustomer" class="form-select" [(ngModel)]="selectedCustomerId"
+                      (ngModelChange)="onCustomerChange()">
+                <option [ngValue]="null">Select a customer…</option>
+                <option *ngFor="let customer of customers" [ngValue]="customer.customerId">
+                  {{ customerLabel(customer) }}
+                </option>
+              </select>
+              <input *ngIf="isAddingCustomer" class="form-input" [(ngModel)]="newCustomer.name"
+                     placeholder="New customer / company name">
+            </div>
+            <button type="button" class="customer-mode-button"
+                    *ngIf="!isAddingCustomer" (click)="startAddingCustomer()">
+              + New Customer
+            </button>
+            <button type="button" class="customer-mode-button"
+                    *ngIf="isAddingCustomer" (click)="useExistingCustomer()">
+              Choose Existing
+            </button>
+          </div>
+
+          <div class="selection-control">
+            <div class="form-group">
+              <label class="form-label">Workflow</label>
+              <select class="form-select" [(ngModel)]="selectedWorkflowId"
+                      [disabled]="isAddingCustomer || !selectedCustomerId">
+                <option *ngIf="!isAddingCustomer" [ngValue]="null">Select a workflow…</option>
+                <option *ngFor="let workflow of customerWorkflows" [ngValue]="workflow.workflowId">
+                  {{ workflow.workflowName }}
+                </option>
+                <option [ngValue]="createWorkflowOption">
+                  {{ isAddingCustomer ? 'New workflow from selected product' : 'Create workflow from selected product' }}
+                </option>
+              </select>
+            </div>
+            <button type="button" class="customer-mode-button"
+                    (click)="startCreatingWorkflow()"
+                    [disabled]="isAddingCustomer || !selectedCustomerId">
+              + New Workflow
+            </button>
+          </div>
+        </div>
+
+        <div class="new-customer-fields" *ngIf="isAddingCustomer">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input type="email" class="form-input" [(ngModel)]="newCustomer.email" placeholder="Email address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address</label>
+              <input class="form-input" [(ngModel)]="newCustomer.address1" placeholder="Street address">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address line 2</label>
+              <input class="form-input" [(ngModel)]="newCustomer.address2" placeholder="Address line 2">
+            </div>
+            <div class="form-group">
+              <label class="form-label">County / City</label>
+              <input class="form-input" [(ngModel)]="newCustomer.county" placeholder="County or city">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Eircode / Postal Code</label>
+              <input class="form-input" [(ngModel)]="newCustomer.eircode" placeholder="Eircode / postal code">
+            </div>
+          </div>
+          <p class="workflow-help">A new workflow will be created from the selected supplier and product.</p>
+        </div>
+        <p class="workflow-help" *ngIf="!isAddingCustomer && selectedCustomerId && customerWorkflows.length === 0">
+          No workflows found. Choose New Workflow to create one from the selected product.
+        </p>
+      </section>
+
       <!-- ── DIMENSIONS ────────────────────────────────────────────── -->
       <section class="calc-section" *ngIf="selectedProductId">
         <h3 class="section-title">Dimensions</h3>
@@ -276,11 +354,10 @@
               <label class="checkbox-label">
                 <input type="checkbox" class="checkbox-input"
                        [(ngModel)]="includeCorrosionProtection" (change)="onCorrosionProtectionChange()">
-                <span>Corrosion Protection</span>
+                <span>Corrosion Protection (2.5x non-standard RAL)</span>
               </label>
               <input *ngIf="includeCorrosionProtection" type="number" class="form-input extras-price"
-                     [(ngModel)]="corrosionProtectionPrice" (ngModelChange)="onCorrosionProtectionChange()"
-                     placeholder="€" min="0" step="0.01">
+                     [(ngModel)]="corrosionProtectionPrice" placeholder="€" min="0" step="0.01" readonly>
             </div>
           </div>
 
@@ -410,6 +487,27 @@
       <!-- ── DISCOUNT + SUMMARY ─────────────────────────────────────── -->
       <section class="calc-section summary-section" *ngIf="hasItems$ | async">
         <div class="summary-left">
+          <div class="customer-details-block">
+            <h3 class="section-title">Customer Details</h3>
+            <div class="customer-details-fields">
+              <div class="form-group">
+                <label class="form-label">Name</label>
+                <input class="form-input" [(ngModel)]="customerName" placeholder="Customer name">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Address</label>
+                <input class="form-input" [(ngModel)]="customerAddress" placeholder="Street address">
+              </div>
+              <div class="form-group">
+                <label class="form-label">City</label>
+                <input class="form-input" [(ngModel)]="customerCity" placeholder="City">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Eircode / Postal Code</label>
+                <input class="form-input" [(ngModel)]="customerPostalCode" placeholder="Eircode / postal code">
+              </div>
+            </div>
+          </div>
           <h3 class="section-title">Quote Discount</h3>
           <div class="discount-row">
             <select class="form-select discount-type-select" [(ngModel)]="discountType"
@@ -463,12 +561,16 @@
         <button class="btn-clear" (click)="clearAll()">Clear All</button>
         <button class="btn-save" (click)="saveCurrentQuote()"
                 [disabled]="(hasItems$ | async) === false"
-                title="Save to local cache">
-          &#128190; Save Quote
+                title="Save this estimate in this browser only">
+          &#128190; Save Locally
         </button>
         <button class="btn-generate" (click)="generateEstimatePdf()"
                 [disabled]="(hasItems$ | async) === false">
           &#128196; Generate PDF Estimate
+        </button>
+        <button class="btn-link-customer" (click)="linkQuoteToCustomer()"
+                [disabled]="(hasItems$ | async) === false || isSavingLinkedQuote || (!isAddingCustomer && !selectedCustomerId)">
+          {{ isSavingLinkedQuote ? 'Linking Quote…' : 'Link Quote to Customer' }}
         </button>
       </div>
 

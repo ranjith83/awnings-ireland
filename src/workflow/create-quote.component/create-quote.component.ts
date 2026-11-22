@@ -236,24 +236,46 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
   }
 
   private ensureDefaultDeliveryFee(): void {
-    const items = this.quoteItemsSubject$.value;
-    if (items.some(item => item.description.trim().toLowerCase() === 'delivery fee')) return;
+    const currentItems = this.quoteItemsSubject$.value;
+    const baseItem = currentItems.find(item => /\bwide x\b/i.test(item.description));
+    const supplyFitIncluded = /\bsupply\s*&\s*fit\b/i.test(baseItem?.description ?? '');
+    const deliveryFeePattern = /^delivery(?:\s+(?:and|&)\s+installation)?\s+fee$/i;
+    const installationFeePattern = /^installation fee$/i;
+    const items: QuoteItemDisplay[] = [];
+    let hasDeliveryFee = false;
+    let hasInstallationFee = false;
 
-    const unitPrice = 950;
-    items.push({
-      description: 'Delivery Fee',
-      quantity: 1,
-      unitPrice,
-      taxRate: this.vatRate,
-      discountPercentage: 0,
-      amount: this.calculateAmount(1, unitPrice, this.vatRate, 0)
-    });
-    this.quoteItemsSubject$.next([...items]);
+    for (const item of currentItems) {
+      const description = item.description.trim();
+      if (deliveryFeePattern.test(description)) {
+        if (hasDeliveryFee) continue;
+        hasDeliveryFee = true;
+      }
+      if (installationFeePattern.test(description)) {
+        if (supplyFitIncluded || hasInstallationFee) continue;
+        hasInstallationFee = true;
+      }
+      items.push(item);
+    }
+
+    if (!hasDeliveryFee) {
+      const unitPrice = 950;
+      items.push({
+        description: 'Delivery Fee',
+        quantity: 1,
+        unitPrice,
+        taxRate: this.vatRate,
+        discountPercentage: 0,
+        amount: this.calculateAmount(1, unitPrice, this.vatRate, 0)
+      });
+    }
+    this.quoteItemsSubject$.next(items);
   }
 
   // ── Generate / Update quote ─────────────────────────────────────────────────
 
   generateQuote() {
+    this.ensureDefaultDeliveryFee();
     const items = this.quoteItemsSubject$.value;
     if (!this.workflowId || !this.customerId || items.length === 0) {
       this.notificationService.error('Please fill in all required fields and ensure at least one quote item exists');

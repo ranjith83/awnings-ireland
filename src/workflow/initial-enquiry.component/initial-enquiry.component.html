@@ -293,7 +293,12 @@
 </div><!-- /ie-container -->
 
 <!-- Quick Calculator modal -->
-<app-quick-calculator *ngIf="showQuickCalculator" (closeCalculator)="showQuickCalculator = false"></app-quick-calculator>
+<app-quick-calculator *ngIf="showQuickCalculator"
+  [customerId]="customerId"
+  [workflowId]="workflowId"
+  [customerName]="customerName"
+  [customerEmail]="customerEmail"
+  (closeCalculator)="showQuickCalculator = false"></app-quick-calculator>
 
 
 <!-- ═══════════════════════════════════════════════════════════════════
@@ -724,4 +729,3 @@
     </div>
   </div>
 </div>
-

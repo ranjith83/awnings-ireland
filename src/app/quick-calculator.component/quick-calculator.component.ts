@@ -1,7 +1,7 @@
-import { Component, HostListener, OnDestroy, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, Output, EventEmitter, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, combineLatest, takeUntil, tap, catchError, of, switchMap, throwError, finalize } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import {
@@ -14,10 +14,15 @@ import {
   HeaterDto,
   BracketDto,
   LightingCassetteDto,
-  ControlDto
+  ControlDto,
+  WorkflowDto
 } from '../../service/workflow.service';
 import { PdfGenerationService, QuotePdfData } from '../../service/pdf-generation.service';
 import { OptionLookupService, OptionLookupDto } from '../../service/option-lookup.service';
+import { NotificationService } from '../../service/notification.service';
+import { CreateQuoteDto, CreateQuoteService } from '../../service/create-quote.service';
+import { CORROSION_PROTECTION_MULTIPLIER } from '../../workflow/quote.constants';
+import { Customer, CustomerMainViewDto, CustomerService } from '../../service/customer-service';
 
 interface CalculatorItem {
   id?:                number;   // addon slot marker (same as create-quote)
@@ -40,6 +45,10 @@ interface SavedQuote {
   discountType:  string;
   discountValue: number;
   vatRate:       number;
+  customerName?: string;
+  customerAddress?: string;
+  customerCity?: string;
+  customerPostalCode?: string;
 }
 
 @Component({
@@ -51,6 +60,21 @@ interface SavedQuote {
 })
 export class QuickCalculatorComponent implements OnInit, OnDestroy {
   @Output() closeCalculator = new EventEmitter<void>();
+  @Input() customerName = '';
+  @Input() customerId: number | null = null;
+  @Input() workflowId: number | null = null;
+  @Input() customerEmail = '';
+  customerAddress = '';
+  customerCity = '';
+  customerPostalCode = '';
+  customers: CustomerMainViewDto[] = [];
+  customerWorkflows: WorkflowDto[] = [];
+  selectedCustomerId: number | null = null;
+  selectedWorkflowId: number | null = null;
+  isAddingCustomer = false;
+  isSavingLinkedQuote = false;
+  newCustomer = { name: '', email: '', address1: '', address2: '', county: '', eircode: '' };
+  readonly createWorkflowOption = 0;
 
   // ── Observables ───────────────────────────────────────────────────────────
   suppliers$!:            Observable<SupplierDto[]>;
@@ -170,7 +194,10 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   constructor(
     private workflowService:     WorkflowService,
     private pdfService:          PdfGenerationService,
-    private optionLookupService: OptionLookupService
+    private optionLookupService: OptionLookupService,
+    private notificationService: NotificationService,
+    private createQuoteService: CreateQuoteService,
+    private customerService: CustomerService
   ) {}
 
   ngOnInit() {
@@ -178,6 +205,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     this.loadSuppliers();
     this.loadWindSensorOptions();
     this.loadSavedQuotes();
+    this.loadCustomers();
   }
 
   ngOnDestroy() {
@@ -267,6 +295,259 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     this.optionLookupService.getByCategory('WindSensor')
       .pipe(takeUntil(this.destroy$), catchError(() => of([])))
       .subscribe(opts => { this.windSensorOptions = opts; });
+  }
+
+  private loadCustomers() {
+    this.customerService.getAllCustomers()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: customers => {
+          this.customers = customers;
+          if (this.customerId) {
+            this.selectedCustomerId = this.customerId;
+            this.onCustomerChange();
+          }
+        },
+        error: () => this.notificationService.error('Failed to load customers.')
+      });
+  }
+
+  onCustomerChange() {
+    this.customerWorkflows = [];
+    this.selectedWorkflowId = null;
+    if (!this.selectedCustomerId) return;
+    const customerId = this.selectedCustomerId;
+
+    this.customerService.getCustomerById(customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: customer => {
+          if (this.selectedCustomerId === customerId) this.populateCustomerDetails(customer);
+        },
+        error: () => this.notificationService.error('Failed to load customer details.')
+      });
+
+    this.workflowService.getWorkflowsForCustomer(customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: workflows => {
+          if (this.selectedCustomerId !== customerId) return;
+          this.customerWorkflows = workflows;
+          if (this.workflowId && workflows.some(workflow => workflow.workflowId === this.workflowId)) {
+            this.selectedWorkflowId = this.workflowId;
+          } else if (workflows.length === 1) {
+            this.selectedWorkflowId = workflows[0].workflowId;
+          }
+        },
+        error: () => this.notificationService.error('Failed to load customer workflows.')
+      });
+  }
+
+  private populateCustomerDetails(customer: Customer) {
+    this.customerName = customer.name ||
+      `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || this.customerName;
+    this.customerEmail = customer.email || this.customerEmail;
+    this.customerAddress = [customer.address1, customer.address2, customer.address3]
+      .filter(Boolean).join(', ');
+    this.customerCity = customer.county ?? '';
+    this.customerPostalCode = customer.eircode ?? '';
+  }
+
+  private getOrCreateWorkflow(customerId: number): Observable<WorkflowDto> {
+    if (!this.selectedSupplierId || !this.selectedProductTypeId || !this.selectedProductId) {
+      return throwError(() => new Error('Select a supplier, product type, and product to create a workflow.'));
+    }
+
+    const supplier = this.suppliersSubject$.value.find(item => item.supplierId === this.selectedSupplierId);
+    const productType = this.productTypesSubject$.value.find(item => item.productTypeId === this.selectedProductTypeId);
+    const product = this.productsSubject$.value.find(item => item.productId === this.selectedProductId);
+    if (!supplier || !productType || !product) {
+      return throwError(() => new Error('The selected product details are incomplete. Please reselect the product.'));
+    }
+
+    const workflowName = `${productType.description} - ${product.productName}`;
+    const workflow: WorkflowDto = {
+      workflowId: 0,
+      workflowName,
+      productName: product.productName,
+      description: `${supplier.supplierName} - ${workflowName}`,
+      initialEnquiry: false,
+      createQuotation: true,
+      inviteShowRoomVisit: false,
+      setupSiteVisit: false,
+      invoiceSent: false,
+      initialEnquiryCompleted: false,
+      createQuotationCompleted: false,
+      inviteShowRoomCompleted: false,
+      setupSiteVisitCompleted: false,
+      invoiceSentCompleted: false,
+      hasDependencies: false,
+      dateAdded: new Date().toISOString(),
+      addedBy: 'Quick Quote',
+      customerId,
+      supplierId: supplier.supplierId,
+      productId: product.productId,
+      productTypeId: productType.productTypeId,
+      companyId: 0
+    };
+
+    return this.workflowService.createWorkflow(workflow).pipe(
+      switchMap(() => this.workflowService.getWorkflowsForCustomer(customerId)),
+      map(workflows => {
+        const createdWorkflow = [...workflows]
+          .filter(item =>
+            item.productId === product.productId &&
+            item.supplierId === supplier.supplierId &&
+            item.productTypeId === productType.productTypeId
+          )
+          .sort((a, b) => Date.parse(String(b.dateAdded)) - Date.parse(String(a.dateAdded)))[0];
+        if (!createdWorkflow) throw new Error('Workflow was created but could not be reloaded.');
+        return createdWorkflow;
+      })
+    );
+  }
+
+  linkQuoteToCustomer() {
+    if (this.isSavingLinkedQuote) return;
+    if (!this.calculatorItemsSubject$.value.length) {
+      this.notificationService.error('Add at least one quote item before linking this quote.');
+      return;
+    }
+    if (!this.isAddingCustomer && !this.selectedCustomerId) {
+      this.notificationService.error('Select an existing customer or choose Add New Customer.');
+      return;
+    }
+    if (this.isAddingCustomer && !this.newCustomer.name.trim()) {
+      this.notificationService.error('Enter the customer name before continuing.');
+      return;
+    }
+    if ((this.isAddingCustomer || this.selectedWorkflowId === this.createWorkflowOption) &&
+        (!this.selectedSupplierId || !this.selectedProductTypeId || !this.selectedProductId)) {
+      this.notificationService.error('Select a supplier, product type, and product to create a workflow.');
+      return;
+    }
+    if (!this.isAddingCustomer && this.selectedWorkflowId === null) {
+      this.notificationService.error('Select a workflow or choose to create one from the selected product.');
+      return;
+    }
+
+    this.isSavingLinkedQuote = true;
+    let operationStage = 'customer';
+    const shouldCreateWorkflow = this.isAddingCustomer || this.selectedWorkflowId === this.createWorkflowOption;
+    const customer$: Observable<Customer | null> = this.isAddingCustomer
+      ? this.customerService.addCompanyWithContact({
+          name: this.newCustomer.name.trim(),
+          email: this.newCustomer.email.trim(),
+          address1: this.newCustomer.address1.trim(),
+          address2: this.newCustomer.address2.trim(),
+          county: this.newCustomer.county.trim(),
+          eircode: this.newCustomer.eircode.trim(),
+          contacts: []
+        }).pipe(tap(customer => {
+          this.selectedCustomerId = customer.customerId;
+          this.selectedWorkflowId = this.createWorkflowOption;
+          this.isAddingCustomer = false;
+          this.customerWorkflows = [];
+          this.populateCustomerDetails(customer);
+          this.customerEmail = customer.email || this.newCustomer.email.trim();
+        }))
+      : of<Customer | null>(null);
+
+    customer$.pipe(
+      switchMap(createdCustomer => {
+        const customerId = createdCustomer?.customerId ?? this.selectedCustomerId;
+        if (!customerId) return throwError(() => new Error('No customer is selected.'));
+
+        operationStage = 'workflow';
+        if (shouldCreateWorkflow) {
+          return this.getOrCreateWorkflow(customerId).pipe(map(workflow => ({ customerId, workflow })));
+        }
+
+        return this.workflowService.getWorkflowsForCustomer(customerId).pipe(
+          switchMap(workflows => {
+            const workflow = workflows.find(item => item.workflowId === this.selectedWorkflowId);
+            return workflow
+              ? of({ customerId, workflow })
+              : throwError(() => new Error('The selected workflow is no longer available. Reload the customer workflows.'));
+          })
+        );
+      }),
+      switchMap(({ customerId, workflow }) => {
+        operationStage = 'quote';
+        this.selectedWorkflowId = workflow.workflowId;
+        this.customerWorkflows = [
+          ...this.customerWorkflows.filter(item => item.workflowId !== workflow.workflowId),
+          workflow
+        ];
+        return this.createQuoteService.createQuote(this.buildCreateQuoteDto(customerId, workflow.workflowId));
+      }),
+      takeUntil(this.destroy$),
+      finalize(() => {
+        this.isSavingLinkedQuote = false;
+      })
+    ).subscribe({
+      next: quote => {
+        this.notificationService.success(`Quote ${quote.quoteNumber} saved and linked to ${this.customerName || 'the customer'}.`);
+      },
+      error: error => {
+        const message = operationStage === 'customer'
+          ? 'Failed to create customer.'
+          : operationStage === 'workflow'
+            ? (error?.message || 'Failed to create or load workflow.')
+            : 'Customer and workflow are linked, but saving the quote failed. Select them and try again.';
+        this.notificationService.error(message);
+      }
+    });
+  }
+
+  private buildCreateQuoteDto(customerId: number, workflowId: number): CreateQuoteDto {
+    return {
+      customerId,
+      workflowId,
+      quoteDate: new Date().toISOString().split('T')[0],
+      followUpDate: this.getFollowUpDate(),
+      notes: 'Created from Quick Price Calculator',
+      terms: 'Quote Valid for 60 days from date of issue.\nPrices based on site survey.',
+      discountType: this.discountType || undefined,
+      discountValue: this.discountType ? this.discountValue : undefined,
+      windSensorOption: this.selectedWindSensor || undefined,
+      fabricCode: this.fabricCode || undefined,
+      quoteItems: this.calculatorItemsSubject$.value.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        taxRate: item.taxRate,
+        discountPercentage: item.discountPercentage
+      }))
+    };
+  }
+
+  customerLabel(customer: CustomerMainViewDto): string {
+    return customer.contactName || customer.companyName || `Customer ${customer.customerId}`;
+  }
+
+  startAddingCustomer() {
+    this.isAddingCustomer = true;
+    this.selectedCustomerId = null;
+    this.selectedWorkflowId = this.createWorkflowOption;
+    this.customerWorkflows = [];
+    this.customerName = '';
+    this.customerEmail = '';
+    this.customerAddress = '';
+    this.customerCity = '';
+    this.customerPostalCode = '';
+    this.newCustomer = { name: '', email: '', address1: '', address2: '', county: '', eircode: '' };
+  }
+
+  useExistingCustomer() {
+    this.isAddingCustomer = false;
+    this.selectedWorkflowId = null;
+    this.newCustomer = { name: '', email: '', address1: '', address2: '', county: '', eircode: '' };
+  }
+
+  startCreatingWorkflow() {
+    if (this.isAddingCustomer || !this.selectedCustomerId) return;
+    this.selectedWorkflowId = this.createWorkflowOption;
   }
 
   // ── Product selection handlers ────────────────────────────────────────────
@@ -475,6 +756,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   onWidthInput() {
     if (!this.enteredWidthCm || this.enteredWidthCm <= 0) {
       this.selectedWidthCm = null;
+      this.refreshCorrosionProtectionPrice();
       this.widthError = '';
       return;
     }
@@ -488,6 +770,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       if (this.enteredWidthCm > maxW) {
         this.widthError = `Width ${this.enteredWidthCm}cm exceeds the maximum of ${maxW}cm (${(maxW / 100).toFixed(0)}m).`;
         this.selectedWidthCm = null;
+        this.refreshCorrosionProtectionPrice();
         this.dimensionError = '';
         this.removeFirstDimensionLineItem();
         return;
@@ -496,6 +779,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       if (this.enteredWidthCm < minW) {
         this.widthError = `Width ${this.enteredWidthCm}cm is below the minimum of ${minW}cm (${(minW / 100).toFixed(0)}m).`;
         this.selectedWidthCm = null;
+        this.refreshCorrosionProtectionPrice();
         this.dimensionError = '';
         this.removeFirstDimensionLineItem();
         return;
@@ -518,6 +802,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   }
 
   private checkAndGenerateFirstLineItem() {
+    this.refreshCorrosionProtectionPrice();
     if (!this.enteredWidthCm || !this.selectedWidthCm || !this.selectedAwning || !this.selectedProductId) return;
     const projcm = this.selectedAwning;
     this.workflowService.getProjectionPriceForProduct(this.selectedProductId, this.selectedWidthCm, projcm)
@@ -807,8 +1092,45 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   }
 
   onCorrosionProtectionChange() {
-    if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
+    if (!this.includeCorrosionProtection) {
       this.removeAddonItem('corrosionprotection'); return;
+    }
+    this.refreshCorrosionProtectionPrice();
+  }
+
+  private refreshCorrosionProtectionPrice() {
+    if (!this.includeCorrosionProtection) return;
+    if (!this.selectedProductId || !this.selectedWidthCm) {
+      this.corrosionProtectionPrice = 0;
+      this.removeAddonItem('corrosionprotection');
+      return;
+    }
+    const productId = this.selectedProductId;
+    const widthCm = this.selectedWidthCm;
+    this.corrosionProtectionPrice = 0;
+    this.removeAddonItem('corrosionprotection');
+    this.workflowService.getNonStandardRALColourPrice(productId, widthCm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: nonStandardRalPrice => {
+          if (!this.includeCorrosionProtection || this.selectedProductId !== productId ||
+              this.selectedWidthCm !== widthCm) return;
+          if (!Number.isFinite(nonStandardRalPrice) || nonStandardRalPrice < 0) {
+            this.notificationService.error('Could not calculate corrosion protection price from non-standard RAL pricing.');
+            return;
+          }
+          this.corrosionProtectionPrice =
+            Math.round(nonStandardRalPrice * CORROSION_PROTECTION_MULTIPLIER * 100) / 100;
+          this.updateCorrosionProtectionItem();
+        },
+        error: () => this.notificationService.error('Failed to calculate corrosion protection price.')
+      });
+  }
+
+  private updateCorrosionProtectionItem() {
+    if (!this.includeCorrosionProtection || this.corrosionProtectionPrice <= 0) {
+      this.removeAddonItem('corrosionprotection');
+      return;
     }
     this.addOrUpdateAddonItem('corrosionprotection',
       this.makeItem('Corrosion Protection', 1, this.corrosionProtectionPrice, this.getAddonItemId('corrosionprotection')));
@@ -885,10 +1207,10 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       quoteNumber:        'ESTIMATE-' + (10000 + Math.floor(Math.random() * 90000)),
       quoteDate:          new Date().toLocaleDateString('en-GB'),
       expiryDate:         this.getFollowUpDate(),
-      customerName:       'Phone Enquiry',
-      customerAddress:    '',
-      customerCity:       '',
-      customerPostalCode: '',
+      customerName:       this.customerName || 'Phone Enquiry',
+      customerAddress:    this.customerAddress,
+      customerCity:       this.customerCity,
+      customerPostalCode: this.customerPostalCode,
       reference:          this.selectedProductName || 'Quick Estimate',
       items: items.map(i => ({
         description: i.description,
@@ -1076,7 +1398,11 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       totalAmount:   total,
       discountType:  this.discountType,
       discountValue: this.discountValue,
-      vatRate:       this.vatRate
+      vatRate:       this.vatRate,
+      customerName: this.customerName,
+      customerAddress: this.customerAddress,
+      customerCity: this.customerCity,
+      customerPostalCode: this.customerPostalCode
     };
     this.savedQuotes = [saved, ...this.savedQuotes];
     this.persistSavedQuotes();
@@ -1091,6 +1417,10 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     this.calculatorItemsSubject$.next(sq.items.map(i => ({ ...i })));
     this.discountType  = sq.discountType;
     this.discountValue = sq.discountValue;
+    this.customerName = sq.customerName ?? '';
+    this.customerAddress = sq.customerAddress ?? '';
+    this.customerCity = sq.customerCity ?? '';
+    this.customerPostalCode = sq.customerPostalCode ?? '';
     this.onDiscountChange();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -1102,10 +1432,10 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       quoteNumber:        'ESTIMATE-' + sq.id.slice(-5),
       quoteDate:          new Date(sq.savedAt).toLocaleDateString('en-GB'),
       expiryDate:         this.getFollowUpDate(new Date(sq.savedAt)),
-      customerName:       'Phone Enquiry',
-      customerAddress:    '',
-      customerCity:       '',
-      customerPostalCode: '',
+      customerName:       sq.customerName || 'Phone Enquiry',
+      customerAddress:    sq.customerAddress || '',
+      customerCity:       sq.customerCity || '',
+      customerPostalCode: sq.customerPostalCode || '',
       reference:          sq.productName || 'Quick Estimate',
       items: sq.items.map(i => ({
         description: i.description,

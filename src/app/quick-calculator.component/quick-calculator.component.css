@@ -51,6 +51,51 @@
 }
 .section-optional { font-size: 12px; font-weight: 400; color: #9ca3af; text-transform: none; }
 
+.customer-workflow-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.selection-control {
+  display: flex;
+  align-items: flex-end;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selection-control .form-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.customer-mode-button {
+  border: 0;
+  border-radius: 7px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.customer-mode-button {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.customer-mode-button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+.workflow-help {
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
 /* ── Form grid ───────────────────────────────────────────────────────── */
 .form-row {
   display: grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px;
@@ -138,6 +183,13 @@
 }
 .summary-left { flex: 1; min-width: 220px; }
 
+.customer-details-block { margin-bottom: 20px; }
+.customer-details-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
 .discount-row {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px;
 }
@@ -191,6 +243,14 @@
 .btn-generate:hover:not(:disabled) { box-shadow: 0 6px 20px rgba(102,126,234,.4); transform: translateY(-1px); }
 .btn-generate:disabled { opacity: .55; cursor: not-allowed; }
 
+.btn-link-customer {
+  background: #0f766e; color: white; border: none;
+  padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background .2s, transform .15s;
+}
+.btn-link-customer:hover:not(:disabled) { background: #115e59; transform: translateY(-1px); }
+.btn-link-customer:disabled { opacity: .55; cursor: not-allowed; }
+
 /* ── Custom dropdown (brackets) ──────────────────────────────────────────── */
 .custom-dropdown { position: relative; }
 .dropdown-trigger {
@@ -237,6 +297,8 @@
 @media (max-width: 768px) {
   .calculator-content { padding: 16px; }
   .form-row { grid-template-columns: 1fr; }
+  .customer-workflow-row { align-items: stretch; flex-direction: column; }
+  .selection-control { align-items: flex-end; }
   .summary-section { flex-direction: column; }
   .summary-card { min-width: auto; width: 100%; }
   .table-wrapper { font-size: 12px; }

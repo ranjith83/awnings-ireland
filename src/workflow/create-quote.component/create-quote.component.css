@@ -787,6 +787,28 @@
   gap: 15px;
 }
 
+.customer-details-block {
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.customer-details-block h4 {
+  margin: 0 0 6px;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.customer-detail-name {
+  color: #111827;
+  font-weight: 600;
+}
+
 .attach-btn {
   background-color: #6c757d;
   color: white;
