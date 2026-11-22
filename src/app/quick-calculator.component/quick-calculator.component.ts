@@ -1186,6 +1186,25 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
   generateEstimatePdf() {
     const items = this.calculatorItemsSubject$.value;
     if (items.length === 0) return;
+    if (this.selectedCustomerId && !this.isAddingCustomer) {
+      this.customerService.getCustomerById(this.selectedCustomerId)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: customer => {
+            this.populateCustomerDetails(customer);
+            this.generateEstimatePdfForCurrentCustomer();
+          },
+          error: () => this.notificationService.error('Failed to load customer address for the estimate PDF.')
+        });
+      return;
+    }
+    this.generateEstimatePdfForCurrentCustomer();
+  }
+
+  private generateEstimatePdfForCurrentCustomer() {
+    const items = this.calculatorItemsSubject$.value;
+    if (items.length === 0) return;
+    const customerDetails = this.getPdfCustomerDetails();
     const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
     const itemDisc = items.reduce((s, i) => s + i.quantity * i.unitPrice * (i.discountPercentage / 100), 0);
     const base     = subtotal - itemDisc;
@@ -1207,10 +1226,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       quoteNumber:        'ESTIMATE-' + (10000 + Math.floor(Math.random() * 90000)),
       quoteDate:          new Date().toLocaleDateString('en-GB'),
       expiryDate:         this.getFollowUpDate(),
-      customerName:       this.customerName || 'Phone Enquiry',
-      customerAddress:    this.customerAddress,
-      customerCity:       this.customerCity,
-      customerPostalCode: this.customerPostalCode,
+      ...customerDetails,
       reference:          this.selectedProductName || 'Quick Estimate',
       items: items.map(i => ({
         description: i.description,
@@ -1383,11 +1399,41 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
     return { subtotal, itemDisc, quoteDisc, totalTax, total: subtotal - itemDisc - quoteDisc + totalTax };
   }
 
+  private getPdfCustomerDetails() {
+    const selectedCustomer = this.customers.find(customer => customer.customerId === this.selectedCustomerId);
+    if (this.isAddingCustomer) {
+      return {
+        customerName: this.newCustomer.name.trim(),
+        customerAddress: [this.newCustomer.address1, this.newCustomer.address2]
+          .map(value => value.trim()).filter(Boolean).join(', '),
+        customerCity: this.newCustomer.county.trim(),
+        customerPostalCode: this.newCustomer.eircode.trim()
+      };
+    }
+
+    if (!selectedCustomer) {
+      return {
+        customerName: '',
+        customerAddress: '',
+        customerCity: '',
+        customerPostalCode: ''
+      };
+    }
+
+    return {
+      customerName: this.customerName || selectedCustomer.contactName || selectedCustomer.companyName || '',
+      customerAddress: this.customerAddress || selectedCustomer.siteAddress || '',
+      customerCity: this.customerCity,
+      customerPostalCode: this.customerPostalCode
+    };
+  }
+
   saveCurrentQuote() {
     const items = this.calculatorItemsSubject$.value;
     if (items.length === 0) return;
     const now = new Date();
     const { subtotal, total } = this.calcTotals(items, this.discountType, this.discountValue, this.vatRate);
+    const customerDetails = this.getPdfCustomerDetails();
     const saved: SavedQuote = {
       id:            now.getTime().toString(),
       name:          `${this.selectedProductName || 'Estimate'} — ${now.toLocaleDateString('en-IE', { day: '2-digit', month: 'short', year: 'numeric' })}`,
@@ -1399,10 +1445,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       discountType:  this.discountType,
       discountValue: this.discountValue,
       vatRate:       this.vatRate,
-      customerName: this.customerName,
-      customerAddress: this.customerAddress,
-      customerCity: this.customerCity,
-      customerPostalCode: this.customerPostalCode
+      ...customerDetails
     };
     this.savedQuotes = [saved, ...this.savedQuotes];
     this.persistSavedQuotes();
@@ -1432,7 +1475,7 @@ export class QuickCalculatorComponent implements OnInit, OnDestroy {
       quoteNumber:        'ESTIMATE-' + sq.id.slice(-5),
       quoteDate:          new Date(sq.savedAt).toLocaleDateString('en-GB'),
       expiryDate:         this.getFollowUpDate(new Date(sq.savedAt)),
-      customerName:       sq.customerName || 'Phone Enquiry',
+      customerName:       sq.customerName || '',
       customerAddress:    sq.customerAddress || '',
       customerCity:       sq.customerCity || '',
       customerPostalCode: sq.customerPostalCode || '',

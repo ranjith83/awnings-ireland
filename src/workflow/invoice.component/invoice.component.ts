@@ -30,6 +30,7 @@ import {
 
 import { WorkflowStateService } from '../../service/workflow-state.service';
 import { PdfGenerationService, InvoicePdfData } from '../../service/pdf-generation.service';
+import { Customer, CustomerService } from '../../service/customer-service';
 
 interface InvoiceItemDisplay {
   id?: number;
@@ -222,6 +223,7 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private notificationService: NotificationService,
+    private customerService: CustomerService,
     private nav: NavService,
     private cdr: ChangeDetectorRef) {}
 
@@ -327,9 +329,10 @@ export class InvoiceComponent implements OnInit, OnDestroy {
 
         if (this.customerId) {
           const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
-          this.customerId = selectedWorkflow?.customerId || null;
-          this.customerName = selectedWorkflow?.customerName || '';
+          this.customerId = selectedWorkflow?.customerId || this.customerId;
+          this.customerName = selectedWorkflow?.customerName || this.customerName;
           workflowId = selectedWorkflow?.id || 0;
+          this.loadCustomerAddress(this.customerId);
         }
 
         this.loadWorkflowsForCustomer(workflowId, paramQuoteId);
@@ -1400,9 +1403,9 @@ export class InvoiceComponent implements OnInit, OnDestroy {
                invoice.dueDate.toLocaleDateString('en-GB') : 
                new Date(invoice.dueDate).toLocaleDateString('en-GB'),
       customerName: this.customerName,
-      customerAddress: this.customerAddress || invoice.customerAddress || '12 OSWALD ROAD',
-      customerCity: this.customerCity || 'DUBLIN 4',
-      customerPostalCode: this.customerPostalCode || 'D04 X470',
+      customerAddress: this.customerAddress || invoice.customerAddress || '',
+      customerCity: this.customerCity || '',
+      customerPostalCode: this.customerPostalCode || '',
       items: items.map(item => ({
         description: item.description,
         quantity: item.quantity,
@@ -1422,6 +1425,23 @@ export class InvoiceComponent implements OnInit, OnDestroy {
     };
 
     this.pdfService.generateInvoicePdf(pdfData);
+  }
+
+  private loadCustomerAddress(customerId: number) {
+    this.customerService.getCustomerById(customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (customer: Customer) => {
+          this.customerName = customer.name ||
+            `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || this.customerName;
+          this.customerAddress = [customer.address1, customer.address2, customer.address3]
+            .filter(Boolean).join(', ') || this.customerAddress;
+          this.customerCity = customer.county || this.customerCity;
+          this.customerPostalCode = customer.eircode || this.customerPostalCode;
+          this.cdr.markForCheck();
+        },
+        error: () => this.notificationService.error('Failed to load customer address for the invoice PDF.')
+      });
   }
 
   private sendInvoiceEmail(invoiceId: number) {

@@ -143,55 +143,66 @@ export class PdfGenerationService {
     // ===== CUSTOMER & QUOTE INFO SECTION =====
     yPosition = 65;
 
-    // Customer name and address (right side)
+    // Customer details occupy the left column; quote metadata stays on the right.
     let customerYPos = 65;
+    doc.setFontSize(10);
     const customerDetails = [
       data.customerName,
       data.customerAddress,
       data.customerCity,
       data.customerPostalCode
     ].filter(detail => !!detail?.trim());
-    customerDetails.forEach((detail, index) => {
-      doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
-      const lines = doc.splitTextToSize(detail, 75);
-      doc.text(lines, pageWidth - 20, customerYPos, { align: 'right' });
-      customerYPos += Math.max(lines.length, 1) * 5;
-    });
+    if (customerDetails.length) {
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BILL TO', 20, customerYPos);
+      customerYPos += 5;
+      doc.setTextColor(...textColor);
+      customerDetails.forEach((detail, index) => {
+        doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
+        const lines = doc.splitTextToSize(detail, 75);
+        doc.text(lines, 20, customerYPos);
+        customerYPos += Math.max(lines.length, 1) * 5;
+      });
+    } else {
+      customerYPos = 65;
+    }
 
+    let quoteInfoYPos = 65;
     const customerLabelX = pageWidth - 80;
     const customerValueX = pageWidth - 20;
     doc.setFont('helvetica', 'bold');
-    doc.text('Date', customerLabelX, customerYPos);
+    doc.text('Date', customerLabelX, quoteInfoYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.formatDate(data.quoteDate), customerValueX, customerYPos, { align: 'right' });
-    customerYPos += 5;
+    doc.text(this.formatDate(data.quoteDate), customerValueX, quoteInfoYPos, { align: 'right' });
+    quoteInfoYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Expiry', customerLabelX, customerYPos);
+    doc.text('Expiry', customerLabelX, quoteInfoYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.formatDate(data.expiryDate), customerValueX, customerYPos, { align: 'right' });
-    customerYPos += 5;
+    doc.text(this.formatDate(data.expiryDate), customerValueX, quoteInfoYPos, { align: 'right' });
+    quoteInfoYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Quote Number', customerLabelX, customerYPos);
+    doc.text('Quote Number', customerLabelX, quoteInfoYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.quoteNumber, customerValueX, customerYPos, { align: 'right' });
-    customerYPos += 5;
+    doc.text(data.quoteNumber, customerValueX, quoteInfoYPos, { align: 'right' });
+    quoteInfoYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Reference', customerLabelX, customerYPos);
+    doc.text('Reference', customerLabelX, quoteInfoYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.reference, customerValueX, customerYPos, { align: 'right' });
-    customerYPos += 5;
+    doc.text(data.reference, customerValueX, quoteInfoYPos, { align: 'right' });
+    quoteInfoYPos += 5;
 
     doc.setFont('helvetica', 'bold');
-    doc.text('VAT No:', customerLabelX, customerYPos);
+    doc.text('VAT No:', customerLabelX, quoteInfoYPos);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.COMPANY_VAT, customerValueX, customerYPos, { align: 'right' });
-    customerYPos += 5;
+    doc.text(this.COMPANY_VAT, customerValueX, quoteInfoYPos, { align: 'right' });
+    quoteInfoYPos += 5;
 
     // ===== ITEMS TABLE =====
-    yPosition = customerYPos + 10;
+    yPosition = Math.max(customerYPos, quoteInfoYPos) + 10;
 
     const tableData = data.items.map(item => [
       item.description,
@@ -392,34 +403,47 @@ export class PdfGenerationService {
     doc.text(data.status.toUpperCase(), 167.5, 58, { align: 'center' });
     doc.setTextColor(0, 0, 0);
 
-    // Invoice details (left side)
+    // Invoice details (right side)
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('Invoice Number:', 20, 68);
+    doc.text('Invoice Number:', 125, 68);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.invoiceNumber, 55, 68);
+    doc.text(data.invoiceNumber, 190, 68, { align: 'right' });
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Invoice Date:', 20, 74);
+    doc.text('Invoice Date:', 125, 74);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.invoiceDate, 55, 74);
+    doc.text(data.invoiceDate, 190, 74, { align: 'right' });
 
     doc.setFont('helvetica', 'bold');
-    doc.text('Due Date:', 20, 80);
+    doc.text('Due Date:', 125, 80);
     doc.setFont('helvetica', 'normal');
-    doc.text(data.dueDate, 55, 80);
+    doc.text(data.dueDate, 190, 80, { align: 'right' });
 
-    // Customer details (right side)
-    doc.setFont('helvetica', 'bold');
-    doc.text('Bill To:', 130, 68);
-    doc.setFont('helvetica', 'normal');
-    doc.text(data.customerName, 130, 74);
-    doc.text(data.customerAddress, 130, 80);
-    doc.text(`${data.customerCity} ${data.customerPostalCode}`, 130, 86);
+    // Customer details (left side)
+    const customerDetails = [
+      data.customerName,
+      data.customerAddress,
+      [data.customerCity, data.customerPostalCode].filter(Boolean).join(' ')
+    ].filter(detail => !!detail?.trim());
+    let customerYPos = 68;
+    if (customerDetails.length) {
+      doc.setTextColor(41, 128, 185);
+      doc.setFont('helvetica', 'bold');
+      doc.text('BILL TO:', 20, customerYPos);
+      customerYPos += 6;
+      doc.setTextColor(0, 0, 0);
+    }
+    customerDetails.forEach((detail, index) => {
+      doc.setFont('helvetica', index === 0 ? 'bold' : 'normal');
+      const lines = doc.splitTextToSize(detail, 85);
+      doc.text(lines, 20, customerYPos);
+      customerYPos += Math.max(lines.length, 1) * 6;
+    });
 
     // Items table
     autoTable(doc, {
-      startY: 95,
+      startY: Math.max(95, customerYPos + 8),
       head: [['Description', 'Quantity', 'Unit Price', 'Tax %', 'Amount EUR']],
       body: data.items.map(item => [
         item.description,

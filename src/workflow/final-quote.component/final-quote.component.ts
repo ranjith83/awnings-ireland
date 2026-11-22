@@ -103,6 +103,7 @@ export class FinalQuoteComponent extends QuoteFormBase implements OnInit {
         const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
         this.customerId   = selectedWorkflow?.customerId   || this.customerId;
         this.customerName = selectedWorkflow?.customerName || this.customerName;
+        this.loadCustomerAddress(this.customerId);
         workflowId        = selectedWorkflow?.id           || paramWorkflowId || 0;
 
         this.loadWorkflowsForCustomer(workflowId);

@@ -19,6 +19,7 @@ import {
 } from '../service/workflow.service';
 import { ProductItemType, QuoteDto } from '../service/create-quote.service';
 import { NotificationService } from '../service/notification.service';
+import { Customer, CustomerService } from '../service/customer-service';
 import { NavService } from '../service/nav.service';
 import { OptionLookupService, OptionLookupDto } from '../service/option-lookup.service';
 import {
@@ -177,6 +178,7 @@ export abstract class QuoteFormBase implements OnDestroy {
   selectedWindSensor = '';
 
   private optionLookupService = inject(OptionLookupService);
+  private customerService = inject(CustomerService);
 
   protected destroy$ = new Subject<void>();
 
@@ -190,6 +192,22 @@ export abstract class QuoteFormBase implements OnDestroy {
   ) {
     this.initObservables();
     this.loadWindSensorOptions();
+  }
+
+  protected loadCustomerAddress(customerId: number) {
+    this.customerService.getCustomerById(customerId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (customer: Customer) => {
+          this.customerName = customer.name ||
+            `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || this.customerName;
+          this.customerAddress = [customer.address1, customer.address2, customer.address3]
+            .filter(Boolean).join(', ') || this.customerAddress;
+          this.customerCity = customer.county || this.customerCity;
+          this.customerPostalCode = customer.eircode || this.customerPostalCode;
+        },
+        error: () => this.notificationService.error('Failed to load customer address for the quote PDF.')
+      });
   }
 
   // ── Observable setup ───────────────────────────────────────────────────────

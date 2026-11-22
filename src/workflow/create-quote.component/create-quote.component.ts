@@ -82,6 +82,7 @@ export class CreateQuoteComponent extends QuoteFormBase implements OnInit {
         const selectedWorkflow = this.workflowStateService.getSelectedWorkflow();
         this.customerId   = selectedWorkflow?.customerId   || this.customerId;
         this.customerName = selectedWorkflow?.customerName || this.customerName;
+        this.loadCustomerAddress(this.customerId);
         this.ensureDefaultDeliveryFee();
         const workflowId  = selectedWorkflow?.id           || paramWorkflowId || 0;
 
